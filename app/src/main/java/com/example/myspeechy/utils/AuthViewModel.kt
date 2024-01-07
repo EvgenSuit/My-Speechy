@@ -58,7 +58,7 @@ class AuthViewModel @Inject constructor(
 }
 
 data class AuthExceptionState(val exceptionMessage: String = "")
-data class AuthUiState(val email: String = "", val password: String = "")
+data class AuthUiState(val email: String = "some@gmail.com", val password: String = "Some2223")
 
 fun String.isValidEmail() = !isNullOrEmpty() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
 

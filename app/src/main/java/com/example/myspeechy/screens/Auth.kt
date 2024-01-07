@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -64,6 +65,7 @@ import com.example.myspeechy.utils.isValidEmail
 import com.example.myspeechy.utils.meetsPasswordRequirements
 import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -108,6 +110,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
             modifier: Modifier = Modifier) {
     val viewModel: AuthViewModel = hiltViewModel()
+    val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     val coroutine = rememberCoroutineScope()
     val exceptionState by viewModel.exceptionState.collectAsState()
@@ -160,8 +163,10 @@ fun MainBox(onNavigateToMain: () -> Unit,
                    AuthButton(label = "Log In", enabled) {
                               coroutine.launch {
                                   viewModel.logIn()
+                                  delay(1000)
                                   withContext(Dispatchers.Main) {
-                                      if (exceptionState.exceptionMessage.isEmpty()) {
+                                      if (enabled) {
+                                          focusManager.clearFocus()
                                           onNavigateToMain()
                                       }
                                   }
@@ -170,8 +175,10 @@ fun MainBox(onNavigateToMain: () -> Unit,
                    AuthButton(label = "Sign Up", enabled) {
                        coroutine.launch {
                            viewModel.signUp()
+                           delay(1000)
                            withContext(Dispatchers.Main) {
-                               if (exceptionState.exceptionMessage.isEmpty()) {
+                               if (enabled) {
+                                   focusManager.clearFocus()
                                    Toast.makeText(context, "Signed Up", Toast.LENGTH_LONG).show()
                                }
                            }

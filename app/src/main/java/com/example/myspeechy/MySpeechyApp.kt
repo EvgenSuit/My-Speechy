@@ -16,7 +16,6 @@ fun MySpeechyApp() {
     val startDestination = if (Firebase.auth.currentUser == null) "auth" else "main"
     NavHost(navController, startDestination) {
         composable("auth") {
-
             AuthScreen(onNavigateToMain = {navController.navigate("main")})
         }
         composable("main") {
