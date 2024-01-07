@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
 import coil.compose.AsyncImagePainter
@@ -103,10 +104,10 @@ fun AuthScreen(
 }
 
 @Composable
-fun MainBox(viewModel: AuthViewModel = viewModel(),
-            onNavigateToMain: () -> Unit,
+fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
             modifier: Modifier = Modifier) {
+    val viewModel: AuthViewModel = hiltViewModel()
     val context = LocalContext.current
     val coroutine = rememberCoroutineScope()
     val exceptionState by viewModel.exceptionState.collectAsState()
@@ -177,7 +178,7 @@ fun MainBox(viewModel: AuthViewModel = viewModel(),
                        }
                    }
                }
-               GoogleAuthButton(imageLoader) {
+               GoogleAuthButton(viewModel, imageLoader) {
                    onNavigateToMain()
                }
            }
@@ -186,32 +187,24 @@ fun MainBox(viewModel: AuthViewModel = viewModel(),
 }
 
 @Composable
-fun GoogleAuthButton(imageLoader: ImageLoader, onClick: () -> Unit) {
+fun GoogleAuthButton(viewModel: AuthViewModel, imageLoader: ImageLoader, onClick: () -> Unit) {
     val painter = rememberAsyncImagePainter(R.raw.google_icon, imageLoader)
-    val context = LocalContext.current
     val coroutine = rememberCoroutineScope()
-    val googleAuthService by lazy {
-        GoogleAuthService(
-            context = context,
-            oneTapClient = Identity.getSignInClient(context)
-        )
-    }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
         onResult = { result ->
             if (result.resultCode == RESULT_OK) {
                 coroutine.launch {
-                    googleAuthService.signInWithIntent(
+                    viewModel.googleSignInWithIntent(
                         result.data ?: return@launch)
                     onClick()
                 }
             }
         }
     )
-    
     Button(onClick = {
         coroutine.launch {
-            val signInIntentSender = googleAuthService.signIn()
+            val signInIntentSender = viewModel.googleSignIn()
             launcher.launch(
                     IntentSenderRequest.Builder(
                         intentSender = signInIntentSender ?: return@launch

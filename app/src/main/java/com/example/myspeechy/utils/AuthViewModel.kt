@@ -1,21 +1,26 @@
 package com.example.myspeechy.utils
 
+import android.content.Intent
+import android.content.IntentSender
 import android.util.Patterns
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.services.AuthService
-import com.google.firebase.auth.auth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
+import com.example.myspeechy.services.GoogleAuthService
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
 
-class AuthViewModel : ViewModel() {
-    private val authService = AuthService(Firebase.auth)
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+   private val authService: AuthService,
+    private val googleAuthService: GoogleAuthService,
+) : ViewModel() {
     var uiState by mutableStateOf(AuthUiState())
         private set
     private var _exceptionState = MutableStateFlow(AuthExceptionState())
@@ -40,6 +45,12 @@ class AuthViewModel : ViewModel() {
             authService.logInUser(uiState.email, uiState.password) {updateExceptionState(it?.message)}
         } catch (e: Exception) {
         }
+    }
+    suspend fun googleSignInWithIntent(intent: Intent) {
+        googleAuthService.signInWithIntent(intent)
+    }
+    suspend fun googleSignIn(): IntentSender? {
+        return googleAuthService.signIn()
     }
     private fun updateExceptionState(value: String?) {
         _exceptionState.update { it.copy(value ?: "") }
