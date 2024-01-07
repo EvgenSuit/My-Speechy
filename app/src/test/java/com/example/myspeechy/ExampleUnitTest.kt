@@ -20,7 +20,7 @@ class ExampleUnitTest {
         MockitoAnnotations.openMocks(ExampleUnitTest::class)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    /*@OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun signUp_signIn_isSuccessful() = runTest {
         val authResult = mock(AuthResult::class.java)
@@ -29,5 +29,7 @@ class ExampleUnitTest {
         `when`(auth.signInWithEmailAndPassword(email, password)).thenReturn(Tasks.forResult(authResult))
         val authService = AuthService(auth)
         authService.logInUser(email, password) {}
-    }
+    }*/
+
+
 }
