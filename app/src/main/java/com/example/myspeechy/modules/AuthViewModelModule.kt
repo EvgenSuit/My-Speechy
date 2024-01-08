@@ -16,7 +16,7 @@ import dagger.hilt.android.scopes.ViewModelScoped
 
 @Module
 @InstallIn(ViewModelComponent::class)
-object ViewModelModule {
+object AuthViewModelModule {
 
     @ViewModelScoped
     @Provides

@@ -69,7 +69,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-
 @Composable
 fun AuthScreen(
     onNavigateToMain: () -> Unit, ) {
@@ -100,9 +99,7 @@ fun AuthScreen(
                             modifier = Modifier
                                 .align(Alignment.Center))
                 }
-
         }
-
 }
 
 @Composable
