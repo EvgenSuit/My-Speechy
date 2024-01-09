@@ -19,13 +19,13 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository
 ): ViewModel() {
-    private val lessonServiceImpl = LessonServiceImpl(lessonRepository)
+    private val lessonServiceImpl = LessonServiceImpl()
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
    init {
         viewModelScope.launch {
-            lessonRepository.selectAllLessons().collectLatest {lessonList ->
+            lessonRepository.selectAllLessons().collect {lessonList ->
                 lessonList.forEach { lesson ->
                     _uiState.update {state ->
                         UiState(state.lessonItems + lessonServiceImpl.convertToLessonItem(lesson))

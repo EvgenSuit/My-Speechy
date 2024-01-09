@@ -22,11 +22,10 @@ data class LessonItem(
 
 interface LessonService {
     fun convertToLessonItem(lesson: Lesson): LessonItem
-    suspend fun loadLesson(unit: Int, category: Int): Lesson
 
 }
 
-class LessonServiceImpl(private val lessonRepository: LessonRepository): LessonService {
+class LessonServiceImpl(): LessonService {
     private val lessonServiceHelpers = LessonServiceHelpers()
     override fun convertToLessonItem(lesson: Lesson): LessonItem {
         return LessonItem(
@@ -37,10 +36,6 @@ class LessonServiceImpl(private val lessonRepository: LessonRepository): LessonS
             lesson.isComplete == 1,
             lesson.containsImages == 1
         )
-    }
-
-    override suspend fun loadLesson(unit: Int, category: Int): Lesson {
-        TODO("Not yet implemented")
     }
 
 }
