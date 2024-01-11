@@ -12,5 +12,6 @@ data class Lesson(
     val title: String,
     val text: String,
     val isComplete: Int,
+    val isAvailable: Int,
     val containsImages: Int
 )
