@@ -39,10 +39,12 @@ class MainScreenUITests {
     @Test
     fun writeReadTest() = runTest{
         val item = Lesson(unit = 1, category = 2, title = "Introduction",
-            text = "Some text", isComplete =  0, containsImages =  0)
+            text = "Some text", isComplete =  0, isAvailable = 0, containsImages =  0)
         lessonRepository.insertLesson(item)
-        val readItem = lessonRepository.selectLessonItem(1, 2)
-        assertEquals(item.text, readItem.text)
+        val readItem = lessonRepository.selectLessonItem(0).collect {
+            assertEquals(item.text, it.text)
+        }
+
     }
 
 

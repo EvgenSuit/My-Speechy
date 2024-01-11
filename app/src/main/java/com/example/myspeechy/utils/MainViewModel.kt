@@ -17,24 +17,21 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val lessonRepository: LessonRepository
+    private val lessonRepository: LessonRepository,
+    private val lessonServiceImpl: LessonServiceImpl
 ): ViewModel() {
-    private val lessonServiceImpl = LessonServiceImpl()
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
    init {
         viewModelScope.launch {
-            lessonRepository.selectAllLessons().collect {lessonList ->
-                lessonList.forEach { lesson ->
-                    _uiState.update {state ->
-                        UiState(state.lessonItems + lessonServiceImpl.convertToLessonItem(lesson))
-                    }
-                }
+            lessonRepository.selectAllLessons().collectLatest {lessonList ->
+                _uiState.update { UiState(lessonList.map { lessonServiceImpl.convertToLessonItem(it) }) }
             }
         }
     }
-
+    fun getStringType(category: String): Int {
+        return lessonServiceImpl.lessonServiceHelpers.categoryMapperReverse(category)
+    }
+    data class UiState(val lessonItems: List<LessonItem> = listOf())
 }
-
-data class UiState(val lessonItems: List<LessonItem> = listOf())

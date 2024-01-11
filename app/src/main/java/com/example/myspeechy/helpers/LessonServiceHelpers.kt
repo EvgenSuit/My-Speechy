@@ -11,6 +11,15 @@ class LessonServiceHelpers {
                 else -> "Reading"
             }
         }
-
+        fun categoryMapperReverse(category: String): Int {
+            return when(category) {
+                "Physical" -> 0
+                "Breathing" -> 1
+                "Psychological" -> 2
+                "Meditation" -> 3
+                "Mindfulness" -> 4
+                else -> 5
+            }
+        }
 
 }
