@@ -26,11 +26,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -73,7 +79,13 @@ fun AuthScreen(
             add(SvgDecoder.Factory())
         }.build()
     val painter = rememberAsyncImagePainter(R.raw.auth_page_background, imageLoader)
-    Box {
+    val snackbarHostState = remember { SnackbarHostState() }
+    Scaffold(
+        snackbarHost = {SnackbarHost(hostState = snackbarHostState)}
+    ) { contentPadding ->
+        Box(
+            modifier = Modifier.padding(contentPadding)
+        ) {
             Image(painter = painter,
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier.fillMaxSize(),
@@ -89,18 +101,24 @@ fun AuthScreen(
                 }
             }
             if (painter.state is AsyncImagePainter.State.Success) {
+
                 MainBox(
-                            onNavigateToMain = onNavigateToMain,
-                            imageLoader = imageLoader,
-                            modifier = Modifier
-                                .align(Alignment.Center))
-                }
+                    onNavigateToMain = onNavigateToMain,
+                    imageLoader = imageLoader,
+                    snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                )
+
+            }
         }
+    }
 }
 
 @Composable
 fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
+            snackbarHostState: SnackbarHostState,
             modifier: Modifier = Modifier) {
     val viewModel: AuthViewModel = hiltViewModel()
     val focusManager = LocalFocusManager.current
@@ -172,13 +190,13 @@ fun MainBox(onNavigateToMain: () -> Unit,
                            withContext(Dispatchers.Main) {
                                if (enabled) {
                                    focusManager.clearFocus()
-                                   Toast.makeText(context, "Signed Up", Toast.LENGTH_LONG).show()
+                                   snackbarHostState.showSnackbar("Signed Up")
                                }
                            }
                        }
                    }
                }
-               GoogleAuthButton(viewModel, imageLoader) {
+               GoogleAuthButton(viewModel, imageLoader, snackbarHostState) {
                    onNavigateToMain()
                }
            }
@@ -187,7 +205,10 @@ fun MainBox(onNavigateToMain: () -> Unit,
 }
 
 @Composable
-fun GoogleAuthButton(viewModel: AuthViewModel, imageLoader: ImageLoader, onClick: () -> Unit) {
+fun GoogleAuthButton(viewModel: AuthViewModel,
+                     imageLoader: ImageLoader,
+                     snackbarHostState: SnackbarHostState,
+                     onClick: () -> Unit) {
     val painter = rememberAsyncImagePainter(R.raw.google_icon, imageLoader)
     val coroutine = rememberCoroutineScope()
     val launcher = rememberLauncherForActivityResult(
@@ -205,11 +226,16 @@ fun GoogleAuthButton(viewModel: AuthViewModel, imageLoader: ImageLoader, onClick
     Button(onClick = {
         coroutine.launch {
             val signInIntentSender = viewModel.googleSignIn()
-            launcher.launch(
+            if (signInIntentSender == null) {
+                snackbarHostState.showSnackbar("Error signing in with google, make sure to" +
+                        " add your account to the current device")
+            } else {
+                launcher.launch(
                     IntentSenderRequest.Builder(
-                        intentSender = signInIntentSender ?: return@launch
+                        intentSender = signInIntentSender
                     ).build()
                 )
+            }
         }},
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(

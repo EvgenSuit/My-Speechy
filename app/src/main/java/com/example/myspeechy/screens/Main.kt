@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,15 +58,21 @@ fun UnitColumn(
     navController: NavController,
     getStringType: (String) -> Int
 ) {
-    val groupedItems = lessonItems.groupBy { it.unit }
+    val groupedItems = remember {
+        lessonItems.groupBy { it.unit }
+    }
+    val groupedItemsFlattened = remember {
+        groupedItems.values.toList().flatten()
+    }
+    val keys = groupedItems.keys.toList()
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(42.dp),
         modifier = Modifier.fillMaxSize()
         ) {
-        items(groupedItems.keys.toList()) {columnIndex ->
-            val columnItems = groupedItems[columnIndex]!!.toList()
-            Column   {
+        items(groupedItems.keys.size) {columnIndex ->
+            val columnItems = groupedItems[keys[columnIndex]]!!.toList()
+            Column{
                 Text("Unit ${columnItems[0].unit}",
                     color = Color.White,
                     fontSize = 48.sp,
@@ -73,9 +80,13 @@ fun UnitColumn(
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(50.dp),
                     userScrollEnabled = true) {
-                    items(columnItems) {
-                        LessonItemComposable(lessonItem = it,
+                    items(columnItems.size) {rowIndex ->
+                        val currentItemIndex = groupedItemsFlattened.indexOf(columnItems[rowIndex])
+                        val isAvailable = (currentItemIndex > 0 && groupedItemsFlattened[currentItemIndex-1].isComplete ||
+                                (currentItemIndex == 0)) || columnItems[rowIndex].isAvailable
+                        LessonItemComposable(lessonItem = columnItems[rowIndex],
                             navController = navController,
+                            isAvailable,
                             getStringType)
                     }
                 }
@@ -87,12 +98,13 @@ fun UnitColumn(
 @Composable
 fun LessonItemComposable(lessonItem: LessonItem,
                          navController: NavController,
+                         isAvailable: Boolean,
                          getStringType: (String) -> Int) {
     val itemType = if (!listOf(3, 5).contains(getStringType(lessonItem.category)))
         "regularLessonItem" else "specialLessonItem"
     ElevatedButton(onClick = {navController.navigate("${itemType}/${lessonItem.id}")},
         shape = RoundedCornerShape(10.dp),
-        enabled = lessonItem.isAvailable,
+        enabled = isAvailable,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.White,
             contentColor = Color.Black

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LessonDao {
-    @Insert(onConflict = REPLACE)
+    @Insert
     suspend fun insertLesson(lesson: Lesson)
 
     @Update
