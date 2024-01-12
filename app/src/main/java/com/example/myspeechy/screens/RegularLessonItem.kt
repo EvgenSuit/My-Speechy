@@ -26,8 +26,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RegularLessonItem(id: Int,
+                      viewModel: RegularLessonItemViewModel = hiltViewModel(),
                       onNavigateUp: () -> Unit) {
-    val viewModel: RegularLessonItemViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val coroutine = rememberCoroutineScope()
 

@@ -8,6 +8,15 @@
       <entry key="app">
         <State />
       </entry>
+      <entry key="markAsCompleteFromDbTest()">
+        <State />
+      </entry>
+      <entry key="markAsCompleteTest()">
+        <State />
+      </entry>
+      <entry key="writeReadTest()">
+        <State />
+      </entry>
     </value>
   </component>
 </project>
