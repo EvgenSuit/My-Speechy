@@ -20,7 +20,7 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-    }
+        }
 
     buildTypes {
         release {
@@ -52,12 +52,14 @@ android {
 }
 
 dependencies {
+    implementation("androidx.test:runner:1.5.2")
     val room_version = "2.6.1"
     val hilt_version = "2.50"
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
     //Coil (image display handler)
     implementation("io.coil-kt:coil-compose:2.2.2")
@@ -95,8 +97,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("androidx.compose.ui:ui-test-junit4-android:1.5.4")
-    testImplementation("org.mockito:mockito-core:5.5.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+    testImplementation("org.mockito:mockito-core:5.8.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("androidx.room:room-testing:$room_version")
 
