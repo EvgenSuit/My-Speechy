@@ -58,12 +58,7 @@ fun UnitColumn(
     navController: NavController,
     getStringType: (String) -> Int
 ) {
-    val groupedItems = remember {
-        lessonItems.groupBy { it.unit }
-    }
-    val groupedItemsFlattened = remember {
-        groupedItems.values.toList().flatten()
-    }
+    val groupedItems = lessonItems.groupBy { it.unit }
     val keys = groupedItems.keys.toList()
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -81,9 +76,7 @@ fun UnitColumn(
                     horizontalArrangement = Arrangement.spacedBy(50.dp),
                     userScrollEnabled = true) {
                     items(columnItems.size) {rowIndex ->
-                        val currentItemIndex = groupedItemsFlattened.indexOf(columnItems[rowIndex])
-                        val isAvailable = (currentItemIndex > 0 && groupedItemsFlattened[currentItemIndex-1].isComplete ||
-                                (currentItemIndex == 0)) || columnItems[rowIndex].isAvailable
+                        val isAvailable = columnItems[rowIndex].isAvailable
                         LessonItemComposable(lessonItem = columnItems[rowIndex],
                             navController = navController,
                             isAvailable,
