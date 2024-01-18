@@ -1,8 +1,21 @@
 package com.example.myspeechy
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.testing.TestNavHostController
 import com.example.myspeechy.data.Lesson
 import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
+import com.example.myspeechy.screens.AuthScreen
+import com.example.myspeechy.screens.MainScreen
+import com.example.myspeechy.screens.UnitColumn
+import com.example.myspeechy.services.LessonItem
+import com.example.myspeechy.services.LessonServiceImpl
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first
@@ -13,6 +26,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
@@ -31,9 +45,19 @@ class MainScreenUITests {
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
+    @get:Rule
+    var composeTestRule = createComposeRule()
+
+    //private lateinit var navController: TestNavHostController
+
     @Before
-    fun init() {
+    fun setup() {
         hiltRule.inject()
+        /*composeTestRule.setContent {
+            navController = TestNavHostController(LocalContext.current)
+            navController.navigatorProvider.addNavigator(ComposeNavigator())
+            MySpeechyApp(navController = navController)
+        }*/
     }
 
     @After
@@ -51,18 +75,25 @@ class MainScreenUITests {
         assertEquals(item.text, selectedItem.text)
     }
 
-    @Test
-    fun markAsCompleteTest() = runTest {
+   /* @Test
+    fun setupAppNavHost() {
         val items = listOf(
-            Lesson(id = 1, unit = 1, category = 0, title = "Introduction",
-                text = "Some text", isComplete = 0, isAvailable = 1, containsImages = 0),
-            Lesson(id = 2, unit = 1, category = 1, title = "Introduction",
-                text = "Some text", isComplete = 0, isAvailable = 0, containsImages = 0),
-            Lesson(id = 3, unit = 1, category = 1, title = "Introduction",
-                text = "Some text", isComplete = 0, isAvailable = 0, containsImages = 0)
+            LessonItem(id = 1, unit = 1, category = "", title = "Introduction",
+                text = "Some text", isComplete = false, isAvailable = true, containsImages = false),
+            LessonItem(id = 1, unit = 1, category = "", title = "Introduction 2",
+                text = "Some text", isComplete = false, isAvailable = false, containsImages = false),
+            LessonItem(id = 1, unit = 1, category = "", title = "Introduction 3",
+                text = "Some text", isComplete = false, isAvailable = false, containsImages = false),
         )
 
-    }
+    }*/
+
+    /*@Test
+    fun markAsCompleteTest() {
+        composeTestRule.onNodeWithText("Introduction").performClick()
+        composeTestRule.onNodeWithText("Mark as complete").performClick()
+        composeTestRule.onNodeWithText("Introduction 2").assertIsDisplayed()
+    }*/
 
 
 }
