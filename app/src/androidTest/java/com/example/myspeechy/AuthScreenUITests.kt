@@ -5,32 +5,27 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.myspeechy.screens.AuthScreen
-
-import org.junit.Test
-import org.junit.runner.RunWith
-
-import org.junit.Assert.*
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Rule
+import org.junit.Test
 
-
-@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class AuthScreenUITests {
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule(MainActivity::class.java)
+
+    @get:Rule
+    val hiltRule = HiltAndroidRule(this)
 
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun authScreenUncorrectTest() {
-        composeTestRule.setContent {
-            AuthScreen {}
-        }
         composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 5000)
-
         composeTestRule.onNodeWithText("Email").performTextInput("uncorrect format")
         composeTestRule.onNodeWithText("Wrong email format").assertIsDisplayed()
         composeTestRule.onNodeWithText("Log In").assertIsNotEnabled()
@@ -46,10 +41,7 @@ class AuthScreenUITests {
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun authScreenCorrectTest() {
-        composeTestRule.setContent {
-            AuthScreen {}
-        }
-        composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 5000)
+        composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 3000)
         composeTestRule.onNodeWithText("Email").performTextInput("some@gmail.com")
         composeTestRule.onNodeWithText("Wrong email format").assertDoesNotExist()
         composeTestRule.onNodeWithText("Log In").assertIsNotEnabled()
@@ -59,5 +51,7 @@ class AuthScreenUITests {
         composeTestRule.onNodeWithText("Wrong password format").assertDoesNotExist()
         composeTestRule.onNodeWithText("Log In").assertIsEnabled()
         composeTestRule.onNodeWithText("Sign Up").assertIsEnabled()
+        composeTestRule.onNodeWithText("Log In").performClick()
+        composeTestRule.waitUntilExactlyOneExists(hasText("Unit 1"), 3000)
     }
 }
