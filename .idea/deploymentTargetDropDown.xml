@@ -2,16 +2,22 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
+      <entry key="DatabaseTests">
+        <State />
+      </entry>
+      <entry key="MainScreenUITests">
+        <State />
+      </entry>
       <entry key="app">
         <State />
       </entry>
-      <entry key="markAsCompleteFromDbTest()">
+      <entry key="authScreenCorrectTest()">
+        <State />
+      </entry>
+      <entry key="authScreenUncorrectTest()">
         <State />
       </entry>
       <entry key="markAsCompleteTest()">
-        <State />
-      </entry>
-      <entry key="writeReadTest()">
         <State />
       </entry>
     </value>

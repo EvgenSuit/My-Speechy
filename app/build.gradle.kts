@@ -52,7 +52,6 @@ android {
 }
 
 dependencies {
-    implementation("androidx.test:runner:1.5.2")
     val room_version = "2.6.1"
     val hilt_version = "2.50"
     //Firebase
@@ -97,8 +96,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("androidx.compose.ui:ui-test-junit4-android:1.5.4")
-    testImplementation("org.mockito:mockito-core:5.8.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("androidx.room:room-testing:$room_version")
 
