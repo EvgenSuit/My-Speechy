@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -58,12 +56,7 @@ fun UnitColumn(
     navController: NavController,
     getStringType: (String) -> Int
 ) {
-    val groupedItems = remember {
-        lessonItems.groupBy { it.unit }
-    }
-    val groupedItemsFlattened = remember {
-        groupedItems.values.toList().flatten()
-    }
+    val groupedItems = lessonItems.groupBy { it.unit }
     val keys = groupedItems.keys.toList()
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -81,9 +74,7 @@ fun UnitColumn(
                     horizontalArrangement = Arrangement.spacedBy(50.dp),
                     userScrollEnabled = true) {
                     items(columnItems.size) {rowIndex ->
-                        val currentItemIndex = groupedItemsFlattened.indexOf(columnItems[rowIndex])
-                        val isAvailable = (currentItemIndex > 0 && groupedItemsFlattened[currentItemIndex-1].isComplete ||
-                                (currentItemIndex == 0)) || columnItems[rowIndex].isAvailable
+                        val isAvailable = columnItems[rowIndex].isAvailable
                         LessonItemComposable(lessonItem = columnItems[rowIndex],
                             navController = navController,
                             isAvailable,
