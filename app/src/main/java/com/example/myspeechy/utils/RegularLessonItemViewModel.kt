@@ -1,27 +1,21 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myspeechy.data.LessonFlags
-import com.example.myspeechy.data.LessonFlagsRepository
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.services.LessonItem
 import com.example.myspeechy.services.LessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class RegularLessonItemViewModel
-    @Inject constructor(
+class RegularLessonItemViewModel @Inject constructor(
         private val lessonRepository: LessonRepository,
-        private val lessonFlagsRepository: LessonFlagsRepository,
         private val lessonServiceImpl: LessonServiceImpl,
         savedStateHandle: SavedStateHandle): ViewModel() {
 
@@ -36,10 +30,9 @@ class RegularLessonItemViewModel
             }
         }
 
-    suspend fun markAsComplete(lessonItem: LessonItem) {
+        fun markAsComplete(lessonItem: LessonItem) {
             val lesson = lessonServiceImpl.convertToLesson(lessonItem.copy(isComplete = true))
-            lessonRepository.updateLesson(lesson)
-        lessonFlagsRepository.insertIsCompleteFlag(LessonFlags(id = lessonItem.id))
+            lessonServiceImpl.saveProgressRemotely(lesson.id)
         }
 
         data class UiState(val lessonItem: LessonItem = LessonItem())

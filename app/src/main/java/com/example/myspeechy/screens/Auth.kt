@@ -73,7 +73,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun AuthScreen(
-    onNavigateToMain: () -> Unit, ) {
+    onNavigateToMain: () -> Unit) {
     val imageLoader = ImageLoader.Builder(LocalContext.current)
         .components {
             add(SvgDecoder.Factory())
