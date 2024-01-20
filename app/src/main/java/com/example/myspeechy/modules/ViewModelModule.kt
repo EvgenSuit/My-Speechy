@@ -1,6 +1,7 @@
 package com.example.myspeechy.modules
 
 import android.content.Context
+import android.content.res.AssetManager
 import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.services.LessonServiceImpl
@@ -31,5 +32,9 @@ object ViewModelModule {
         return LessonServiceImpl(Firebase.auth.currentUser!!.uid)
     }
 
+    @Provides
+    fun provideAssetManager(@ApplicationContext context: Context): AssetManager {
+        return context.assets
+    }
 
 }

@@ -11,13 +11,10 @@
       <entry key="app">
         <State />
       </entry>
-      <entry key="authScreenCorrectTest()">
-        <State />
-      </entry>
-      <entry key="authScreenUncorrectTest()">
-        <State />
-      </entry>
       <entry key="markAsCompleteTest()">
+        <State />
+      </entry>
+      <entry key="parseImgInText()">
         <State />
       </entry>
     </value>
