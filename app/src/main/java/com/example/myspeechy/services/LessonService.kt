@@ -1,35 +1,18 @@
 package com.example.myspeechy.services
 
-import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
+import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.Lesson
-import com.example.myspeechy.data.LessonRepository
+import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.helpers.LessonServiceHelpers
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
-
-data class LessonItem(
-    var id: Int = 0,
-    val unit: Int = 1,
-    val category: String = "",
-    val title: String = "",
-    val text: String = "",
-    val isComplete: Boolean = false,
-    val isAvailable: Boolean = false,
-    val containsImages: Boolean = false
-)
 
 interface LessonService {
     fun convertToLessonItem(lesson: Lesson): LessonItem
     fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String>
+    fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>, dir: String, assetManager: AssetManager): Map<String, ImageBitmap>
     fun convertToLesson(lessonItem: LessonItem): Lesson
     fun saveProgressRemotely(lessonId: Int)
     fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit)
@@ -99,6 +82,16 @@ class LessonServiceImpl(private val userId: String): LessonService {
         return newText
     }
 
-
+    override fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>,
+                                  dir: String, assetManager: AssetManager): Map<String, ImageBitmap> {
+        val imgsMap = mutableMapOf<String, ImageBitmap>()
+        if (lessonItem.containsImages) {
+            for (i in imgs.indices) {
+                imgsMap.put(imgs[i],
+                    lessonServiceHelpers.loadImgFromAsset(dir + imgs[i], assetManager))
+            }
+        }
+        return imgsMap
+    }
 
 }

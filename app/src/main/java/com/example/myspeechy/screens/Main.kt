@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.myspeechy.R
-import com.example.myspeechy.services.LessonItem
+import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.utils.MainViewModel
 
 @Composable

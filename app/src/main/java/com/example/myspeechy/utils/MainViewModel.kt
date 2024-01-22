@@ -3,7 +3,7 @@ package com.example.myspeechy.utils
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.services.LessonItem
+import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.services.LessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

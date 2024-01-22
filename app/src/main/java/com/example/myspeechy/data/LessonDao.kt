@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy.Companion.REPLACE
 import androidx.room.Query
 import androidx.room.Update
-import com.example.myspeechy.services.LessonItem
 import kotlinx.coroutines.flow.Flow
 
 @Dao

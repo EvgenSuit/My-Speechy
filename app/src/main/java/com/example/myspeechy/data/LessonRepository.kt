@@ -1,6 +1,5 @@
 package com.example.myspeechy.data
 
-import com.example.myspeechy.services.LessonItem
 import kotlinx.coroutines.flow.Flow
 
 class LessonRepository(private val lessonDao: LessonDao): LessonDao {
