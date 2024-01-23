@@ -19,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.myspeechy.R
 import com.example.myspeechy.data.UiState
 
 @Composable
@@ -49,7 +51,7 @@ fun <T: UiState> LessonItemWrapper(
         body()
         Spacer(modifier = Modifier.weight(1f))
         ElevatedButton(onClick = onMarkAsComplete) {
-            Text("Mark as complete")
+            Text(stringResource(id = R.string.mark_as_complete))
         }
     }
 }

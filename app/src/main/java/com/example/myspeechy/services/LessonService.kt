@@ -12,8 +12,13 @@ import com.google.firebase.ktx.Firebase
 interface LessonService {
     fun convertToLessonItem(lesson: Lesson): LessonItem
     fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String>
+    /**
+    This method maps the names of images to their bitmap representations,
+     which then helps to display them in an annotatedString
+     */
     fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>, dir: String, assetManager: AssetManager): Map<String, ImageBitmap>
     fun convertToLesson(lessonItem: LessonItem): Lesson
+    fun markAsComplete(lessonItem: LessonItem)
     fun saveProgressRemotely(lessonId: Int)
     fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit)
 }
@@ -25,6 +30,11 @@ class LessonServiceImpl(private val userId: String): LessonService {
     override fun saveProgressRemotely(lessonId: Int) {
         firestore.collection(userId)
             .document(lessonId.toString()).set(mapOf("isComplete" to true))
+    }
+
+    override fun markAsComplete(lessonItem: LessonItem) {
+        val lesson = convertToLesson(lessonItem.copy(isComplete = true))
+        saveProgressRemotely(lesson.id)
     }
 
     override fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {

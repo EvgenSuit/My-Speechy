@@ -40,7 +40,7 @@ class MainViewModel @Inject constructor(
                 val isComplete = if (data["isComplete"]!!) 1 else 0
                 if (isComplete == 0) return@trackRemoteProgress
                 val lessonIndex = lessonList.indexOf(lesson)
-                        viewModelScope.launch {
+                viewModelScope.launch {
                             if (lessonIndex < lessonList.size - 1) {
                                 lessonRepository.insertLesson(
                                     lessonList[lessonIndex + 1].copy(

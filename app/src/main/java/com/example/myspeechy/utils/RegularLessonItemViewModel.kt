@@ -28,31 +28,28 @@ class RegularLessonItemViewModel @Inject constructor(
         init {
             viewModelScope.launch {
                 lessonRepository.selectLessonItem(id).collect { lesson ->
-                    //Load images
                     val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
-                    val dir = "imgs/unit${lessonItem.unit}/${lessonItem.category.lowercase()}/"
-                    val imgs = assetManager.list(dir)!!.toList()
-                    val textSplit = lessonServiceImpl.parseImgFromText(lessonItem, imgs)
-                    val imgsMap = lessonServiceImpl.loadImgFromAsset(lessonItem, imgs, dir, assetManager)
-                    _uiState.update {
-                        RegularLessonItemState(lessonItem,
-                            imgsMap,
-                            textSplit)
-                    }
-
+                   if (lessonItem.containsImages) {
+                       //Load images
+                       val dir = "imgs/unit${lessonItem.unit}/${lessonItem.category.lowercase()}/"
+                       val imgs = assetManager.list(dir)!!.toList()
+                       val textSplit = lessonServiceImpl.parseImgFromText(lessonItem, imgs)
+                       val imgsMap = lessonServiceImpl.loadImgFromAsset(lessonItem, imgs, dir, assetManager)
+                       _uiState.update {
+                           RegularLessonItemState(lessonItem,
+                               imgsMap,
+                               textSplit)
+                       }
+                   } else {
+                       _uiState.update {
+                           RegularLessonItemState(lessonItem)
+                       }
+                   }
                 }
             }
         }
-
-        fun markAsComplete() {
-            val lesson = lessonServiceImpl.convertToLesson(uiState.value.lessonItem.copy(isComplete = true))
-            lessonServiceImpl.saveProgressRemotely(lesson.id)
-        }
-
-       /* data class UiState(val lessonItem: LessonItem = LessonItem(),
-                           val imgs: Map<String, ImageBitmap> = mapOf(),
-                           val textSplit: List<String> = listOf(),
-                           val supportedImgFormats: List<String> = listOf(".png")
-        ) */
+    fun markAsComplete() {
+        lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+    }
 }
 

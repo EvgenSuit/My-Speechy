@@ -10,7 +10,9 @@ data class RegularLessonItemState(
     override val lessonItem: LessonItem,
     val imgs: Map<String, ImageBitmap> = mapOf(),
     val textSplit: List<String> = listOf(),
-    val supportedImgFormats: List<String> = listOf(".png")) : UiState
+    val supportedImgFormats: List<String> = listOf(".png")): UiState
+
+data class ReadingLessonItemState(override val lessonItem: LessonItem): UiState
 
 data class LessonItem(
     var id: Int = 0,
