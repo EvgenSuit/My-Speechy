@@ -22,10 +22,10 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
     val startDestination = if (Firebase.auth.currentUser == null) "auth" else "main"
     NavHost(navController, startDestination,
         enterTransition = { fadeIn(
-            animationSpec = tween(durationMillis = 500),
+            animationSpec = tween(durationMillis = 200),
         ) },
         exitTransition = { fadeOut(
-            animationSpec = tween(durationMillis = 700),
+            animationSpec = tween(durationMillis = 200),
         )
         }) {
         composable("auth") {
@@ -38,14 +38,14 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("regularLessonItemId")
             {type = NavType.IntType})) {
             RegularLessonItem()
-            { navController.navigate("main") }
+            { navController.navigateUp() }
         }
         composable("readingLessonItem/{readingLessonItemId}",
             arguments = listOf(navArgument("readingLessonItemId")
             {type = NavType.IntType})
         ) {
             ReadingLessonItem()
-            {navController.navigate("main")}
+            {navController.navigateUp()}
         }
     }
 }

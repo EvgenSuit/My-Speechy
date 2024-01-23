@@ -1,5 +1,7 @@
 package com.example.myspeechy.screens
 
+import android.util.Log
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -11,10 +13,9 @@ import com.example.myspeechy.utils.ReadingLessonItemViewModel
 fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
     onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
-
     LessonItemWrapper(uiState = uiState,
         onNavigateUp = onNavigateUp,
         onMarkAsComplete = {viewModel.markAsComplete()}) {
-
+        Text(uiState.lessonItem.text)
     }
 }
