@@ -28,16 +28,10 @@ import kotlinx.coroutines.launch
 fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
                       onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
-    val coroutine = rememberCoroutineScope()
-
     LessonItemWrapper(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
-        onMarkAsComplete = {
-            coroutine.launch {
-                viewModel.markAsComplete()
-            }
-        }) {
+        onMarkAsComplete = { viewModel.markAsComplete() }) {
         val imgsMap = uiState.imgs
         val textSplit = uiState.textSplit
         val text = buildAnnotatedString {
@@ -52,15 +46,14 @@ fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
         }
         val inlineContent = mutableMapOf<String, InlineTextContent>()
         imgsMap.forEach { (name, bitmap) ->
-            inlineContent.put(name,
-                InlineTextContent(
-                    Placeholder(width = 400.sp, height = 300.sp,
-                        placeholderVerticalAlign = PlaceholderVerticalAlign.AboveBaseline)
-                ){
-                    Image(bitmap = bitmap,
-                        modifier = Modifier.fillMaxSize(),
-                        contentDescription = null)
-                })
+            inlineContent[name] = InlineTextContent(
+                Placeholder(width = 400.sp, height = 300.sp,
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.AboveBaseline)
+            ){
+                Image(bitmap = bitmap,
+                    modifier = Modifier.fillMaxSize(),
+                    contentDescription = null)
+            }
         }
         Text(text,
             style = MaterialTheme.typography.bodyMedium,

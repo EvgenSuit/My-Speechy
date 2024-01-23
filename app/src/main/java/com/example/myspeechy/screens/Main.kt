@@ -33,11 +33,11 @@ import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.utils.MainViewModel
 
 @Composable
-fun MainScreen(navController: NavController) {
+fun MainScreen(navController: NavController,) {
     val viewModel: MainViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     Box {
-        Image(painter = painterResource(id = R.drawable.main_page_background),
+        Image(painter = painterResource(id = R.drawable.main_page_background_medium),
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize())
@@ -91,8 +91,11 @@ fun LessonItemComposable(lessonItem: LessonItem,
                          navController: NavController,
                          isAvailable: Boolean,
                          getStringType: (String) -> Int) {
-    val itemType = if (!listOf(3, 5).contains(getStringType(lessonItem.category)))
-        "regularLessonItem" else "specialLessonItem"
+    val itemType = when(getStringType(lessonItem.category)) {
+        3 -> "meditationLessonItem"
+        5 -> "readingLessonItem"
+        else -> "regularLessonItem"
+    }
     ElevatedButton(onClick = {navController.navigate("${itemType}/${lessonItem.id}")},
         shape = RoundedCornerShape(10.dp),
         enabled = isAvailable,
@@ -114,5 +117,4 @@ fun LessonItemComposable(lessonItem: LessonItem,
                 modifier = Modifier.weight(1f))
         }
     }
-
 }

@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.screens.AuthScreen
 import com.example.myspeechy.screens.MainScreen
+import com.example.myspeechy.screens.ReadingLessonItem
 import com.example.myspeechy.screens.RegularLessonItem
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -38,6 +39,13 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
             {type = NavType.IntType})) {
             RegularLessonItem()
             { navController.navigate("main") }
+        }
+        composable("readingLessonItem/{readingLessonItemId}",
+            arguments = listOf(navArgument("readingLessonItemId")
+            {type = NavType.IntType})
+        ) {
+            ReadingLessonItem()
+            {navController.navigate("main")}
         }
     }
 }
