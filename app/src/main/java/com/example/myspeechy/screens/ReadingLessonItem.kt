@@ -1,21 +1,113 @@
 package com.example.myspeechy.screens
 
 import android.util.Log
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.utils.ReadingLessonItemViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.round
 
 @Composable
 fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
     onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
-    LessonItemWrapper(uiState = uiState,
-        onNavigateUp = onNavigateUp,
-        onMarkAsComplete = {viewModel.markAsComplete()}) {
-        Text(uiState.lessonItem.text)
+    val text = uiState.lessonItem.text
+    val colorIndices = uiState.colorIndices
+    val changeColorIndicesJob: Job? = uiState.changeColorIndicesJob
+    Scaffold(
+            bottomBar = {
+                BottomAppBar(
+                    actions = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.padding(start = 50.dp, end = 50.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            ) {
+                                ElevatedButton(
+                                    enabled = text.isNotEmpty(),
+                                    onClick = {
+                                        viewModel.cancelJob()
+                                        viewModel.changeColorIndices(true)
+                                }) {
+                                    Text("Start")
+                                }
+                                ElevatedButton(
+                                    onClick = {
+                                    if (changeColorIndicesJob != null) {
+                                        viewModel.cancelJob()
+                                    } else {
+                                        viewModel.changeColorIndices(false)
+                                    }
+                                }) {
+                                    Text(if (changeColorIndicesJob == null) "Resume" else "Stop")
+                                }
+                            }
+                            Text("${round(uiState.sliderPosition * 10) / 10}")
+                            Slider(value = uiState.sliderPosition,
+                                onValueChange = viewModel::changeSliderPosition,
+                                valueRange = 1f..2f)
+                        }
+                    },
+                    modifier = Modifier.height(120.dp)
+                )
+            }
+        ) {innerPadding ->
+            LessonItemWrapper(uiState = uiState,
+                onNavigateUp = onNavigateUp,
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                onMarkAsComplete = {viewModel.markAsComplete()}) {
+                if (text.isNotEmpty() && colorIndices.isNotEmpty()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(20.dp),
+                        modifier = Modifier.height(300.dp)
+                    ) {
+                        items(text.length) { i ->
+                            Text(
+                                "${text[i]}",
+                                color = remember(colorIndices[i]) {
+                                    mutableStateOf(if (colorIndices[i] == 1) Color.Cyan else Color.White)
+                                }.value,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
     }
 }

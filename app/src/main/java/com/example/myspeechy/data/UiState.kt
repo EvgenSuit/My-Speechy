@@ -1,6 +1,7 @@
 package com.example.myspeechy.data
 
 import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Job
 
 interface UiState {
     val lessonItem: LessonItem
@@ -12,7 +13,12 @@ data class RegularLessonItemState(
     val textSplit: List<String> = listOf(),
     val supportedImgFormats: List<String> = listOf(".png")): UiState
 
-data class ReadingLessonItemState(override val lessonItem: LessonItem): UiState
+data class ReadingLessonItemState(
+    override val lessonItem: LessonItem,
+    var colorIndices: List<Int> = listOf(),
+    val changeColorIndicesJob: Job? = null,
+    var sliderPosition: Float = 1f
+    ): UiState
 
 data class LessonItem(
     var id: Int = 0,
