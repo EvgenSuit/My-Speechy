@@ -30,11 +30,12 @@ fun <T: UiState> LessonItemWrapper(
     uiState: T,
     onNavigateUp: () -> Unit,
     onMarkAsComplete: () -> Unit,
+    modifier: Modifier = Modifier,
     body: @Composable () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
@@ -64,5 +65,14 @@ fun GoBackButton(onClick: () -> Unit,
         Icon(imageVector = Icons.Filled.ArrowBack,
             tint = MaterialTheme.colorScheme.onPrimary,
             contentDescription = null)
+    }
+}
+
+@Composable
+fun ReadingControllButton(
+    text: String,
+    onClick: () -> Unit) {
+    ElevatedButton(onClick = { /*TODO*/ }) {
+        Text(text)
     }
 }

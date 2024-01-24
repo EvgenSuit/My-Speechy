@@ -15,4 +15,11 @@ class ExampleUnitTest {
         assertEquals(textSplit[0] + textSplit[1], "This is an image:  Cool, isn't it?")
     }
 
+    @Test
+    fun movePointerInReadingLessonItem() {
+        val text = "Some text"
+        val speed = 1.2f
+
+    }
+
 }
