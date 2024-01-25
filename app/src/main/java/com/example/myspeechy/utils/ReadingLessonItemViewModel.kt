@@ -1,6 +1,7 @@
 package com.example.myspeechy.utils
 
 import android.util.Log
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -30,6 +31,7 @@ class ReadingLessonItemViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReadingLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
     private val jobEnded = mutableStateOf(false)
+    private val index = mutableIntStateOf(0)
 
     init {
         viewModelScope.launch {
@@ -49,11 +51,13 @@ class ReadingLessonItemViewModel @Inject constructor(
         }
         _uiState.update { it1 -> it1.copy(changeColorIndicesJob = viewModelScope.launch {
             jobEnded.value = false
-            for (i in _uiState.value.lessonItem.text.indices) {
-                delay((100 / it1.sliderPosition).toLong())
+            val text = _uiState.value.lessonItem.text
+            while (index.intValue < text.length) {
+                delay((300 / it1.sliderPosition).toLong())
                 _uiState.update {
-                    it.copy(colorIndices = it.colorIndices.toMutableList().apply { this[i] = 1 })
+                    it.copy(colorIndices = it.colorIndices.toMutableList().apply { this[index.intValue] = 1 })
                 }
+                index.intValue++
             }
         }) }
         _uiState.value.changeColorIndicesJob?.invokeOnCompletion {
@@ -61,22 +65,26 @@ class ReadingLessonItemViewModel @Inject constructor(
                 withContext(Dispatchers.Main) {
                     if (it == null) {
                         jobEnded.value = true
+                        index.intValue = 0
                     }
                 }
             }
         }
     }
 
-    fun cancelJob() {
+    fun cancelJob(resetIndex: Boolean) {
         _uiState.value.changeColorIndicesJob?.cancel()
         _uiState.update {it.copy(changeColorIndicesJob = null)}
+        if (resetIndex) {
+            index.intValue = 0
+        }
     }
 
     fun changeSliderPosition(newPosition: Float) {
         _uiState.update {
             it.copy(sliderPosition = newPosition)
         }
-        cancelJob()
+        cancelJob(false)
         changeColorIndices(jobEnded.value)
     }
 

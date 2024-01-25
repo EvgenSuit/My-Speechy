@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ElevatedButton
@@ -29,7 +31,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.utils.ReadingLessonItemViewModel
@@ -60,7 +68,7 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
                                 ElevatedButton(
                                     enabled = text.isNotEmpty(),
                                     onClick = {
-                                        viewModel.cancelJob()
+                                        viewModel.cancelJob(true)
                                         viewModel.changeColorIndices(true)
                                 }) {
                                     Text("Start")
@@ -68,7 +76,7 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
                                 ElevatedButton(
                                     onClick = {
                                     if (changeColorIndicesJob != null) {
-                                        viewModel.cancelJob()
+                                        viewModel.cancelJob(false)
                                     } else {
                                         viewModel.changeColorIndices(false)
                                     }
@@ -93,20 +101,21 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
                     .fillMaxSize(),
                 onMarkAsComplete = {viewModel.markAsComplete()}) {
                 if (text.isNotEmpty() && colorIndices.isNotEmpty()) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(20.dp),
-                        modifier = Modifier.height(300.dp)
-                    ) {
-                        items(text.length) { i ->
-                            Text(
-                                "${text[i]}",
-                                color = remember(colorIndices[i]) {
-                                    mutableStateOf(if (colorIndices[i] == 1) Color.Cyan else Color.White)
-                                }.value,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                    val textStyle = MaterialTheme.typography.bodyMedium
+                    val endText =  buildAnnotatedString {
+                            for (i in text.indices) {
+                                withStyle(style = SpanStyle(
+                                    color = if (colorIndices[i] == 1) Color.Cyan else Color.White,
+                                    fontFamily = textStyle.fontFamily,
+                                    fontWeight = textStyle.fontWeight,
+                                    fontSize = textStyle.fontSize,
+                                )
+                                ) {
+                                    append(text[i])
+                                }
+                            }
                     }
+                    Text(endText, style = TextStyle(lineHeight = textStyle.lineHeight))
                 }
             }
     }
