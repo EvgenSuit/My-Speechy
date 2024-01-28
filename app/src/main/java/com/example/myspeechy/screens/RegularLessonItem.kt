@@ -1,28 +1,29 @@
 package com.example.myspeechy.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.utils.RegularLessonItemViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
@@ -31,6 +32,7 @@ fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
     LessonItemWrapper(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
+        dialogContent = {Text("Dialog")},
         onMarkAsComplete = { viewModel.markAsComplete() }) {
         val imgsMap = uiState.imgs
         val textSplit = uiState.textSplit
@@ -47,16 +49,18 @@ fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
         val inlineContent = mutableMapOf<String, InlineTextContent>()
         imgsMap.forEach { (name, bitmap) ->
             inlineContent[name] = InlineTextContent(
-                Placeholder(width = 400.sp, height = 300.sp,
-                    placeholderVerticalAlign = PlaceholderVerticalAlign.AboveBaseline)
-            ){
-                Image(bitmap = bitmap,
-                    modifier = Modifier.fillMaxSize(),
-                    contentDescription = null)
-            }
+                    Placeholder(width = 400.sp, height = 300.sp,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter)
+                ){
+                    Image(bitmap = bitmap,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        contentDescription = null)
+                }
         }
         Text(text,
             style = MaterialTheme.typography.bodyMedium,
-            inlineContent = inlineContent)
+            inlineContent = inlineContent,
+            textAlign = TextAlign.Center)
     }
 }

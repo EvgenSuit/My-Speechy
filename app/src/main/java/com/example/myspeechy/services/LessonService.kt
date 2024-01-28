@@ -44,6 +44,7 @@ class LessonServiceImpl(private val userId: String): LessonService {
                 Log.w("LISTEN ERROR", e)
             }
             if (snapshot != null && snapshot.exists()) {
+                Log.d("DATA", snapshot.data.toString())
                 onDataReceived(snapshot.data as Map<String, Boolean>)
             } else {
                 onDataReceived(mapOf("isComplete" to false))

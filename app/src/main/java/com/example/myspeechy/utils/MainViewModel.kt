@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.Lesson
@@ -44,10 +45,19 @@ class MainViewModel @Inject constructor(
                 if (isComplete == 0) return@trackRemoteProgress
                 viewModelScope.launch {
                     if (lessonIndex < lessonList.size - 1) {
-                        lessonRepository.insertLesson(
-                            lessonList[lessonIndex + 1].copy(
-                                isAvailable = isComplete
+                        lessonList[lessonIndex+1] = lessonList[lessonIndex + 1].copy(
+                            isAvailable = 1
+                        )
+
+                            lessonList[lessonIndex] = lessonList[lessonIndex].copy(
+                                isComplete = 1
                             )
+                            lessonRepository.insertLesson(
+                                lessonList[lessonIndex]
+                            )
+
+                        lessonRepository.insertLesson(
+                            lessonList[lessonIndex + 1]
                         )
                     }
                 }
