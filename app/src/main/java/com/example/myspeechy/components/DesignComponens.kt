@@ -12,9 +12,17 @@ import androidx.compose.ui.unit.dp
 
 val itemBackgroundGradient = Brush.linearGradient(
     colorStops = arrayOf(
-        0f to Color.Blue.copy(alpha = 0.5f),
+        0f to Color.Blue.copy(alpha = 0.8f),
         0.4f to Color.Blue.copy(alpha = 0.7f),
         1f to Color.Magenta.copy(alpha = 0.7f)
+    )
+)
+
+val readingItemButtonBarGradient = Brush.linearGradient(
+    colorStops = arrayOf(
+        0f to Color.Magenta.copy(alpha = 0.8f),
+        0.5f to Color.Blue.copy(alpha = 0.7f),
+        1f to Color.Cyan
     )
 )
 

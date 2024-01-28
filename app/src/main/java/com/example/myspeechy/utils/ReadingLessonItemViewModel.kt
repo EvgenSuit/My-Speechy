@@ -1,26 +1,20 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.ReadingLessonItemState
+import com.example.myspeechy.data.ReadingLessonItemStateLessonItem
 import com.example.myspeechy.services.LessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlin.math.round
 
 @HiltViewModel
 class ReadingLessonItemViewModel @Inject constructor(
@@ -28,56 +22,47 @@ class ReadingLessonItemViewModel @Inject constructor(
     private val lessonServiceImpl: LessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel(){
     private val id: Int = checkNotNull(savedStateHandle["readingLessonItemId"])
-    private val _uiState = MutableStateFlow(ReadingLessonItemState(LessonItem()))
+    private val _uiState = MutableStateFlow(ReadingLessonItemStateLessonItem(LessonItem()))
     val uiState = _uiState.asStateFlow()
     private val jobEnded = mutableStateOf(false)
-    private val index = mutableIntStateOf(0)
+    private lateinit var text: String
 
     init {
         viewModelScope.launch {
             lessonRepository.selectLessonItem(id).collect {lesson ->
                 val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
-                _uiState.update { ReadingLessonItemState(lessonItem,
-                    List(lesson.text.length){0}) }
+                text = lesson.text
+                _uiState.update { ReadingLessonItemStateLessonItem(lessonItem) }
             }
         }
     }
 
-    fun changeColorIndices(init: Boolean) {
+    fun movePointer(init: Boolean) {
         if (init) {
-            _uiState.update {
-                it.copy(colorIndices = List(it.lessonItem.text.length){0})
-            }
+            cancelJob(true)
         }
-        _uiState.update { it1 -> it1.copy(changeColorIndicesJob = viewModelScope.launch {
+        _uiState.update { it1 -> it1.copy(job = viewModelScope.launch {
             jobEnded.value = false
-            val text = _uiState.value.lessonItem.text
-            while (index.intValue < text.length) {
-                delay((300 / it1.sliderPosition).toLong())
+            while (_uiState.value.index < text.length) {
+                delay((300 / _uiState.value.sliderPosition).toLong())
                 _uiState.update {
-                    it.copy(colorIndices = it.colorIndices.toMutableList().apply { this[index.intValue] = 1 })
+                    it.copy(index = it.index+1)
                 }
-                index.intValue++
             }
         }) }
-        _uiState.value.changeColorIndicesJob?.invokeOnCompletion {
+        _uiState.value.job?.invokeOnCompletion {
             viewModelScope.launch {
-                withContext(Dispatchers.Main) {
-                    if (it == null) {
-                        jobEnded.value = true
-                        index.intValue = 0
-                    }
+                if (it == null) {
+                    jobEnded.value = true
                 }
             }
         }
     }
 
     fun cancelJob(resetIndex: Boolean) {
-        _uiState.value.changeColorIndicesJob?.cancel()
-        _uiState.update {it.copy(changeColorIndicesJob = null)}
-        if (resetIndex) {
-            index.intValue = 0
-        }
+        _uiState.value.job?.cancel()
+        _uiState.update {it.copy(job = null,
+            index = if (resetIndex) 0 else it.index)}
     }
 
     fun changeSliderPosition(newPosition: Float) {
@@ -85,7 +70,7 @@ class ReadingLessonItemViewModel @Inject constructor(
             it.copy(sliderPosition = newPosition)
         }
         cancelJob(false)
-        changeColorIndices(jobEnded.value)
+        movePointer(jobEnded.value)
     }
 
     fun markAsComplete() {

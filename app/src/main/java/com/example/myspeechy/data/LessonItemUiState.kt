@@ -3,22 +3,22 @@ package com.example.myspeechy.data
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.Job
 
-interface UiState {
+interface LessonItemUiState {
     val lessonItem: LessonItem
 }
 
-data class RegularLessonItemState(
+data class RegularLessonItemStateLessonItem(
     override val lessonItem: LessonItem,
     val imgs: Map<String, ImageBitmap> = mapOf(),
     val textSplit: List<String> = listOf(),
-    val supportedImgFormats: List<String> = listOf(".png")): UiState
+    val supportedImgFormats: List<String> = listOf(".png")): LessonItemUiState
 
-data class ReadingLessonItemState(
+data class ReadingLessonItemStateLessonItem(
     override val lessonItem: LessonItem,
-    var colorIndices: List<Int> = listOf(),
-    val changeColorIndicesJob: Job? = null,
+    val job: Job? = null,
+    val index: Int = 0,
     var sliderPosition: Float = 1f
-    ): UiState
+    ): LessonItemUiState
 
 data class LessonItem(
     var id: Int = 0,
