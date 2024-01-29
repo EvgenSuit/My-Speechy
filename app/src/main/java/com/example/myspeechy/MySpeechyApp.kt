@@ -1,5 +1,8 @@
 package com.example.myspeechy
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -9,15 +12,22 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.screens.AuthScreen
 import com.example.myspeechy.screens.MainScreen
+import com.example.myspeechy.screens.ReadingLessonItem
 import com.example.myspeechy.screens.RegularLessonItem
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
 fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
     val startDestination = if (Firebase.auth.currentUser == null) "auth" else "main"
-    NavHost(navController, startDestination) {
+    NavHost(navController, startDestination,
+        enterTransition = { fadeIn(
+            animationSpec = tween(durationMillis = 200),
+        ) },
+        exitTransition = { fadeOut(
+            animationSpec = tween(durationMillis = 200),
+        )
+        }) {
         composable("auth") {
             AuthScreen(onNavigateToMain = {navController.navigate("main") {popUpTo(0)} })
         }
@@ -26,9 +36,16 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
         }
         composable("regularLessonItem/{regularLessonItemId}",
             arguments = listOf(navArgument("regularLessonItemId")
-            {type = NavType.IntType})) {backStackEntry ->
-            RegularLessonItem(backStackEntry.arguments?.getInt("regularLessonItemId") ?: 0)
-            { navController.navigate("main") }
+            {type = NavType.IntType})) {
+            RegularLessonItem()
+            { navController.navigateUp() }
+        }
+        composable("readingLessonItem/{readingLessonItemId}",
+            arguments = listOf(navArgument("readingLessonItemId")
+            {type = NavType.IntType})
+        ) {
+            ReadingLessonItem()
+            {navController.navigateUp()}
         }
     }
 }

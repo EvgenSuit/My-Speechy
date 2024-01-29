@@ -1,5 +1,11 @@
 package com.example.myspeechy.helpers
 
+import android.content.res.AssetManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
 class LessonServiceHelpers {
         fun categoryMapper(category: Int): String {
             return when(category) {
@@ -21,5 +27,10 @@ class LessonServiceHelpers {
                 else -> 5
             }
         }
+
+    fun loadImgFromAsset(imgPath: String, assetManager: AssetManager): ImageBitmap {
+        val inputStream = assetManager.open(imgPath)
+        return BitmapFactory.decodeStream(inputStream).asImageBitmap()
+    }
 
 }

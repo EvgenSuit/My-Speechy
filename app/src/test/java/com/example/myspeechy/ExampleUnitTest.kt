@@ -1,17 +1,32 @@
 package com.example.myspeechy
 
-import org.junit.Before
-import org.junit.runner.RunWith
-import org.mockito.MockitoAnnotations
-import org.mockito.junit.MockitoJUnitRunner
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.io.File
 
-@RunWith(MockitoJUnitRunner::class)
 class ExampleUnitTest {
-    private val email = "some@gmail.com"
-    private val password = "somePassword"
-    @Before
-    fun setup() {
-        MockitoAnnotations.openMocks(this)
+    @Test
+    fun parseImgInText() {
+        val text = "This is an image: <Image> Cool, isn't it?"
+        val textSplit = text.split("<Image>")
+        assertEquals(textSplit[0] + textSplit[1], "This is an image:  Cool, isn't it?")
+    }
+
+    @Test
+    fun movePointerInReadingLessonItem() = runTest {
+        val speed = 1.2f
+        var index = 0
+        val text = "Some text"
+        while(index < text.length) {
+            delay((300/speed).toLong())
+            index++
+            assertEquals(text.substring(0, index).length, index)
+        }
     }
 
 }

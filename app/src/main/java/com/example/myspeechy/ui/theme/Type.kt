@@ -13,8 +13,8 @@ val itimFamily = FontFamily(Font(R.font.itim_regular))
 val kalamFamily = FontFamily(Font(R.font.kalam_regular))
 val lalezarFamily = FontFamily(Font(R.font.lalezar_regular))
 val lemonadaFamily = FontFamily(Font(R.font.lemonada_regular))
+val garamondFamily = FontFamily(Font(R.font.garamond))
 
-// Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
@@ -28,9 +28,18 @@ val Typography = Typography(
         fontSize = 22.sp,
         color = Color.White,
     ),
+    bodySmall = TextStyle(
+        fontFamily = garamondFamily,
+        fontSize = 25.sp,
+        color = Color.Black.copy(0.8f)
+    ),
     titleLarge = TextStyle(
         fontFamily = itimFamily,
         fontSize = 48.sp,
         color = Color.White,
+    ),
+    headlineMedium = TextStyle(
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 35.sp
     )
 )

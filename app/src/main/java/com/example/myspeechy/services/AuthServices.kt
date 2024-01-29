@@ -13,7 +13,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
-open class AuthService(private val auth: FirebaseAuth) {
+ class AuthService(private val auth: FirebaseAuth) {
      suspend fun createUser(email: String, password: String, onTask: (Throwable?) -> Unit) {
                 auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{onTask(it.exception)}.await()
     }
