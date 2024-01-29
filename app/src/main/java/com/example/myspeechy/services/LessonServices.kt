@@ -6,53 +6,16 @@ import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.Lesson
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.helpers.LessonServiceHelpers
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
+private val userId = Firebase.auth.currentUser!!.uid
 interface LessonService {
-    fun convertToLessonItem(lesson: Lesson): LessonItem
-    fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String>
-    /**
-    This method maps the names of images to their bitmap representations,
-     which then helps to display them in an annotatedString
-     */
-    fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>, dir: String, assetManager: AssetManager): Map<String, ImageBitmap>
-    fun convertToLesson(lessonItem: LessonItem): Lesson
-    fun markAsComplete(lessonItem: LessonItem)
-    fun saveProgressRemotely(lessonId: Int)
-    fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit)
-}
+    val lessonServiceHelpers: LessonServiceHelpers
+        get() = LessonServiceHelpers()
 
-class LessonServiceImpl(private val userId: String): LessonService {
-    val lessonServiceHelpers = LessonServiceHelpers()
-    private val firestore = Firebase.firestore
-
-    override fun saveProgressRemotely(lessonId: Int) {
-        firestore.collection(userId)
-            .document(lessonId.toString()).set(mapOf("isComplete" to true))
-    }
-
-    override fun markAsComplete(lessonItem: LessonItem) {
-        val lesson = convertToLesson(lessonItem.copy(isComplete = true))
-        saveProgressRemotely(lesson.id)
-    }
-
-    override fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {
-        val docRef = firestore.collection(userId).document(lessonId.toString())
-        docRef.addSnapshotListener{snapshot, e ->
-            if (e != null) {
-                Log.w("LISTEN ERROR", e)
-            }
-            if (snapshot != null && snapshot.exists()) {
-                Log.d("DATA", snapshot.data.toString())
-                onDataReceived(snapshot.data as Map<String, Boolean>)
-            } else {
-                onDataReceived(mapOf("isComplete" to false))
-            }
-        }
-    }
-
-    override fun convertToLessonItem(lesson: Lesson): LessonItem {
+    fun convertToLessonItem(lesson: Lesson): LessonItem {
         return LessonItem(
             lesson.id,
             lesson.unit,
@@ -64,8 +27,7 @@ class LessonServiceImpl(private val userId: String): LessonService {
             lesson.containsImages == 1
         )
     }
-
-    override fun convertToLesson(lessonItem: LessonItem): Lesson {
+    fun convertToLesson(lessonItem: LessonItem): Lesson {
         return Lesson(
             lessonItem.id,
             lessonItem.unit,
@@ -77,7 +39,27 @@ class LessonServiceImpl(private val userId: String): LessonService {
             if (lessonItem.containsImages) 1 else 0
         )
     }
+    fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String> {
+        return listOf()
+    }
+    /**
+    This method maps the names of images to their bitmap representations,
+     which then helps to display them in an annotatedString
+     */
+    fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>, dir: String, assetManager: AssetManager): Map<String, ImageBitmap> {
+        return mapOf()
+    }
+    fun markAsComplete(lessonItem: LessonItem) {
+        val lesson = convertToLesson(lessonItem.copy(isComplete = true))
+        Firebase.firestore.collection(userId)
+            .document(lesson.id.toString()).set(mapOf("isComplete" to true))
+    }
+    fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {
 
+    }
+}
+
+class RegularLessonServiceImpl: LessonService {
     override fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String> {
         val textSplit = lessonItem.text.split("\n")
         val newText = mutableListOf<String>()
@@ -104,5 +86,22 @@ class LessonServiceImpl(private val userId: String): LessonService {
         }
         return imgsMap
     }
-
 }
+
+class MainLessonServiceImpl: LessonService {
+    override fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {
+        val docRef = Firebase.firestore.collection(userId).document(lessonId.toString())
+        docRef.addSnapshotListener{snapshot, e ->
+            if (e != null) {
+                Log.w("LISTEN ERROR", e)
+            }
+            if (snapshot != null && snapshot.exists()) {
+                onDataReceived(snapshot.data as Map<String, Boolean>)
+            } else {
+                onDataReceived(mapOf("isComplete" to false))
+            }
+        }
+    }
+}
+
+class ReadingLessonServiceImpl: LessonService

@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.data.ReadingLessonItemStateLessonItem
-import com.example.myspeechy.services.LessonServiceImpl
+import com.example.myspeechy.services.ReadingLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ReadingLessonItemViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
-    private val lessonServiceImpl: LessonServiceImpl,
+    private val lessonServiceImpl: ReadingLessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel(){
     private val id: Int = checkNotNull(savedStateHandle["readingLessonItemId"])
     private val _uiState = MutableStateFlow(ReadingLessonItemStateLessonItem(LessonItem()))
@@ -51,10 +51,9 @@ class ReadingLessonItemViewModel @Inject constructor(
             }
         }) }
         _uiState.value.job?.invokeOnCompletion {
-            viewModelScope.launch {
-                if (it == null) {
-                    jobEnded.value = true
-                }
+            //If no error, than the job ended successfully
+            if (it == null) {
+                jobEnded.value = true
             }
         }
     }

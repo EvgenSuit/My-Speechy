@@ -18,12 +18,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.utils.RegularLessonItemViewModel
+import java.util.Locale
 
 @Composable
 fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
@@ -32,7 +34,6 @@ fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
     LessonItemWrapper(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
-        dialogContent = {Text("Dialog")},
         onMarkAsComplete = { viewModel.markAsComplete() }) {
         val imgsMap = uiState.imgs
         val textSplit = uiState.textSplit

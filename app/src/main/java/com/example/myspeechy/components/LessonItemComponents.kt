@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -45,24 +51,25 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     uiState: T,
     onNavigateUp: () -> Unit,
     onMarkAsComplete: () -> Unit,
-    dialogContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     body: @Composable () -> Unit,
 ) {
     var showDialog by remember {
         mutableStateOf(true)
     }
+    val lessonItem = uiState.lessonItem
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
+            .blur(if (showDialog) 20.dp else 0.dp)
     ) {
         Row(modifier = Modifier.padding(bottom = 30.dp)) {
             GoBackButton(onNavigateUp,
                 Modifier.align(Alignment.CenterVertically))
-            Text(uiState.lessonItem.title, style = MaterialTheme.typography.titleLarge,
+            Text(lessonItem.title, style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .wrapContentSize(Alignment.Center)
@@ -72,35 +79,56 @@ fun <T: LessonItemUiState> LessonItemWrapper(
         body()
         Spacer(modifier = Modifier.height(50.dp))
         ElevatedButton(
-            enabled = !uiState.lessonItem.isComplete,
+            enabled = !lessonItem.isComplete,
             onClick = onMarkAsComplete) {
             Text(stringResource(id = R.string.mark_as_complete),
                 fontSize = 23.sp, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.wrapContentSize(Alignment.Center))
         }
     }
-    if (uiState.lessonItem.unit == 1 && uiState.lessonItem.text.isNotEmpty() && !uiState.lessonItem.isComplete && showDialog) {
-        DialogBox(dialogContent) {
+    if (lessonItem.unit == 1 && lessonItem.text.isNotEmpty() && !lessonItem.isComplete && showDialog) {
+        val title = "${lessonItem.category} exercise"
+        DialogBox(title, categoryToDialogText(lessonItem.category)) {
             showDialog = false
         }
     }
 }
 
 @Composable
-fun DialogBox(dialogContent: @Composable () -> Unit,
+fun DialogBox(title: String, text: String,
               onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp),
+                .height(IntrinsicSize.Min),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
             shape = RoundedCornerShape(20.dp)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(30.dp),
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxSize()
             ) {
-                dialogContent()
+                Text(title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.wrapContentSize(Alignment.Center))
+                Text(text,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.wrapContentSize(Alignment.Center))
+                ElevatedButton(onClick = onDismiss,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Green),
+                    modifier = Modifier.defaultMinSize(100.dp)) {
+                    Text("OK", fontSize = 20.sp)
+                }
             }
         }
     }
@@ -115,5 +143,15 @@ fun GoBackButton(onClick: () -> Unit,
         Icon(imageVector = Icons.Filled.ArrowBack,
             tint = MaterialTheme.colorScheme.onPrimary,
             contentDescription = null)
+    }
+}
+
+fun categoryToDialogText(category: String): String {
+    return when(category) {
+        "Psychological" -> "This type of exercise is designed to help you fight your mental battles"
+        "Reading" -> "With this type of exercise you can practice your slow reading skills." +
+                "This is a useful way to manage stuttering. Use the slider at the bottom " +
+                "to control the speed"
+        else -> ""
     }
 }
