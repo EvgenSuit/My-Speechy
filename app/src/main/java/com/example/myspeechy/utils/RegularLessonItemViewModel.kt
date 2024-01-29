@@ -1,11 +1,13 @@
 package com.example.myspeechy.utils
 
+import android.content.res.AssetManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.services.LessonItem
-import com.example.myspeechy.services.LessonServiceImpl
+import com.example.myspeechy.data.RegularLessonItemStateLessonItem
+import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,26 +17,38 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RegularLessonItemViewModel @Inject constructor(
-        private val lessonRepository: LessonRepository,
-        private val lessonServiceImpl: LessonServiceImpl,
-        savedStateHandle: SavedStateHandle): ViewModel() {
-
+    private val lessonRepository: LessonRepository,
+    private val lessonServiceImpl: RegularLessonServiceImpl,
+    private val assetManager: AssetManager,
+    savedStateHandle: SavedStateHandle): ViewModel() {
         private val id: Int = checkNotNull(savedStateHandle["regularLessonItemId"])
-        private val _uiState = MutableStateFlow(UiState())
+        private val _uiState = MutableStateFlow(RegularLessonItemStateLessonItem(LessonItem()))
         val uiState = _uiState.asStateFlow()
         init {
             viewModelScope.launch {
                 lessonRepository.selectLessonItem(id).collect { lesson ->
-                    _uiState.update { UiState(lessonServiceImpl.convertToLessonItem(lesson)) }
+                    val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
+                   if (lessonItem.containsImages) {
+                       //Load images
+                       val dir = "imgs/unit${lessonItem.unit}/${lessonItem.category.lowercase()}/"
+                       val imgs = assetManager.list(dir)!!.toList()
+                       val textSplit = lessonServiceImpl.parseImgFromText(lessonItem, imgs)
+                       val imgsMap = lessonServiceImpl.loadImgFromAsset(lessonItem, imgs, dir, assetManager)
+                       _uiState.update {
+                           RegularLessonItemStateLessonItem(lessonItem,
+                               imgsMap,
+                               textSplit)
+                       }
+                   } else {
+                       _uiState.update {
+                           RegularLessonItemStateLessonItem(lessonItem)
+                       }
+                   }
                 }
             }
         }
-
-        fun markAsComplete(lessonItem: LessonItem) {
-            val lesson = lessonServiceImpl.convertToLesson(lessonItem.copy(isComplete = true))
-            lessonServiceImpl.saveProgressRemotely(lesson.id)
-        }
-
-        data class UiState(val lessonItem: LessonItem = LessonItem())
+    fun markAsComplete() {
+        lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+    }
 }
 
