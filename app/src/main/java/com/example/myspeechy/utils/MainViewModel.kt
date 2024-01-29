@@ -1,12 +1,11 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.Lesson
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.services.LessonServiceImpl
+import com.example.myspeechy.services.MainLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
-    private val lessonServiceImpl: LessonServiceImpl
+    private val lessonServiceImpl: MainLessonServiceImpl
 ): ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())

@@ -3,6 +3,8 @@ package com.example.myspeechy
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -16,10 +18,15 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun movePointerInReadingLessonItem() {
-        val text = "Some text"
+    fun movePointerInReadingLessonItem() = runTest {
         val speed = 1.2f
-
+        var index = 0
+        val text = "Some text"
+        while(index < text.length) {
+            delay((300/speed).toLong())
+            index++
+            assertEquals(text.substring(0, index).length, index)
+        }
     }
 
 }
