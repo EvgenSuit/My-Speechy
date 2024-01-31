@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.ReadingLessonItemStateLessonItem
+import com.example.myspeechy.data.ReadingLessonItemState
 import com.example.myspeechy.services.ReadingLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -22,7 +22,7 @@ class ReadingLessonItemViewModel @Inject constructor(
     private val lessonServiceImpl: ReadingLessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel(){
     private val id: Int = checkNotNull(savedStateHandle["readingLessonItemId"])
-    private val _uiState = MutableStateFlow(ReadingLessonItemStateLessonItem(LessonItem()))
+    private val _uiState = MutableStateFlow(ReadingLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
     private val jobEnded = mutableStateOf(false)
     private lateinit var text: String
@@ -32,7 +32,7 @@ class ReadingLessonItemViewModel @Inject constructor(
             lessonRepository.selectLessonItem(id).collect {lesson ->
                 val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
                 text = lesson.text
-                _uiState.update { ReadingLessonItemStateLessonItem(lessonItem) }
+                _uiState.update { ReadingLessonItemState(lessonItem) }
             }
         }
     }

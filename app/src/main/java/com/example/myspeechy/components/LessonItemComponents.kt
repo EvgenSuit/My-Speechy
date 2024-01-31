@@ -1,5 +1,6 @@
 package com.example.myspeechy.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -150,6 +151,8 @@ fun categoryToDialogText(category: String): String {
         "Reading" -> "With this type of exercise you can practice your slow reading skills." +
                 "This is a useful way to manage stuttering. Use the slider at the bottom " +
                 "to control the speed"
+        "Meditation" -> "This type of exercise targets your ability to focus" +
+                "and bring your mind to peace"
         else -> ""
     }
 }

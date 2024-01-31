@@ -10,10 +10,11 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
-private val userId = Firebase.auth.currentUser!!.uid
 interface LessonService {
     val lessonServiceHelpers: LessonServiceHelpers
         get() = LessonServiceHelpers()
+    val userId: String
+        get() = Firebase.auth.currentUser!!.uid
 
     fun convertToLessonItem(lesson: Lesson): LessonItem {
         return LessonItem(
@@ -54,9 +55,7 @@ interface LessonService {
         Firebase.firestore.collection(userId)
             .document(lesson.id.toString()).set(mapOf("isComplete" to true))
     }
-    fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {
-
-    }
+    fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {}
 }
 
 class RegularLessonServiceImpl: LessonService {
@@ -89,19 +88,24 @@ class RegularLessonServiceImpl: LessonService {
 }
 
 class MainLessonServiceImpl: LessonService {
-    override fun trackRemoteProgress(lessonId: Int, onDataReceived: (Map<String, Boolean>) -> Unit) {
-        val docRef = Firebase.firestore.collection(userId).document(lessonId.toString())
-        docRef.addSnapshotListener{snapshot, e ->
+    override fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {
+        val docRef = Firebase.firestore.collection(userId)
+        docRef.addSnapshotListener{docs, e ->
             if (e != null) {
                 Log.w("LISTEN ERROR", e)
             }
-            if (snapshot != null && snapshot.exists()) {
-                onDataReceived(snapshot.data as Map<String, Boolean>)
-            } else {
-                onDataReceived(mapOf("isComplete" to false))
+            if (docs == null) {
+                onDataReceived(listOf())
             }
+            val data = mutableListOf<Int>()
+            for (doc in docs!!.documents) {
+                data.add(doc.id.toInt())
+            }
+            onDataReceived(data)
         }
     }
 }
 
 class ReadingLessonServiceImpl: LessonService
+
+class MeditationLessonServiceImpl: LessonService
