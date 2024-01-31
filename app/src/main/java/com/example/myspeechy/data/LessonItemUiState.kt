@@ -7,18 +7,22 @@ interface LessonItemUiState {
     val lessonItem: LessonItem
 }
 
-data class RegularLessonItemStateLessonItem(
+data class RegularLessonItemState(
     override val lessonItem: LessonItem,
     val imgs: Map<String, ImageBitmap> = mapOf(),
     val textSplit: List<String> = listOf(),
     val supportedImgFormats: List<String> = listOf(".png")): LessonItemUiState
 
-data class ReadingLessonItemStateLessonItem(
+data class ReadingLessonItemState(
     override val lessonItem: LessonItem,
     val job: Job? = null,
     val index: Int = 0,
     var sliderPosition: Float = 1f
     ): LessonItemUiState
+
+data class MeditationLessonItemState(
+    override val lessonItem: LessonItem
+): LessonItemUiState
 
 data class LessonItem(
     var id: Int = 0,

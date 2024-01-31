@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.RegularLessonItemStateLessonItem
+import com.example.myspeechy.data.RegularLessonItemState
 import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +22,7 @@ class RegularLessonItemViewModel @Inject constructor(
     private val assetManager: AssetManager,
     savedStateHandle: SavedStateHandle): ViewModel() {
         private val id: Int = checkNotNull(savedStateHandle["regularLessonItemId"])
-        private val _uiState = MutableStateFlow(RegularLessonItemStateLessonItem(LessonItem()))
+        private val _uiState = MutableStateFlow(RegularLessonItemState(LessonItem()))
         val uiState = _uiState.asStateFlow()
         init {
             viewModelScope.launch {
@@ -35,13 +35,13 @@ class RegularLessonItemViewModel @Inject constructor(
                        val textSplit = lessonServiceImpl.parseImgFromText(lessonItem, imgs)
                        val imgsMap = lessonServiceImpl.loadImgFromAsset(lessonItem, imgs, dir, assetManager)
                        _uiState.update {
-                           RegularLessonItemStateLessonItem(lessonItem,
+                           RegularLessonItemState(lessonItem,
                                imgsMap,
                                textSplit)
                        }
                    } else {
                        _uiState.update {
-                           RegularLessonItemStateLessonItem(lessonItem)
+                           RegularLessonItemState(lessonItem)
                        }
                    }
                 }
