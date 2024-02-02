@@ -21,7 +21,12 @@ data class ReadingLessonItemState(
     ): LessonItemUiState
 
 data class MeditationLessonItemState(
-    override val lessonItem: LessonItem
+    override val lessonItem: LessonItem,
+    val started: Boolean = false,
+    val paused: Boolean = false,
+    val breathingIn: Boolean = false,
+    val setTime: Int = 0,
+    val passedTime: Int = 0,
 ): LessonItemUiState
 
 data class LessonItem(
