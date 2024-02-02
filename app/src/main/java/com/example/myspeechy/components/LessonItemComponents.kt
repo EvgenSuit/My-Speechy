@@ -1,6 +1,5 @@
 package com.example.myspeechy.components
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
@@ -63,7 +61,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
-            .blur(if (lessonItem.unit == 1 && lessonItem.text.isNotEmpty() && !lessonItem.isComplete && showDialog) 20.dp else 0.dp)
+            .blur(if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) 20.dp else 0.dp)
     ) {
         Row(modifier = Modifier.padding(bottom = 30.dp)) {
             GoBackButton(onNavigateUp,
@@ -85,7 +83,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
                 modifier = Modifier.wrapContentSize(Alignment.Center))
         }
     }
-    if (lessonItem.unit == 1 && lessonItem.text.isNotEmpty() && !lessonItem.isComplete && showDialog) {
+    if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
         DialogBox(title, categoryToDialogText(lessonItem.category)) {
             showDialog = false
@@ -152,7 +150,7 @@ fun categoryToDialogText(category: String): String {
                 "This is a useful way to manage stuttering. Use the slider at the bottom " +
                 "to control the speed"
         "Meditation" -> "This type of exercise targets your ability to focus" +
-                "and bring your mind to peace"
+                " and bring your mind to peace"
         else -> ""
     }
 }
