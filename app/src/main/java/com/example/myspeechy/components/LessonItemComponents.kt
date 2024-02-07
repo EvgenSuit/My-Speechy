@@ -1,5 +1,7 @@
 package com.example.myspeechy.components
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +45,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.myspeechy.R
 import com.example.myspeechy.data.LessonItemUiState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun <T: LessonItemUiState> LessonItemWrapper(
     uiState: T,
@@ -54,6 +61,14 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     val lessonItem = uiState.lessonItem
     var showDialog by remember {
         mutableStateOf(true)
+    }
+    if (Build.VERSION.SDK_INT > 32) {
+        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        if (!showDialog && !permissionState.status.isGranted) {
+            LaunchedEffect(Unit) {
+                permissionState.launchPermissionRequest()
+            }
+        }
     }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,10 +100,14 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     }
     if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
-        DialogBox(title, categoryToDialogText(lessonItem.category)) {
+        DialogBox(title, categoryToDialogText(lessonItem.category) +
+        if (Build.VERSION.SDK_INT > 32) "Allow notifications in order for you to be able" +
+                " to control meditation progress event if the app is in the background" else "")
+        {
             showDialog = false
         }
     }
+
 }
 
 @Composable
@@ -150,7 +169,7 @@ fun categoryToDialogText(category: String): String {
                 "This is a useful way to manage stuttering. Use the slider at the bottom " +
                 "to control the speed"
         "Meditation" -> "This type of exercise targets your ability to focus" +
-                " and bring your mind to peace"
+                " and bring your mind to peace."
         else -> ""
     }
 }
