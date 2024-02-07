@@ -21,7 +21,8 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
     val startDestination = if (Firebase.auth.currentUser == null) "auth" else "main"
-    NavHost(navController, startDestination,
+    NavHost(
+        navController, startDestination,
         enterTransition = { fadeIn(
             animationSpec = tween(durationMillis = 200),
         ) },
@@ -50,7 +51,8 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
         }
         composable("meditationLessonItem/{meditationLessonItemId}",
             arguments = listOf(navArgument("meditationLessonItemId")
-            {type = NavType.IntType})) {
+            {type = NavType.IntType})
+        ) {
             MeditationLessonItem()
             {navController.navigateUp()}
         }

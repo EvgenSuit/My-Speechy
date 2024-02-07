@@ -42,9 +42,10 @@ class MainViewModel @Inject constructor(
     private suspend fun handleAvailability(list: List<Lesson>): List<Lesson> {
         val lessonList = list.toMutableList()
         for (i in lessonList.indices) {
-            if (i > 0 && i < lessonList.size - 1) { lessonList[i] = lessonList[i].copy(isAvailable =
-                    if(lessonList[i-1].isComplete == 1 || lessonList[i+1].isComplete == 1 ||
-                        lessonList[i].isComplete == 1) 1 else 0)
+            if (i > 0) { lessonList[i] = lessonList[i].copy(isAvailable =
+                    if(lessonList[i-1].isComplete == 1
+                        || (i < lessonList.size - 1 && lessonList[i+1].isComplete == 1)
+                        || lessonList[i].isComplete == 1) 1 else 0)
 
             }
             lessonRepository.insertLesson(lessonList[i])

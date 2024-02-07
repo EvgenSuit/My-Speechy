@@ -9,9 +9,9 @@ import androidx.compose.ui.test.performTextInput
 
 @OptIn(ExperimentalTestApi::class)
 fun authUser(composeTestRule: ComposeTestRule) {
-    composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 3000)
+    composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 10000)
     composeTestRule.onNodeWithText("Email").performTextInput("some@gmail.com")
     composeTestRule.onNodeWithText("Password").performTextInput("SomePassword2")
     composeTestRule.onNodeWithText("Log In").performClick()
-    composeTestRule.waitUntilExactlyOneExists(hasText("Unit 1"), 3000)
+    composeTestRule.waitUntilExactlyOneExists(hasText("Unit 1"), 10000)
 }

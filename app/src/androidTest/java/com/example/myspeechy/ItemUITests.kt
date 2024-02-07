@@ -1,28 +1,28 @@
 package com.example.myspeechy
 
 import android.content.Context
-import android.util.Log
 import android.view.FrameMetrics.ANIMATION_DURATION
-import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.GestureScope
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performGesture
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiSelector
+import androidx.test.uiautomator.Until
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 
 @HiltAndroidTest
 class ItemUITests {
@@ -63,6 +63,30 @@ class ItemUITests {
         composeTestRule.mainClock.autoAdvance = true
         composeTestRule.onNodeWithText("2.0x").assertIsDisplayed()
     }
+
+    @Test
+    fun breathingLessonTest() {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        device.wait(Until.hasObject(By.text("Allow")), 10000)
+        val allowButton = device.findObject(UiSelector().text("Allow"))
+        allowButton.click()
+        authUser(composeTestRule)
+        composeTestRule.onNodeWithText("Meditation").performClick()
+        composeTestRule.onNodeWithText("Mark as complete").performClick()
+        composeTestRule.onNodeWithTag("TimeScroller", useUnmergedTree = true)
+            .performTouchInput { swipeLeft() }
+        composeTestRule.mainClock.autoAdvance = true
+        composeTestRule.mainClock.advanceTimeBy(ANIMATION_DURATION.toLong() + 5L)
+        composeTestRule.onNodeWithText("Start", useUnmergedTree = true).performClick()
+        composeTestRule.mainClock.advanceTimeBy(ANIMATION_DURATION.toLong() + 5L)
+        composeTestRule.onNodeWithTag("TimeScroller", useUnmergedTree = true).assertDoesNotExist()
+
+        device.openNotification()
+        device.wait(Until.hasObject(By.text("Meditation")), 10000)
+        val title = device.findObject(UiSelector().text("Meditation"))
+        assertTrue(title.exists())
+    }
+
 
     @Test
     fun parseImgInText() {
