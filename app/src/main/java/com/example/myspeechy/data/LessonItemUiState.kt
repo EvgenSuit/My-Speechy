@@ -27,6 +27,7 @@ data class MeditationLessonItemState(
     val breathingIn: Boolean = false,
     val setTime: Int = 0,
     val passedTime: Int = 0,
+    val breathingInterval: Long = 3000
 ): LessonItemUiState
 
 data class LessonItem(
