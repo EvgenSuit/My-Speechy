@@ -88,7 +88,8 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
                                         viewModel.movePointer(false)
                                     }
                                 },
-                                modifier = Modifier.wrapContentSize(Alignment.Center)) {
+                                modifier = Modifier.wrapContentSize(Alignment.Center)
+                            ) {
                                 Text(if (job == null) "Resume" else "Stop", fontSize = 23.sp,
                                     color = Color.Black)
                             }

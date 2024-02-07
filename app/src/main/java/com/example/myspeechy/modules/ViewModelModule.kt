@@ -2,10 +2,12 @@ package com.example.myspeechy.modules
 
 import android.content.Context
 import android.content.res.AssetManager
+import com.example.myspeechy.MySpeechyApplication
 import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.services.MainLessonServiceImpl
 import com.example.myspeechy.services.MeditationLessonServiceImpl
+import com.example.myspeechy.services.MeditationNotificationServiceImpl
 import com.example.myspeechy.services.ReadingLessonServiceImpl
 import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.Module
@@ -17,7 +19,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Module
 @InstallIn(ViewModelComponent::class)
 object ViewModelModule {
-
     @Provides
     fun provideLessonDb(@ApplicationContext context: Context): LessonDb {
         return LessonDb.getDb(context)
@@ -49,5 +50,10 @@ object ViewModelModule {
     @Provides
     fun provideMeditationLessonServiceImpl(): MeditationLessonServiceImpl {
         return MeditationLessonServiceImpl()
+    }
+    @Provides
+    fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):
+            MeditationNotificationServiceImpl {
+        return MeditationNotificationServiceImpl(context)
     }
 }

@@ -21,13 +21,13 @@
           <timeTargetWasSelectedWithDropDown value="2024-01-28T14:15:06.695613200Z" />
         </State>
       </entry>
+      <entry key="breathingLessonTest()">
+        <State />
+      </entry>
       <entry key="markAsCompleteTest() (1)">
         <State />
       </entry>
       <entry key="moveSliderTest()">
-        <State />
-      </entry>
-      <entry key="parseImgInText()">
         <State />
       </entry>
     </value>
