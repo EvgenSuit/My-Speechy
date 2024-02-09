@@ -1,30 +1,39 @@
 package com.example.myspeechy.utils
 
+import androidx.compose.runtime.currentRecomposeScope
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.LessonItem
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.data.MeditationLessonItemState
+import com.example.myspeechy.data.MeditationStats
+import com.example.myspeechy.data.MeditationStatsRepository
 import com.example.myspeechy.services.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
+import com.example.myspeechy.services.MeditationStatsServiceImpl
 import com.example.myspeechy.services.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class MeditationLessonItemViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: MeditationLessonServiceImpl,
+    private val meditationStatsRepository: MeditationStatsRepository,
+    private val meditationStatsServiceImpl: MeditationStatsServiceImpl,
     private val meditationNotificationServiceImpl: MeditationNotificationServiceImpl,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
@@ -34,6 +43,8 @@ class MeditationLessonItemViewModel @Inject constructor(
     private val canceledThroughNotification = NotificationRepository.canceled.asStateFlow()
     private var job: Job = Job()
     private var breathingJob: Job = Job()
+    private var currentMeditationStats: MeditationStats? = null
+
     init {
         viewModelScope.launch {
             lessonRepository.selectLessonItem(id).collect {lesson ->
@@ -84,17 +95,33 @@ class MeditationLessonItemViewModel @Inject constructor(
     private fun getMeditationJob(): Job {
         val job = viewModelScope.launch {
             while(_uiState.value.passedTime*60*60 < _uiState.value.setTime*60*60) {
-                delay(1000)
+                delay(10)
                 _uiState.update {
                     it.copy(passedTime = it.passedTime+1)
                 }
+                val seconds = _uiState.value.passedTime
+                val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
+                if (seconds % 60 == 0) {
+                    val minutes = seconds / 60
+                    currentMeditationStats =
+                        meditationStatsRepository.getCurrentMeditationStats(date).first()
+                    if (currentMeditationStats == null) {
+                        meditationStatsRepository.insertMeditationStats(MeditationStats(date = date, minutes = minutes))
+                    } else {
+                        meditationStatsRepository.updateMeditationStats(date)
+                    }
+                    meditationStatsServiceImpl.updateStats(date,
+                        currentMeditationStats?.minutes ?: (0 + 1)
+                    )
+                }
                 meditationNotificationServiceImpl.sendMeditationNotification(
-                    _uiState.value.passedTime.seconds.toString()
+                    seconds.toString()
                 )
             }
         }
         job.invokeOnCompletion { if (it == null) cancel()
-        else if (it is CancellationException) meditationNotificationServiceImpl.cancelNotification()}
+        else if (it is CancellationException) meditationNotificationServiceImpl.cancelNotification()
+        }
         return job
     }
 

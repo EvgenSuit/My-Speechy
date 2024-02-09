@@ -101,7 +101,6 @@ fun AuthScreen(
                 }
             }
             if (painter.state is AsyncImagePainter.State.Success) {
-
                 MainBox(
                     onNavigateToMain = onNavigateToMain,
                     imageLoader = imageLoader,
@@ -122,7 +121,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
             modifier: Modifier = Modifier) {
     val viewModel: AuthViewModel = hiltViewModel()
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
     val coroutine = rememberCoroutineScope()
     val exceptionState by viewModel.exceptionState.collectAsState()
     val uiState = viewModel.uiState
@@ -141,8 +139,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .clip(RoundedCornerShape(30.dp))
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
-        .width(dimensionResource(id = R.dimen.auth_components_width))
-       )
+        .width(dimensionResource(id = R.dimen.auth_components_width)))
 
     {
         Column (

@@ -54,6 +54,7 @@ android {
 dependencies {
     val room_version = "2.6.1"
     val hilt_version = "2.50"
+    implementation("androidx.compose.material:material:1.6.0")
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth")

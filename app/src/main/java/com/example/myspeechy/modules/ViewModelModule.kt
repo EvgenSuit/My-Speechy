@@ -5,9 +5,12 @@ import android.content.res.AssetManager
 import com.example.myspeechy.MySpeechyApplication
 import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
+import com.example.myspeechy.data.MeditationStatsDb
+import com.example.myspeechy.data.MeditationStatsRepository
 import com.example.myspeechy.services.MainLessonServiceImpl
 import com.example.myspeechy.services.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
+import com.example.myspeechy.services.MeditationStatsServiceImpl
 import com.example.myspeechy.services.ReadingLessonServiceImpl
 import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.Module
@@ -27,6 +30,15 @@ object ViewModelModule {
     @Provides
     fun provideLessonRepository(db: LessonDb): LessonRepository {
         return LessonRepository(db.lessonDao())
+    }
+
+    @Provides
+    fun provideMeditationStatsDb(@ApplicationContext context: Context): MeditationStatsDb {
+        return MeditationStatsDb.getDb(context)
+    }
+    @Provides
+    fun provideMeditationStatsRepository(db: MeditationStatsDb): MeditationStatsRepository {
+        return MeditationStatsRepository(db.meditationStatsDao())
     }
 
     @Provides
@@ -50,6 +62,10 @@ object ViewModelModule {
     @Provides
     fun provideMeditationLessonServiceImpl(): MeditationLessonServiceImpl {
         return MeditationLessonServiceImpl()
+    }
+    @Provides
+    fun provideMeditationStatsServiceImpl(): MeditationStatsServiceImpl {
+        return MeditationStatsServiceImpl()
     }
     @Provides
     fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):
