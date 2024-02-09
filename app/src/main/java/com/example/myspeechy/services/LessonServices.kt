@@ -51,9 +51,9 @@ interface LessonService {
         return mapOf()
     }
     fun markAsComplete(lessonItem: LessonItem) {
-        val lesson = convertToLesson(lessonItem.copy(isComplete = true))
-        Firebase.firestore.collection(userId)
-            .document(lesson.id.toString()).set(mapOf("isComplete" to true))
+        Firebase.firestore.collection(userId).document("lesson")
+            .collection("items").document(lessonItem.id.toString()).set(mapOf(
+                "id" to lessonItem.id))
     }
     fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {}
 }
@@ -89,16 +89,17 @@ class RegularLessonServiceImpl: LessonService {
 
 class MainLessonServiceImpl: LessonService {
     override fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {
-        val docRef = Firebase.firestore.collection(userId)
+        val docRef = Firebase.firestore.collection(userId).document("lesson")
+            .collection("items")
         docRef.addSnapshotListener{docs, e ->
-            if (e != null) {
+            if (e != null || docs == null) {
+                //Todo implement make text with error message
                 Log.w("LISTEN ERROR", e)
-            }
-            if (docs == null) {
                 onDataReceived(listOf())
+                return@addSnapshotListener
             }
             val data = mutableListOf<Int>()
-            for (doc in docs!!.documents) {
+            for (doc in docs.documents) {
                 data.add(doc.id.toInt())
             }
             onDataReceived(data)

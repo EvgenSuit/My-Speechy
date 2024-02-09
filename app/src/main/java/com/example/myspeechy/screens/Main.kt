@@ -1,21 +1,31 @@
 package com.example.myspeechy.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,34 +37,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.myspeechy.R
 import com.example.myspeechy.data.LessonItem
+import com.example.myspeechy.screens
 import com.example.myspeechy.utils.MainViewModel
 
 @Composable
 fun MainScreen(navController: NavController,) {
     val viewModel: MainViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    Box {
-        Image(painter = painterResource(id = R.drawable.main_page_background_medium),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize())
-        if (uiState.lessonItems.isNotEmpty()) {
-            UnitColumn(
-                lessonItems = uiState.lessonItems,
-                navController
-            ) { viewModel.getStringType(it) }
+    Box(modifier = Modifier.fillMaxSize()) {
+            Image(painter = painterResource(id = R.drawable.main_page_background_medium),
+                contentDescription = null,
+                contentScale = ContentScale.FillHeight,
+                modifier = Modifier.fillMaxSize())
+            if (uiState.lessonItems.isNotEmpty()) {
+                UnitColumn(
+                    lessonItems = uiState.lessonItems,
+                    navController
+                ) { viewModel.getStringType(it) }
+            }
         }
-    }
 }
 
 @Composable
@@ -115,19 +130,19 @@ fun LessonItemComposable(lessonItem: LessonItem,
             contentColor = Color.Black,
             disabledContentColor = Color.White.copy(0.4f)
         ),
-        modifier = Modifier.size(191.dp, 130.dp)) {
+        modifier = Modifier.size(201.dp, 150.dp)
+    ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(lessonItem.category,
-                fontSize = 20.sp,
-                )
+                fontSize = 20.sp,)
             Spacer(modifier = Modifier.weight(0.2f))
             Text(lessonItem.title,
                 fontSize = titleFontSize.sp,
                 lineHeight = titleFontSize.sp,
                 textAlign = TextAlign.Center,
-                overflow = TextOverflow.Visible,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 onTextLayout = {res ->
                     //Dynamic font size
