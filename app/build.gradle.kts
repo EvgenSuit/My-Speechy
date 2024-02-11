@@ -54,6 +54,7 @@ android {
 dependencies {
     val room_version = "2.6.1"
     val hilt_version = "2.50"
+    implementation("androidx.compose.material:material:1.6.0")
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth")
@@ -84,6 +85,10 @@ dependencies {
 
     //Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.29.0-alpha")
+
+    //Plotting
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
+    implementation("com.patrykandpatrick.vico:views:1.13.1")
 
     implementation("androidx.work:work-runtime-ktx:2.7.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")

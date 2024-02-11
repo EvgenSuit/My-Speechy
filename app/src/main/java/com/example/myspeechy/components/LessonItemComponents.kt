@@ -62,9 +62,13 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     var showDialog by remember {
         mutableStateOf(true)
     }
+    var notificationPermissionGranted by remember {
+        mutableStateOf(false)
+    }
     if (Build.VERSION.SDK_INT > 32) {
         val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
-        if (!showDialog && !permissionState.status.isGranted) {
+        notificationPermissionGranted = permissionState.status.isGranted
+        if (!showDialog && !notificationPermissionGranted) {
             LaunchedEffect(Unit) {
                 permissionState.launchPermissionRequest()
             }
@@ -73,6 +77,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
+            .fillMaxSize()
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
@@ -101,8 +106,8 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
         DialogBox(title, categoryToDialogText(lessonItem.category) +
-        if (Build.VERSION.SDK_INT > 32) "Allow notifications in order for you to be able" +
-                " to control meditation progress event if the app is in the background" else "")
+        if (Build.VERSION.SDK_INT > 32 && !notificationPermissionGranted) "Allow notifications in order for you to be able" +
+                " to control meditation progress even if the app is in the background" else "")
         {
             showDialog = false
         }
@@ -169,7 +174,7 @@ fun categoryToDialogText(category: String): String {
                 "This is a useful way to manage stuttering. Use the slider at the bottom " +
                 "to control the speed"
         "Meditation" -> "This type of exercise targets your ability to focus" +
-                " and bring your mind to peace."
+                " and brings your mind at peace."
         else -> ""
     }
 }

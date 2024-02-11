@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,7 +51,7 @@ import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.utils.MeditationLessonItemViewModel
 import kotlin.time.Duration.Companion.seconds
 
-@Composable
+    @Composable
 fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewModel(),
                          onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,8 +59,7 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
     LessonItemWrapper(
             uiState = uiState,
             onNavigateUp = onNavigateUp,
-            onMarkAsComplete = viewModel::markAsComplete
-        ) {
+            onMarkAsComplete = viewModel::markAsComplete) {
             val started = uiState.started
             val paused = uiState.paused
             AnimatedVisibility(
@@ -70,17 +70,22 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
                 Text(
                     if (uiState.breathingIn) "Breath In" else "Breath out",
                     fontSize = animateIntAsState(
-                        if (uiState.breathingIn) 105 else 45,
+                        if (uiState.breathingIn) 85 else 45,
                         animationSpec = tween(uiState.breathingInterval.toInt(), easing = Ease),
-                        label = ""
-                    ).value.sp, color = Color.White,
+                        label = "").value.sp, color = Color.White,
                     textAlign = TextAlign.Center,
-                    lineHeight = 105.sp,
+                    lineHeight = 85.sp,
                     modifier = Modifier
+                        .height(IntrinsicSize.Max)
                         .padding(top = 100.dp, bottom = 100.dp)
-                        .height(IntrinsicSize.Min)
                 )
             }
+        if (started) {
+            Text(
+                passedTime.seconds.toString(),
+                color = Color.White, fontSize = 35.sp
+            )
+        }
             Row(
                 horizontalArrangement = if (started) Arrangement.SpaceBetween else Arrangement.Center,
                 modifier = Modifier
@@ -126,12 +131,6 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
                 started,
                 viewModel::setMeditationTime
             )
-            if (started) {
-                Text(
-                    passedTime.seconds.toString(),
-                    color = Color.White, fontSize = 35.sp
-                )
-            }
         }
 }
 
