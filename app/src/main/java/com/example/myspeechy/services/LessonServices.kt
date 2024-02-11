@@ -55,7 +55,7 @@ interface LessonService {
             .collection("items").document(lessonItem.id.toString()).set(mapOf(
                 "id" to lessonItem.id))
     }
-    fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {}
+    fun trackRemoteProgress(onListenError: () -> Unit, onDataReceived: (List<Int>) -> Unit) {}
 }
 
 class RegularLessonServiceImpl: LessonService {
@@ -88,13 +88,13 @@ class RegularLessonServiceImpl: LessonService {
 }
 
 class MainLessonServiceImpl: LessonService {
-    override fun trackRemoteProgress(onDataReceived: (List<Int>) -> Unit) {
+    override fun trackRemoteProgress(onListenError: () -> Unit,
+        onDataReceived: (List<Int>) -> Unit) {
         val docRef = Firebase.firestore.collection(userId).document("lesson")
             .collection("items")
         docRef.addSnapshotListener{docs, e ->
             if (e != null || docs == null) {
-                //Todo implement make text with error message
-                Log.w("LISTEN ERROR", e)
+                onListenError()
                 onDataReceived(listOf())
                 return@addSnapshotListener
             }

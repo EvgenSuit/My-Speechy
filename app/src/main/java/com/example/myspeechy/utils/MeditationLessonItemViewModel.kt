@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils
 
+import android.util.Log
 import androidx.compose.runtime.currentRecomposeScope
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -100,19 +101,19 @@ class MeditationLessonItemViewModel @Inject constructor(
                     it.copy(passedTime = it.passedTime+1)
                 }
                 val seconds = _uiState.value.passedTime
-                val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                 if (seconds % 60 == 0) {
                     val minutes = seconds / 60
+                    var totalMinutes = 1
                     currentMeditationStats =
                         meditationStatsRepository.getCurrentMeditationStats(date).first()
                     if (currentMeditationStats == null) {
                         meditationStatsRepository.insertMeditationStats(MeditationStats(date = date, minutes = minutes))
                     } else {
-                        meditationStatsRepository.updateMeditationStats(date)
+                        totalMinutes = currentMeditationStats!!.minutes + 1
+                        meditationStatsRepository.updateMeditationStats(MeditationStats(date = date, minutes = totalMinutes))
                     }
-                    meditationStatsServiceImpl.updateStats(date,
-                        currentMeditationStats?.minutes ?: (0 + 1)
-                    )
+                    meditationStatsServiceImpl.updateStats(date, totalMinutes)
                 }
                 meditationNotificationServiceImpl.sendMeditationNotification(
                     seconds.toString()

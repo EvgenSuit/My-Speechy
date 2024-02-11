@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.example.myspeechy.R
 
@@ -37,6 +38,7 @@ val Typography = Typography(
         fontFamily = itimFamily,
         fontSize = 48.sp,
         color = Color.White,
+        textAlign = TextAlign.Center
     ),
     headlineMedium = TextStyle(
         fontWeight = FontWeight.ExtraBold,

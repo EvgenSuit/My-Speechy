@@ -61,7 +61,7 @@ fun MainScreen(navController: NavController,) {
     Box(modifier = Modifier.fillMaxSize()) {
             Image(painter = painterResource(id = R.drawable.main_page_background_medium),
                 contentDescription = null,
-                contentScale = ContentScale.FillHeight,
+                contentScale = ContentScale.FillBounds,
                 modifier = Modifier.fillMaxSize())
             if (uiState.lessonItems.isNotEmpty()) {
                 UnitColumn(

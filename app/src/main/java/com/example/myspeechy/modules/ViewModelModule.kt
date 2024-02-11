@@ -2,6 +2,7 @@ package com.example.myspeechy.modules
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.widget.Toast
 import com.example.myspeechy.MySpeechyApplication
 import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
@@ -66,6 +67,10 @@ object ViewModelModule {
     @Provides
     fun provideMeditationStatsServiceImpl(): MeditationStatsServiceImpl {
         return MeditationStatsServiceImpl()
+    }
+    @Provides
+    fun provideListenErrorToast(@ApplicationContext context: Context): Toast {
+        return Toast.makeText(context, "Error listening to remote data", Toast.LENGTH_SHORT)
     }
     @Provides
     fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):
