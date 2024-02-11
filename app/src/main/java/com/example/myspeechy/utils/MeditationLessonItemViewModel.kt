@@ -96,7 +96,7 @@ class MeditationLessonItemViewModel @Inject constructor(
     private fun getMeditationJob(): Job {
         val job = viewModelScope.launch {
             while(_uiState.value.passedTime*60*60 < _uiState.value.setTime*60*60) {
-                delay(10)
+                delay(1000)
                 _uiState.update {
                     it.copy(passedTime = it.passedTime+1)
                 }
