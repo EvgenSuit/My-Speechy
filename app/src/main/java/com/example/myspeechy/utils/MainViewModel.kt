@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils
 
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.Lesson
@@ -17,7 +18,9 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
-    private val lessonServiceImpl: MainLessonServiceImpl): ViewModel() {
+    private val lessonServiceImpl: MainLessonServiceImpl,
+    private val listenErrorToast: Toast
+): ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
@@ -25,7 +28,8 @@ class MainViewModel @Inject constructor(
        viewModelScope.launch {
            val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
                .values.toList().flatten()
-           lessonServiceImpl.trackRemoteProgress {data ->
+           lessonServiceImpl.trackRemoteProgress({ listenErrorToast.show() }) {data ->
+               //If error listening, the lesson list doesn't get changed
                var newLessonList = lessonList.map { lesson ->if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
                viewModelScope.launch {
                    newLessonList = handleAvailability(newLessonList)
