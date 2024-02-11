@@ -16,7 +16,7 @@ interface MeditationStatsDao {
     @Insert
     suspend fun insertMeditationStats(meditationStats: MeditationStats)
 
-    @Query("UPDATE meditationstats SET minutes = minutes+1 WHERE date = :date")
-    suspend fun updateMeditationStats(date: String)
+    @Update
+    suspend fun updateMeditationStats(meditationStats: MeditationStats)
 
 }

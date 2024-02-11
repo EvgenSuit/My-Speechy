@@ -14,7 +14,7 @@ class MeditationStatsRepository(private val meditationStatsDao: MeditationStatsD
     override suspend fun insertMeditationStats(meditationStats: MeditationStats) {
         meditationStatsDao.insertMeditationStats(meditationStats)
     }
-    override suspend fun updateMeditationStats(date: String) {
-        meditationStatsDao.updateMeditationStats(date)
+    override suspend fun updateMeditationStats(meditationStats: MeditationStats) {
+        meditationStatsDao.updateMeditationStats(meditationStats)
     }
 }

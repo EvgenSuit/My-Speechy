@@ -17,6 +17,12 @@ val itemBackgroundGradient = Brush.linearGradient(
         1f to Color.Magenta.copy(alpha = 0.7f)
     )
 )
+val meditationStatsBackgroundGradient = Brush.linearGradient(
+    colorStops = arrayOf(
+        0f to Color.Red,
+        0.7f to Color.Blue
+    )
+)
 
 val readingItemButtonBarGradient = Brush.linearGradient(
     colorStops = arrayOf(
