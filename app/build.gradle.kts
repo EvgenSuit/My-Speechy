@@ -89,7 +89,6 @@ dependencies {
     //Plotting
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
     implementation("com.patrykandpatrick.vico:views:1.13.1")
-    implementation("co.yml:ycharts:2.1.0")
 
     implementation("androidx.work:work-runtime-ktx:2.7.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
