@@ -60,6 +60,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-database")
 
     //Coil (image display handler)
     implementation("io.coil-kt:coil-compose:2.2.2")

@@ -8,6 +8,8 @@ import com.example.myspeechy.data.LessonDb
 import com.example.myspeechy.data.LessonRepository
 import com.example.myspeechy.data.MeditationStatsDb
 import com.example.myspeechy.data.MeditationStatsRepository
+import com.example.myspeechy.services.ChatServiceImpl
+import com.example.myspeechy.services.ChatsServiceImpl
 import com.example.myspeechy.services.MainLessonServiceImpl
 import com.example.myspeechy.services.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
@@ -67,6 +69,14 @@ object ViewModelModule {
     @Provides
     fun provideMeditationStatsServiceImpl(): MeditationStatsServiceImpl {
         return MeditationStatsServiceImpl()
+    }
+    @Provides
+    fun provideChatsService(): ChatsServiceImpl {
+        return ChatsServiceImpl()
+    }
+    @Provides
+    fun provideChatService(): ChatServiceImpl {
+        return ChatServiceImpl()
     }
     @Provides
     fun provideListenErrorToast(@ApplicationContext context: Context): Toast {

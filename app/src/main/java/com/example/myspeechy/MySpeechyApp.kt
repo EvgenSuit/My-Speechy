@@ -10,6 +10,7 @@ import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Scaffold
@@ -29,6 +30,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.screens.AuthScreen
+import com.example.myspeechy.screens.ChatScreen
+import com.example.myspeechy.screens.ChatsScreen
 import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationLessonItem
 import com.example.myspeechy.screens.MeditationStatsScreen
@@ -40,8 +43,9 @@ import com.google.firebase.ktx.Firebase
 sealed class NavScreens(val route: String, val icon: ImageVector, val label: String) {
     data object Main: NavScreens("main", Icons.Filled.Home, "Main")
     data object Stats: NavScreens("stats", Icons.Filled.Info, "Stats")
+    data object ChatsScreen: NavScreens("chats", Icons.Filled.Face, "Chats")
 }
-val screens = listOf(NavScreens.Main, NavScreens.Stats)
+val screens = listOf(NavScreens.Main, NavScreens.Stats, NavScreens.ChatsScreen)
 
 @Composable
 fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
@@ -51,7 +55,6 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
     val showNavBar = screens.any { it.route == currDestination?.route }
     Scaffold(
         bottomBar = {
-
             if (showNavBar) {
                 BottomNavigation {
                     screens.forEach { screen ->
@@ -88,7 +91,6 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
                     }
                 }
             }
-
         }
     ) { innerPadding ->
         NavHost(
@@ -105,6 +107,9 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
             composable(NavScreens.Stats.route) {
                 MeditationStatsScreen()
             }
+            composable(NavScreens.ChatsScreen.route) {
+                ChatsScreen(navController)
+            }
             composable("auth") {
                 AuthScreen(onNavigateToMain = {
                     navController.navigate(NavScreens.Main.route) {
@@ -113,6 +118,11 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
                         )
                     }
                 })
+            }
+            composable("chats/{chatId}",
+                arguments = listOf(navArgument("chatId") {type = NavType.StringType})
+            ) {
+                ChatScreen(navController)
             }
             composable(
                 "regularLessonItem/{regularLessonItemId}",

@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "291702741636",
+    "firebase_url": "https://my-speechy-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "my-speechy",
     "storage_bucket": "my-speechy.appspot.com"
   },
