@@ -23,37 +23,66 @@ class ChatViewModel @Inject constructor(
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
     val _uiState = MutableStateFlow(ChatUiState())
     val uiState = _uiState.asStateFlow()
-
-
-    fun listen() {
-        chatServiceImpl.chatListener(chatId, {}) {chat ->
-            Log.d("CHAT", chat.toString())
+    val userId = Firebase.auth.currentUser!!.uid
+    fun listenForMessages() {
+        chatServiceImpl.messagesListener(chatId, {errorCode ->
             _uiState.update {
-                it.copy(chat = chat.getValue<Chat>() ?: Chat())
+                it.copy(errorCode = errorCode)
             }
-        }
-        chatServiceImpl.messagesListener(chatId, {}) {messages ->
+        }) {messages ->
             val newMessages = buildMap(messages.size) {
                 for (snapshot in messages) {
                     this[snapshot.key!!] = snapshot.getValue<Message>() ?: Message()
                 }
             }
             _uiState.update {
-                it.copy(messages = newMessages)
+                it.copy(messages = newMessages, errorCode = 0)
             }
-            /*Log.d("MESSAGES",
-                _uiState.value.messages?.toSortedMap(Comparator.reverseOrder()).toString())*/
         }
+    }
+    fun listenForChatMembers() {
+        chatServiceImpl.listenChatMembers(chatId, {}) {members ->
+            _uiState.update {
+                it.copy(members = members.map{ snapshot -> snapshot.value as String })
+            }
+            _uiState.update {
+                it.copy(joined = _uiState.value.members.contains(userId))
+            }
+        }
+    }
+    fun listenForCurrentChat() {
+        chatServiceImpl.chatListener(chatId, {}) {chat ->
+            _uiState.update {
+                it.copy(chat = chat.getValue<Chat>() ?: Chat())
+            }
+        }
+    }
+    fun joinChat() {
+        chatServiceImpl.joinChat(chatId)
     }
 
     init {
-        listen()
+        _uiState.update { it.copy(isChatPublic = chatId.contains("public")) }
+        listenForCurrentChat()
+        listenForMessages()
+        listenForChatMembers()
     }
 
     fun sendMessage(text: String) {
+        if (_uiState.value.errorCode == -3) {
+            joinChat()
+            /*Call listener again because if there was an error,
+            the previous one was cancelled*/
+            listenForMessages()
+        }
         chatServiceImpl.sendMessage(chatId, _uiState.value.chat.title, text)
     }
 
-    data class ChatUiState(val messages: Map<String, Message>? = mapOf(),
-        val chat: Chat = Chat())
+    data class ChatUiState(
+        val messages: Map<String, Message>? = mapOf(),
+        val chat: Chat = Chat(),
+        val members: List<String> = listOf(),
+        val errorCode: Int = 0,
+        val joined: Boolean = false,
+        val isChatPublic: Boolean = false)
 }

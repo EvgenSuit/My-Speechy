@@ -17,24 +17,38 @@ class ChatsViewModel @Inject constructor(
 ): ViewModel() {
     private val _uiState = MutableStateFlow(ChatsUiState())
     val uiState = _uiState.asStateFlow()
-    fun listen() {
-        val id = "0"
-        chatsService.chatsListener(id,{
-                _uiState.update {
-                    it.copy(chats = mapOf(id to null))
+
+    init {
+        chatsService.membershipListener({}) {membership ->
+            if (membership.value != null) {
+                (membership.value as Map<String, Map<String, String>>).keys.forEach { chatId ->
+                    chatsService.chatsListener(chatId, {}) {chat ->
+                    _uiState.update {
+                        it.copy(chats = it.chats + mapOf(chatId to chat.getValue<Chat>()))
+                    }
                 }
-        }) { chat ->
-            _uiState.update {
-                it.copy(chats = mapOf(id to chat.getValue<Chat>()))
+                }
             }
-            chat.getValue<Chat>()
-            Log.d("CHAT", chat.value.toString())
         }
     }
-    init {
-        //todo Add to common group chat
-        listen()
+
+    fun searchForChat(title: String) {
+        chatsService.searchChatByTitle(title, {}) {chat ->
+            if (chat.value != null) {
+                val chatMap = chat.getValue<Map<String, Chat>>()
+                val key = chatMap!!.keys.first()
+                _uiState.update {
+                    it.copy(searchedChat = mapOf(
+                        key to chatMap[key]))
+                }
+            } else {
+                _uiState.update {
+                    ChatsUiState(chats = it.chats)
+                }
+            }
+        }
     }
 
-    data class ChatsUiState(val chats: Map<String, Chat?> = mapOf())
+    data class ChatsUiState(val searchedChat: Map<String?, Chat?> = mapOf(),
+        val chats: Map<String?, Chat?> = mapOf())
 }

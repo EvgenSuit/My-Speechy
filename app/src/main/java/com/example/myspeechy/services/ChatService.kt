@@ -68,6 +68,18 @@ private interface ChatService {
                 "title" to title
                 ))
     }
+    fun listenChatMembers(id: String,
+                          onCancelled: (Int) -> Unit,
+                          onDataReceived: (List<DataSnapshot>) -> Unit) {
+        database.child("members")
+            .child(id)
+            .addValueEventListener(listener(onCancelled, onDataReceived))
+    }
+    fun joinChat(chatId: String) {
+        database.child("members")
+            .child(chatId)
+            .setValue(mapOf("user_id" to userId))
+    }
 
     fun sendMessage(chatId: String, chatTitle: String, text: String) {
         val timestamp = System.currentTimeMillis()
