@@ -3,7 +3,7 @@ package com.example.myspeechy.utils
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myspeechy.data.MeditationStatsRepository
+import com.example.myspeechy.data.meditation.MeditationStatsRepository
 import com.example.myspeechy.services.MeditationStatsServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

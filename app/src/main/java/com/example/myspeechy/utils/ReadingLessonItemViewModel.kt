@@ -4,9 +4,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myspeechy.data.LessonItem
-import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.ReadingLessonItemState
+import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.data.lesson.ReadingLessonItemState
 import com.example.myspeechy.services.ReadingLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay

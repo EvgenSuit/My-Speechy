@@ -119,8 +119,10 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
                     }
                 })
             }
-            composable("chats/{chatId}",
-                arguments = listOf(navArgument("chatId") {type = NavType.StringType})
+            composable("chats/{type}/{chatId}",
+                arguments = listOf(
+                    navArgument("type") {type = NavType.StringType},
+                    navArgument("chatId") {type = NavType.StringType})
             ) {
                 ChatScreen(navController)
             }

@@ -1,10 +1,9 @@
 package com.example.myspeechy.services
 
 import android.content.res.AssetManager
-import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
-import com.example.myspeechy.data.Lesson
-import com.example.myspeechy.data.LessonItem
+import com.example.myspeechy.data.lesson.Lesson
+import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.helpers.LessonServiceHelpers
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore

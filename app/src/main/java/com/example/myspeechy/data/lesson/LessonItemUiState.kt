@@ -1,4 +1,4 @@
-package com.example.myspeechy.data
+package com.example.myspeechy.data.lesson
 
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.Job

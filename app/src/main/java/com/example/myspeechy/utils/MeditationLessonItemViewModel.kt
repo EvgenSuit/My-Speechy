@@ -1,15 +1,13 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
-import androidx.compose.runtime.currentRecomposeScope
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myspeechy.data.LessonItem
-import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.MeditationLessonItemState
-import com.example.myspeechy.data.MeditationStats
-import com.example.myspeechy.data.MeditationStatsRepository
+import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.data.lesson.MeditationLessonItemState
+import com.example.myspeechy.data.meditation.MeditationStats
+import com.example.myspeechy.data.meditation.MeditationStatsRepository
 import com.example.myspeechy.services.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
 import com.example.myspeechy.services.MeditationStatsServiceImpl

@@ -3,17 +3,17 @@ package com.example.myspeechy.modules
 import android.content.Context
 import android.content.res.AssetManager
 import android.widget.Toast
-import com.example.myspeechy.MySpeechyApplication
-import com.example.myspeechy.data.LessonDb
-import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.MeditationStatsDb
-import com.example.myspeechy.data.MeditationStatsRepository
-import com.example.myspeechy.services.ChatServiceImpl
+import com.example.myspeechy.data.lesson.LessonDb
+import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.data.meditation.MeditationStatsDb
+import com.example.myspeechy.data.meditation.MeditationStatsRepository
 import com.example.myspeechy.services.ChatsServiceImpl
 import com.example.myspeechy.services.MainLessonServiceImpl
 import com.example.myspeechy.services.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
 import com.example.myspeechy.services.MeditationStatsServiceImpl
+import com.example.myspeechy.services.PrivateChatServiceImpl
+import com.example.myspeechy.services.PublicChatServiceImpl
 import com.example.myspeechy.services.ReadingLessonServiceImpl
 import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.Module
@@ -75,8 +75,12 @@ object ViewModelModule {
         return ChatsServiceImpl()
     }
     @Provides
-    fun provideChatService(): ChatServiceImpl {
-        return ChatServiceImpl()
+    fun providePublicChatService(): PublicChatServiceImpl {
+        return PublicChatServiceImpl()
+    }
+    @Provides
+    fun providePrivateChatService(): PrivateChatServiceImpl {
+        return PrivateChatServiceImpl()
     }
     @Provides
     fun provideListenErrorToast(@ApplicationContext context: Context): Toast {

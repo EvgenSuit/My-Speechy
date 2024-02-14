@@ -1,4 +1,4 @@
-package com.example.myspeechy.data
+package com.example.myspeechy.data.chat
 
 data class Message(
     val sender: String = "",
