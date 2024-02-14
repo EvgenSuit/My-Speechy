@@ -1,4 +1,4 @@
-package com.example.myspeechy.data
+package com.example.myspeechy.data.lesson
 
 import android.content.Context
 import androidx.room.Database

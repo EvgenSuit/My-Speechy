@@ -1,14 +1,12 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.example.myspeechy.data.Chat
-import com.example.myspeechy.data.Message
-import com.example.myspeechy.services.ChatServiceImpl
-import com.google.firebase.auth.ktx.auth
+import com.example.myspeechy.data.chat.Chat
+import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.services.PrivateChatServiceImpl
+import com.example.myspeechy.services.PublicChatServiceImpl
 import com.google.firebase.database.getValue
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,14 +15,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
-    private val chatServiceImpl: ChatServiceImpl,
+    privateChatServiceImpl: PrivateChatServiceImpl,
+    publicChatServiceImpl: PublicChatServiceImpl,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
-    val _uiState = MutableStateFlow(ChatUiState())
+    private val _uiState = MutableStateFlow(ChatUiState())
     val uiState = _uiState.asStateFlow()
-    val userId = Firebase.auth.currentUser!!.uid
-    fun listenForMessages() {
+    private val chatServiceImpl = if (checkNotNull(savedStateHandle["type"]) == "public") publicChatServiceImpl else privateChatServiceImpl
+
+    private fun listenForMessages() {
         chatServiceImpl.messagesListener(chatId, {errorCode ->
             _uiState.update {
                 it.copy(errorCode = errorCode)
@@ -40,49 +40,55 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
-    fun listenForChatMembers() {
-        chatServiceImpl.listenChatMembers(chatId, {}) {members ->
+    private fun listenForChatMembers() {
+        chatServiceImpl.chatMembersListener(chatId, {}) {members ->
             _uiState.update {
-                it.copy(members = members.map{ snapshot -> snapshot.value as String })
+                it.copy(members = members.map{ snapshot -> snapshot.key as String })
             }
             _uiState.update {
-                it.copy(joined = _uiState.value.members.contains(userId))
+                it.copy(joined = _uiState.value.members.contains(chatServiceImpl.userId))
             }
         }
     }
-    fun listenForCurrentChat() {
-        chatServiceImpl.chatListener(chatId, {}) {chat ->
-            _uiState.update {
-                it.copy(chat = chat.getValue<Chat>() ?: Chat())
+    private fun listenForCurrentChat() {
+            chatServiceImpl.chatListener(chatId, {}) {chat ->
+                _uiState.update {
+                    it.copy(chat = chat.getValue<Chat>() ?: Chat())
+                }
             }
-        }
     }
     fun joinChat() {
         chatServiceImpl.joinChat(chatId)
     }
 
     init {
-        _uiState.update { it.copy(isChatPublic = chatId.contains("public")) }
+        _uiState.update { it.copy(isChatPublic = chatServiceImpl is PublicChatServiceImpl) }
         listenForCurrentChat()
         listenForMessages()
         listenForChatMembers()
     }
 
     fun sendMessage(text: String) {
+        //If error code is -3, the user has not jet joined a chat
         if (_uiState.value.errorCode == -3) {
             joinChat()
             /*Call listener again because if there was an error,
             the previous one was cancelled*/
             listenForMessages()
         }
-        chatServiceImpl.sendMessage(chatId, _uiState.value.chat.title, text)
+        val chatTitle = _uiState.value.chat.title
+        val timestamp = chatServiceImpl.sendMessage(chatId, chatTitle, text)
+        chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
     }
+
+    fun getUserId(): String = chatServiceImpl.userId
 
     data class ChatUiState(
         val messages: Map<String, Message>? = mapOf(),
         val chat: Chat = Chat(),
         val members: List<String> = listOf(),
         val errorCode: Int = 0,
-        val joined: Boolean = false,
-        val isChatPublic: Boolean = false)
+        val joined: Boolean = true,
+        val isChatPublic: Boolean = false
+    )
 }

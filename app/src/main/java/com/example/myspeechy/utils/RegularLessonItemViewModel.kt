@@ -4,9 +4,9 @@ import android.content.res.AssetManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myspeechy.data.LessonItem
-import com.example.myspeechy.data.LessonRepository
-import com.example.myspeechy.data.RegularLessonItemState
+import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.data.lesson.RegularLessonItemState
 import com.example.myspeechy.services.RegularLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

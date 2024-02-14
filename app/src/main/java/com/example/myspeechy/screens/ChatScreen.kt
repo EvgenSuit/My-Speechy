@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +52,14 @@ fun ChatScreen(navController: NavHostController,
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (!uiState.messages.isNullOrEmpty()) {
                     items(uiState.messages!!.values.toList()) { message ->
-                        ElevatedButton(onClick = { /*TODO*/ },
+                        ElevatedButton(onClick = {
+                           if (message.sender != viewModel.getUserId()) {
+                               val chatId = listOf(message.sender, viewModel.getUserId()).sortedWith(
+                                   compareBy(String.CASE_INSENSITIVE_ORDER) {it}
+                               ).joinToString("_")
+                               navController.navigate("chats/private/$chatId")
+                           }
+                                                 },
                             modifier = Modifier.fillMaxWidth()) {
                             Column{
                                 Text(message.sender)
@@ -84,7 +92,9 @@ fun ChatScreen(navController: NavHostController,
                         modifier = Modifier.weight(0.8f)
                     )
                     ElevatedButton(
-                        onClick = { viewModel.sendMessage(textFieldValue) },
+                        onClick = { if (textFieldValue.isNotEmpty()) {
+                            viewModel.sendMessage(textFieldValue)
+                        } },
                         modifier = Modifier.weight(0.2f)
                     ) {
                         Icon(

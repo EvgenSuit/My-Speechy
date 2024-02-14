@@ -1,12 +1,9 @@
 package com.example.myspeechy.services
 
-import android.util.Log
-import com.example.myspeechy.data.Chat
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 
@@ -29,7 +26,7 @@ private interface ChatsService {
     fun searchChatByTitle(title: String,
                           onCancelled: (Int) -> Unit,
                           onDataReceived: (DataSnapshot) -> Unit) {
-        database.child("chats")
+        database.child("public_chats")
             .orderByChild("title")
             .equalTo(title)
             .addValueEventListener(listener(onCancelled, onDataReceived))
@@ -37,15 +34,21 @@ private interface ChatsService {
     fun membershipListener(onCancelled: (Int) -> Unit,
                            onDataReceived: (DataSnapshot) -> Unit) {
         database.child("members")
-            .orderByChild("user_id")
-            .equalTo(userId)
+            .orderByChild(userId)
+            .equalTo(true)
+            .addValueEventListener(listener(onCancelled, onDataReceived))
+    }
+    fun privateChatsListener(onCancelled: (Int) -> Unit,
+                             onDataReceived: (DataSnapshot) -> Unit) {
+        database.child("private_chats")
+            .child(userId)
             .addValueEventListener(listener(onCancelled, onDataReceived))
     }
     fun chatsListener(
         id: String,
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit) {
-        database.child("chats")
+        database.child("public_chats")
             .child(id)
             .addValueEventListener(listener(onCancelled, onDataReceived))
     }

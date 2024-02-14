@@ -1,8 +1,7 @@
 package com.example.myspeechy.utils
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.example.myspeechy.data.Chat
+import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.services.ChatsServiceImpl
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,9 +23,17 @@ class ChatsViewModel @Inject constructor(
                 (membership.value as Map<String, Map<String, String>>).keys.forEach { chatId ->
                     chatsService.chatsListener(chatId, {}) {chat ->
                     _uiState.update {
-                        it.copy(chats = it.chats + mapOf(chatId to chat.getValue<Chat>()))
+                        it.copy(chats = it.chats + mapOf(chatId to chat.getValue<Chat>()?.copy(type = "public")))
                     }
                 }
+                }
+            }
+        }
+        chatsService.privateChatsListener({}) {chats ->
+            val chatsMap = chats.getValue<Map<String, Chat>>()
+            chatsMap?.keys?.forEach { key ->
+                _uiState.update {
+                    it.copy(chats = it.chats + mapOf(key to chatsMap[key]?.copy(type = "private")))
                 }
             }
         }
@@ -50,5 +57,5 @@ class ChatsViewModel @Inject constructor(
     }
 
     data class ChatsUiState(val searchedChat: Map<String?, Chat?> = mapOf(),
-        val chats: Map<String?, Chat?> = mapOf())
+                            val chats: Map<String?, Chat?> = mapOf())
 }

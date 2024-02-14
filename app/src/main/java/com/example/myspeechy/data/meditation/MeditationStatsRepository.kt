@@ -1,8 +1,9 @@
-package com.example.myspeechy.data
+package com.example.myspeechy.data.meditation
 
 import kotlinx.coroutines.flow.Flow
 
-class MeditationStatsRepository(private val meditationStatsDao: MeditationStatsDao): MeditationStatsDao {
+class MeditationStatsRepository(private val meditationStatsDao: MeditationStatsDao):
+    MeditationStatsDao {
     override fun getCurrentMeditationStats(date: String): Flow<MeditationStats> {
         return meditationStatsDao.getCurrentMeditationStats(date)
     }

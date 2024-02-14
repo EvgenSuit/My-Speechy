@@ -82,7 +82,10 @@ fun ChatsScreen(navController: NavHostController,
             val searchedChatId = uiState.searchedChat.keys.first().toString()
             val searchedChat = uiState.searchedChat[searchedChatId]
             ElevatedButton(
-                onClick = { navController.navigate("chats/${searchedChatId}") },
+                onClick = {
+                    chatSearchTitle = ""
+                    navController.navigate("chats/public/${searchedChatId}")
+                          },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 30.dp)
@@ -119,7 +122,7 @@ fun ChatsScreen(navController: NavHostController,
             items(chatsValues.size) { i ->
                 if (chatsValues[i] != null) {
                     ElevatedButton(
-                        onClick = { navController.navigate("chats/${chatsKeys[i]}") },
+                        onClick = { navController.navigate("chats/${chatsValues[i]!!.type}/${chatsKeys[i]}") },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {

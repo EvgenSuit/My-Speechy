@@ -1,4 +1,4 @@
-package com.example.myspeechy.data
+package com.example.myspeechy.data.lesson
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
