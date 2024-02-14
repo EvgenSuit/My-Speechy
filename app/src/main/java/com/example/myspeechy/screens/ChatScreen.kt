@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens
 
-import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -48,6 +45,8 @@ fun ChatScreen(navController: NavHostController,
                 ElevatedButton(onClick = { navController.navigateUp()}) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 }
+                Text(uiState.chat.title,
+                    overflow = TextOverflow.Ellipsis)
             }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (!uiState.messages.isNullOrEmpty()) {
@@ -71,23 +70,42 @@ fun ChatScreen(navController: NavHostController,
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
-            TextField(
-                value = textFieldValue, onValueChange = {
-                    textFieldValue = it
-                },
-                modifier = Modifier.weight(0.8f)
-            )
-            ElevatedButton(
-                onClick = { viewModel.sendMessage(textFieldValue) },
-                modifier = Modifier.weight(0.2f)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    tint = Color.Blue,
-                    contentDescription = null
-                )
+        if (uiState.errorCode == -3 && uiState.isChatPublic) {
+            JoinButton(viewModel::joinChat)
+        } else {
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)) {
+                Row {
+                    TextField(
+                        value = textFieldValue, onValueChange = {
+                            textFieldValue = it
+                        },
+                        modifier = Modifier.weight(0.8f)
+                    )
+                    ElevatedButton(
+                        onClick = { viewModel.sendMessage(textFieldValue) },
+                        modifier = Modifier.weight(0.2f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            tint = Color.Blue,
+                            contentDescription = null
+                        )
+                    }
+                }
+                if (!uiState.joined && uiState.isChatPublic) {
+                    JoinButton(viewModel::joinChat)
+                }
             }
         }
+    }
+}
+
+@Composable
+fun JoinButton(onClick: () -> Unit) {
+    ElevatedButton(onClick = onClick,
+        modifier = Modifier.fillMaxWidth()) {
+        Text("Join")
     }
 }
