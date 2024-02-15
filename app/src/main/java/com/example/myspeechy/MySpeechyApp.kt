@@ -1,7 +1,9 @@
 package com.example.myspeechy
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -23,20 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.example.myspeechy.screens.AuthScreen
-import com.example.myspeechy.screens.ChatScreen
-import com.example.myspeechy.screens.ChatsScreen
+import com.example.myspeechy.screens.chat.ChatsScreen
 import com.example.myspeechy.screens.MainScreen
-import com.example.myspeechy.screens.MeditationLessonItem
 import com.example.myspeechy.screens.MeditationStatsScreen
-import com.example.myspeechy.screens.ReadingLessonItem
-import com.example.myspeechy.screens.RegularLessonItem
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
@@ -101,56 +97,31 @@ fun MySpeechyApp(navController:NavHostController = rememberNavController()) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            composable(NavScreens.Main.route) {
-                MainScreen(navController)
+            composable(NavScreens.Main.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(500),
+                    towards = AnimatedContentTransitionScope
+                    .SlideDirection.End)}) {
+                MainScreen()
             }
-            composable(NavScreens.Stats.route) {
+            composable(NavScreens.Stats.route,
+                enterTransition = {slideIntoContainer(
+                    animationSpec = tween(500),
+                    towards = AnimatedContentTransitionScope
+                        .SlideDirection.End)}) {
                 MeditationStatsScreen()
             }
-            composable(NavScreens.ChatsScreen.route) {
-                ChatsScreen(navController)
+            composable(NavScreens.ChatsScreen.route,
+                enterTransition = {slideIntoContainer(
+                    animationSpec = tween(500),
+                    towards = AnimatedContentTransitionScope
+                        .SlideDirection.End)}) {
+                ChatsScreen()
             }
             composable("auth") {
                 AuthScreen(onNavigateToMain = {
-                    navController.navigate(NavScreens.Main.route) {
-                        popUpTo(
-                            0
-                        )
-                    }
+                    navController.navigate(NavScreens.Main.route) { popUpTo(0) }
                 })
-            }
-            composable("chats/{type}/{chatId}",
-                arguments = listOf(
-                    navArgument("type") {type = NavType.StringType},
-                    navArgument("chatId") {type = NavType.StringType})
-            ) {
-                ChatScreen(navController)
-            }
-            composable(
-                "regularLessonItem/{regularLessonItemId}",
-                arguments = listOf(navArgument("regularLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                RegularLessonItem()
-                { navController.navigateUp() }
-            }
-            composable(
-                "readingLessonItem/{readingLessonItemId}",
-                arguments = listOf(navArgument("readingLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                ReadingLessonItem()
-                { navController.navigateUp() }
-            }
-            composable(
-                "meditationLessonItem/{meditationLessonItemId}",
-                arguments = listOf(navArgument("meditationLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                MeditationLessonItem()
-                {
-                    navController.navigateUp()
-                }
             }
         }
     }

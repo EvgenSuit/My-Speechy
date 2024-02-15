@@ -1,8 +1,8 @@
-package com.example.myspeechy.utils
+package com.example.myspeechy.utils.chat
 
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
-import com.example.myspeechy.services.ChatsServiceImpl
+import com.example.myspeechy.services.chat.ChatsServiceImpl
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

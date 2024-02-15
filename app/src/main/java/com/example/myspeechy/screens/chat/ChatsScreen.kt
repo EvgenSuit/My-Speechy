@@ -1,11 +1,9 @@
-package com.example.myspeechy.screens
+package com.example.myspeechy.screens.chat
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,15 +36,41 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.myspeechy.utils.ChatsViewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.myspeechy.NavScreens
+import com.example.myspeechy.utils.chat.ChatsViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @Composable
-fun ChatsScreen(navController: NavHostController,
+fun ChatsScreen(navController: NavHostController = rememberNavController(),
                 viewModel: ChatsViewModel = hiltViewModel()) {
+    NavHost(navController = navController, startDestination = NavScreens.ChatsScreen.route) {
+        composable(NavScreens.ChatsScreen.route) {
+            ChatsColumn(navController = navController, viewModel = viewModel)
+        }
+        composable("chats/{type}/{chatId}",
+            arguments = listOf(
+                navArgument("type") {type = NavType.StringType},
+                navArgument("chatId") {type = NavType.StringType})
+        ) {backStackEntry ->
+            if (backStackEntry.arguments!!.getString("type") == "public") {
+                PublicChatScreen(navController)
+            } else {
+                PrivateChatScreen(navController)
+            }
+        }
+    }
+}
+@Composable
+fun ChatsColumn(navController: NavHostController,
+                viewModel: ChatsViewModel
+) {
     val uiState by viewModel.uiState.collectAsState()
     val focusRequester = remember {
         FocusRequester()
@@ -73,8 +97,8 @@ fun ChatsScreen(navController: NavHostController,
                     modifier = Modifier.size(30.dp))
             }},
             onValueChange = {
-            chatSearchTitle = it
-        }, modifier = Modifier
+                chatSearchTitle = it
+            }, modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
         )
@@ -85,7 +109,7 @@ fun ChatsScreen(navController: NavHostController,
                 onClick = {
                     chatSearchTitle = ""
                     navController.navigate("chats/public/${searchedChatId}")
-                          },
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 30.dp)

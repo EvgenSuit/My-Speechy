@@ -1,4 +1,4 @@
-package com.example.myspeechy.services
+package com.example.myspeechy.services.chat
 
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
@@ -57,13 +57,29 @@ interface ChatService {
             .orderByChild("timestamp")
             .addValueEventListener(listener(onCancelled, onDataReceived))
     }
+    fun messageListener(chatId: String,
+        messageId: String,
+                        onCancelled: (Int) -> Unit,
+                        onDataReceived: (DataSnapshot) -> Unit) {
+        messagesRef
+            .child(chatId)
+            .child(messageId)
+            .addValueEventListener(chatEventListener(onCancelled, onDataReceived))
+    }
     fun chatMembersListener(id: String,
                             onCancelled: (Int) -> Unit,
                             onDataReceived: (List<DataSnapshot>) -> Unit) {}
+    fun usernameListener(id: String,
+                        onCancelled: (Int) -> Unit,
+                        onDataReceived: (DataSnapshot) -> Unit) {
+        database.child("users").child(id)
+            .child("name").addValueEventListener(chatEventListener(onCancelled, onDataReceived))
+    }
     fun sendMessage(chatId: String, chatTitle: String, text: String): Long {
         val timestamp = System.currentTimeMillis()
         messagesRef.child(chatId)
-            .child(UUID.randomUUID().toString()).setValue(Message(userId, text, timestamp))
+                    .child(UUID.randomUUID().toString())
+                    .setValue(Message(userId, "", text, timestamp))
         return timestamp
     }
 
@@ -109,24 +125,28 @@ class PublicChatServiceImpl: ChatService {
 class PrivateChatServiceImpl: ChatService {
     private val chatsRef: DatabaseReference
         get() = database.child("private_chats")
+    private val usersRef: DatabaseReference
+        get() = database.child("users")
     override fun chatListener(
         id: String,
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit
     ) {
-        chatsRef.child(id)
+        chatsRef.child(userId).child(id)
             .addValueEventListener(chatEventListener(onCancelled, onDataReceived))
     }
 
+    //Todo call this method when updating username
     override fun updateLastMessage(chatId: String, chat: Chat) {
         val userIds = chatId.split("_")
         val privateChat = chat.copy(type = "private")
-         database.child("users").child(userIds[1]).child("name").get().addOnSuccessListener { username ->
+        //Update chat title for each of the users
+        usersRef.child(userIds[1]).child("name").get().addOnSuccessListener { username ->
              chatsRef.child(userIds[0])
                  .child(chatId)
                  .setValue(privateChat.copy(title = username.getValue<String>() ?: ""))
          }
-        database.child("users").child(userIds[0]).child("name").get().addOnSuccessListener { username ->
+        usersRef.child(userIds[0]).child("name").get().addOnSuccessListener { username ->
             chatsRef.child(userIds[1])
                 .child(chatId)
                 .setValue(privateChat.copy(title = username.getValue<String>() ?: ""))

@@ -1,4 +1,4 @@
-package com.example.myspeechy.services
+package com.example.myspeechy.services.chat
 
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot

@@ -35,26 +35,66 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.screens.lesson.MeditationLessonItem
+import com.example.myspeechy.screens.lesson.ReadingLessonItem
+import com.example.myspeechy.screens.lesson.RegularLessonItem
 import com.example.myspeechy.utils.MainViewModel
 
 @Composable
-fun MainScreen(navController: NavController,) {
+fun MainScreen(navController: NavHostController = rememberNavController()) {
     val viewModel: MainViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    Box(modifier = Modifier.fillMaxSize()) {
-            Image(painter = painterResource(id = R.drawable.main_page_background_medium),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier.fillMaxSize())
-            if (uiState.lessonItems.isNotEmpty()) {
-                UnitColumn(
-                    lessonItems = uiState.lessonItems,
-                    navController
-                ) { viewModel.getStringType(it) }
+    NavHost(navController = navController, startDestination = NavScreens.Main.route) {
+        composable(NavScreens.Main.route) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Image(painter = painterResource(id = R.drawable.main_page_background_medium),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize())
+                if (uiState.lessonItems.isNotEmpty()) {
+                    UnitColumn(
+                        lessonItems = uiState.lessonItems,
+                        navController
+                    ) { viewModel.getStringType(it) }
+                }
             }
         }
+        composable(
+            "regularLessonItem/{regularLessonItemId}",
+            arguments = listOf(navArgument("regularLessonItemId")
+            { type = NavType.IntType })
+        ) {
+            RegularLessonItem()
+            { navController.navigateUp() }
+        }
+        composable(
+            "readingLessonItem/{readingLessonItemId}",
+            arguments = listOf(navArgument("readingLessonItemId")
+            { type = NavType.IntType })
+        ) {
+            ReadingLessonItem()
+            { navController.navigateUp() }
+        }
+        composable(
+            "meditationLessonItem/{meditationLessonItemId}",
+            arguments = listOf(navArgument("meditationLessonItemId")
+            { type = NavType.IntType })
+        ) {
+            MeditationLessonItem()
+            {
+                navController.navigateUp()
+            }
+        }
+    }
 }
 
 @Composable
