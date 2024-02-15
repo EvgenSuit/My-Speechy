@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
-import com.example.myspeechy.services.MainLessonServiceImpl
+import com.example.myspeechy.services.lesson.MainLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

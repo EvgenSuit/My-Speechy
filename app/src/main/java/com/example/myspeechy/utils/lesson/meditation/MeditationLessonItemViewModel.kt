@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils
+package com.example.myspeechy.utils.lesson.meditation
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -8,9 +8,9 @@ import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.lesson.MeditationLessonItemState
 import com.example.myspeechy.data.meditation.MeditationStats
 import com.example.myspeechy.data.meditation.MeditationStatsRepository
-import com.example.myspeechy.services.MeditationLessonServiceImpl
+import com.example.myspeechy.services.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
-import com.example.myspeechy.services.MeditationStatsServiceImpl
+import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.services.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job

@@ -1,4 +1,4 @@
-package com.example.myspeechy.services
+package com.example.myspeechy.services.lesson
 
 import android.content.res.AssetManager
 import androidx.compose.ui.graphics.ImageBitmap

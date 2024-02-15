@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.myspeechy.utils.MeditationStatsViewModel
+import com.example.myspeechy.utils.lesson.meditation.MeditationStatsViewModel
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -58,7 +58,7 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
     )
     LaunchedEffect(Unit) {
         coroutineScope.launch {
-            delay(10)
+            delay(500)
             moveColors = true
         }
     }

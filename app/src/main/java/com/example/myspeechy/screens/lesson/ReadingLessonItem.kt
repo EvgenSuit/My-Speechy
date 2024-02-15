@@ -1,4 +1,4 @@
-package com.example.myspeechy.screens
+package com.example.myspeechy.screens.lesson
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,13 +34,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.components.readingItemButtonBarGradient
-import com.example.myspeechy.utils.ReadingLessonItemViewModel
+import com.example.myspeechy.utils.lesson.reading.ReadingLessonItemViewModel
 import kotlinx.coroutines.Job
 import kotlin.math.round
 
 @Composable
 fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
-    onNavigateUp: () -> Unit) {
+                      onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     val text = uiState.lessonItem.text
     val index = uiState.index

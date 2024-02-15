@@ -1,4 +1,4 @@
-package com.example.myspeechy.screens
+package com.example.myspeechy.screens.lesson
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Ease
@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -48,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
-import com.example.myspeechy.utils.MeditationLessonItemViewModel
+import com.example.myspeechy.utils.lesson.meditation.MeditationLessonItemViewModel
 import kotlin.time.Duration.Companion.seconds
 
     @Composable
