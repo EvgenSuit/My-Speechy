@@ -10,9 +10,17 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.ktx.storage
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.Locale
 import java.util.UUID
+import kotlin.io.path.notExists
 
 private val database = Firebase.database.reference
+private val storage = Firebase.storage.reference
 interface ChatService {
     val userId: String
         get() = Firebase.auth.currentUser!!.uid
@@ -57,15 +65,6 @@ interface ChatService {
             .orderByChild("timestamp")
             .addValueEventListener(listener(onCancelled, onDataReceived))
     }
-    fun messageListener(chatId: String,
-        messageId: String,
-                        onCancelled: (Int) -> Unit,
-                        onDataReceived: (DataSnapshot) -> Unit) {
-        messagesRef
-            .child(chatId)
-            .child(messageId)
-            .addValueEventListener(chatEventListener(onCancelled, onDataReceived))
-    }
     fun chatMembersListener(id: String,
                             onCancelled: (Int) -> Unit,
                             onDataReceived: (List<DataSnapshot>) -> Unit) {}
@@ -85,6 +84,12 @@ interface ChatService {
 
     fun updateLastMessage(chatId: String,chat: Chat) {}
     fun joinChat(chatId: String) {}
+    fun createPicDir(picDir: String) {}
+    fun chatProfilePictureListener(id: String,
+                                   filesDir: String,
+                                   onCancelled: (Int) -> Unit,
+                                   onStorageFailure: (String) -> Unit,
+                                   onPicReceived: () -> Unit) {}
 
 }
 
@@ -127,6 +132,8 @@ class PrivateChatServiceImpl: ChatService {
         get() = database.child("private_chats")
     private val usersRef: DatabaseReference
         get() = database.child("users")
+    private val picsRef: StorageReference
+        get() = storage.child("profilePics")
     override fun chatListener(
         id: String,
         onCancelled: (Int) -> Unit,
@@ -161,5 +168,56 @@ class PrivateChatServiceImpl: ChatService {
         chatsRef.child(userIds[1])
             .child(chatId)
             .setValue(Chat())
+    }
+
+    override fun createPicDir(picDir: String) {
+        if (!Files.isDirectory(Paths.get(picDir))) {
+            Files.createDirectories(Paths.get(picDir))
+        }
+    }
+    fun getChatPicDir(filesDir: String, otherUserId: String): String
+    = "${filesDir}/profilePics/$otherUserId"
+    fun getChatPic(filesDir: String, otherUserId: String): File {
+        val picDir = getChatPicDir(filesDir, otherUserId)
+        return File(picDir, "$otherUserId.jpg")
+    }
+    override fun chatProfilePictureListener(id: String,
+                                            filesDir: String,
+                                            onCancelled: (Int) -> Unit,
+                                            onStorageFailure: (String) -> Unit,
+                                            onPicReceived: () -> Unit) {
+        usersRef
+                .child(id)
+                .child("profilePicUpdated")
+                .addValueEventListener(chatEventListener(onCancelled) { name ->
+                    val picName = name.getValue<String>()
+                    if (!picName.isNullOrEmpty()) {
+                        val picDir = getChatPicDir(filesDir, id)
+                        createPicDir(picDir)
+                        val picRef = File(picDir, "$id.jpg")
+                        if (Paths.get(picDir).notExists()) {
+                            createPicDir(picDir)
+                        }
+                        picsRef.child(id)
+                            .child(picName).getFile(picRef)
+                            .addOnSuccessListener {
+                                it.storage.getFile(picRef)
+                                onPicReceived()
+                            }
+                            .addOnFailureListener {
+                                val message = it.message?.split(" ")?.joinToString("_") { it.uppercase(
+                                    Locale.ROOT) }?.dropLast(1) ?: ""
+                                onStorageFailure(message)
+                                if (message == PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name) {
+                                    if (picRef.exists()) {
+                                        picRef.delete()
+                                    }
+                                    Files.deleteIfExists(Paths.get(picDir))
+                                }
+                            }
+                    } else {
+                        onStorageFailure(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
+                    }
+                })
     }
 }

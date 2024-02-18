@@ -96,6 +96,7 @@ fun BottomRow(textFieldValue: String,
     }
 }
 
+
 @Composable
 fun JoinButton(onClick: () -> Unit, modifier: Modifier) {
     ElevatedButton(onClick = onClick,

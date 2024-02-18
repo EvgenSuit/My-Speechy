@@ -10,21 +10,23 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 open class PrivateChatViewModel @Inject constructor(
     private val chatServiceImpl: PrivateChatServiceImpl,
+    private val filesDir: File,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
     private val _uiState = MutableStateFlow(PrivateChatUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
+    private val otherUserId = chatId.split("_").filter { id -> id != userId }[0]
+    val chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)
 
     init {
-        val otherUserId =
-            chatId.split("_").filter { id -> id != userId }[0]
         chatServiceImpl.usernameListener(otherUserId, {}) {otherUsername ->
             _uiState.update {
                 it.copy(chat = it.chat.copy(title = otherUsername.getValue<String>() ?: ""))
@@ -32,6 +34,14 @@ open class PrivateChatViewModel @Inject constructor(
         }
         listenForCurrentChat()
         listenForMessages()
+        listenForProfilePic()
+    }
+    private fun listenForProfilePic() {
+        chatServiceImpl.chatProfilePictureListener(otherUserId, filesDir.path, {}, {m ->
+            _uiState.update { it.copy(storageErrorMessage = m) }
+        }) {
+            _uiState.update { it.copy(storageErrorMessage = "") }
+        }
     }
     private fun listenForMessages() {
         chatServiceImpl.messagesListener(chatId, {errorCode ->
@@ -41,14 +51,18 @@ open class PrivateChatViewModel @Inject constructor(
             for (snapshot in messages) {
                 val messageId = snapshot.key!!
                 val messageContent = snapshot.getValue<Message>() ?: Message()
-                chatServiceImpl.usernameListener(messageContent.sender, {}) {senderUserName ->
-                    val newMessages = _uiState.value.messages.toMutableMap()
-                    newMessages[messageId] = messageContent
-                        .copy(senderUsername = senderUserName.getValue<String>() ?: "")
-                    _uiState.update {
-                        it.copy(messages = newMessages, errorCode = 0)
+                    chatServiceImpl.usernameListener(messageContent.sender, {}) {senderUserName ->
+                        val newMessages = _uiState.value.messages.toMutableMap()
+                        //Update only those messages that's content has changed or is empty
+                        if (newMessages[messageId]?.text != messageContent.text ||
+                            newMessages[messageId]?.text.isNullOrEmpty()) {
+                            newMessages[messageId] = messageContent
+                                .copy(senderUsername = senderUserName.getValue<String>() ?: "")
+                            _uiState.update {
+                                it.copy(messages = newMessages, errorCode = 0)
+                            }
+                        }
                     }
-                }
             }
         }
     }
@@ -78,6 +92,7 @@ open class PrivateChatViewModel @Inject constructor(
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
+        val storageErrorMessage: String = "",
         val errorCode: Int = 0
     )
 }

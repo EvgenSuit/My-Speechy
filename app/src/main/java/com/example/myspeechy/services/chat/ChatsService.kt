@@ -8,7 +8,7 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 
 private val database = Firebase.database.reference
-private interface ChatsService {
+interface ChatsService {
     val userId: String
         get() = Firebase.auth.currentUser!!.uid
     fun listener(
