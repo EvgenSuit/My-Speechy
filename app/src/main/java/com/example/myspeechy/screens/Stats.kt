@@ -19,7 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,15 +40,12 @@ import com.patrykandpatrick.vico.core.chart.draw.ChartDrawContext
 import com.patrykandpatrick.vico.core.context.MeasureContext
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 import com.patrykandpatrick.vico.core.entry.entryOf
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
     var moveColors by remember {
         mutableStateOf(false)
     }
@@ -57,10 +53,7 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
         animationSpec = tween(4000)
     )
     LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            delay(500)
-            moveColors = true
-        }
+        moveColors = true
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier

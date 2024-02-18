@@ -1,5 +1,7 @@
 package com.example.myspeechy.screens
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,38 +31,56 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.dataStore
+import com.example.myspeechy.screens
 import com.example.myspeechy.screens.lesson.MeditationLessonItem
 import com.example.myspeechy.screens.lesson.ReadingLessonItem
 import com.example.myspeechy.screens.lesson.RegularLessonItem
+import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.utils.MainViewModel
 
 @Composable
 fun MainScreen(navController: NavHostController = rememberNavController()) {
     val viewModel: MainViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    NavHost(navController = navController, startDestination = NavScreens.Main.route) {
+    val context = LocalContext.current
+    val showNavBar = navController.currentBackStackEntryAsState().value?.destination
+        ?.route in screens.map { it.route }
+    LaunchedEffect(showNavBar) {
+        context.dataStore.edit {navBar ->
+            navBar[showNavBarDataStore] = showNavBar
+        }
+    }
+    NavHost(navController = navController, startDestination = NavScreens.Main.route,
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        modifier = Modifier.fillMaxSize()) {
         composable(NavScreens.Main.route) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(painter = painterResource(id = R.drawable.main_page_background_medium),
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize())
+                    modifier = Modifier.fillMaxSize()
+                )
                 if (uiState.lessonItems.isNotEmpty()) {
                     UnitColumn(
                         lessonItems = uiState.lessonItems,
@@ -90,9 +111,7 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
             { type = NavType.IntType })
         ) {
             MeditationLessonItem()
-            {
-                navController.navigateUp()
-            }
+            { navController.navigateUp() }
         }
     }
 }

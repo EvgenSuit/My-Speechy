@@ -14,6 +14,7 @@ import com.example.myspeechy.services.MeditationNotificationServiceImpl
 import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
 import com.example.myspeechy.services.chat.PublicChatServiceImpl
+import com.example.myspeechy.services.chat.UserProfileServiceImpl
 import com.example.myspeechy.services.lesson.ReadingLessonServiceImpl
 import com.example.myspeechy.services.lesson.RegularLessonServiceImpl
 import dagger.Module
@@ -21,6 +22,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 
 @Module
 @InstallIn(ViewModelComponent::class)
@@ -71,16 +73,24 @@ object ViewModelModule {
         return MeditationStatsServiceImpl()
     }
     @Provides
-    fun provideChatsService(): ChatsServiceImpl {
+    fun provideChatsServiceImpl(): ChatsServiceImpl {
         return ChatsServiceImpl()
     }
     @Provides
-    fun providePublicChatService(): PublicChatServiceImpl {
+    fun providePublicChatServiceImpl(): PublicChatServiceImpl {
         return PublicChatServiceImpl()
     }
     @Provides
-    fun providePrivateChatService(): PrivateChatServiceImpl {
+    fun providePrivateChatServiceImpl(): PrivateChatServiceImpl {
         return PrivateChatServiceImpl()
+    }
+    @Provides
+    fun provideUserProfileServiceImpl(): UserProfileServiceImpl {
+        return UserProfileServiceImpl()
+    }
+    @Provides
+    fun provideFilesDir(@ApplicationContext context: Context): File {
+        return context.filesDir
     }
     @Provides
     fun provideListenErrorToast(@ApplicationContext context: Context): Toast {
