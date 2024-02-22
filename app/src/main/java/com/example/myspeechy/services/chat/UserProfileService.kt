@@ -1,29 +1,33 @@
 package com.example.myspeechy.services.chat
 
 import androidx.core.net.toUri
+import com.example.myspeechy.data.chat.Chat
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.ktx.storage
 import java.io.File
+import java.util.UUID
 
 enum class PictureStorageError {
     USING_DEFAULT_PROFILE_PICTURE,
-    OBJECT_DOES_NOT_EXIST_AT_LOCATION
+    OBJECT_DOES_NOT_EXIST_AT_LOCATION,
+    PICTURE_MUST_BE_LESS_THAN_2_MB_IN_SIZE
 }
 
 private val database = Firebase.database.reference
 private val storage = Firebase.storage.reference
-interface UserProfileService {
-    private val usersRef: DatabaseReference
-        get() = database.child("users")
-    private val picsRef: StorageReference
-        get() = storage.child("profilePics")
+class UserProfileServiceImpl {
+    private val usersRef = database.child("users")
+    private val picsRef = storage.child("profilePics")
+    val userId = Firebase.auth.currentUser!!.uid
+    private var picListener: ValueEventListener? = null
+    private var infoListener: ValueEventListener? = null
+    private var nameListener: ValueEventListener? = null
     private fun listener(
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit): ValueEventListener {
@@ -39,77 +43,125 @@ interface UserProfileService {
     fun usernameListener(
         id: String,
         onCancelled: (Int) -> Unit,
-        onDataReceived: (DataSnapshot) -> Unit) {
-        usersRef.child(id)
+        onDataReceived: (DataSnapshot) -> Unit,
+        remove: Boolean) {
+        val ref = usersRef.child(id)
             .child("name")
-            .addValueEventListener(listener(onCancelled, onDataReceived))
+        if (remove && nameListener != null) {
+            ref.removeEventListener(nameListener!!)
+        } else {
+            nameListener = listener(onCancelled, onDataReceived)
+            ref.addValueEventListener(nameListener!!)
+        }
     }
     fun userInfoListener(id: String,
                          onCancelled: (Int) -> Unit,
-                         onDataReceived: (DataSnapshot) -> Unit) {
-        usersRef.child(id)
+                         onDataReceived: (DataSnapshot) -> Unit,
+                         remove: Boolean) {
+        val ref = usersRef.child(id)
             .child("info")
-            .addValueEventListener(listener(onCancelled, onDataReceived))
+        if (remove && infoListener != null) {
+            ref.removeEventListener(infoListener!!)
+        } else {
+            infoListener = listener(onCancelled, onDataReceived)
+            ref.addValueEventListener(infoListener!!)
+        }
     }
     fun userPictureListener(id: String,
                             file: File,
+                            onDirCreate: () -> Unit,
                             onCancelled: (Int) -> Unit,
                             onStorageFailure: (String) -> Unit,
-                            onPicReceived: () -> Unit) {
-        usersRef
+                            onPicReceived: () -> Unit,
+                            remove: Boolean) {
+        val ref = usersRef
             .child(id)
             .child("profilePicUpdated")
-            .addValueEventListener(listener(onCancelled) { name ->
-                val picName = name.getValue<String>()
-                if (!picName.isNullOrEmpty()) {
+        if (remove && picListener != null) {
+            ref.removeEventListener(picListener!!)
+        } else {
+            picListener = listener(onCancelled) { name ->
+                val picName = "$userId.jpg"
+                if (!name.getValue<String>().isNullOrEmpty()) {
+                    if (!file.exists()) {
+                        onDirCreate()
+                        file.createNewFile()
+                    }
                     picsRef.child(id)
-                        .child(picName).getFile(file)
-                        .addOnSuccessListener { it.storage.getFile(file)
-                        onPicReceived()
+                        .child("normalQuality")
+                        .child(picName)
+                        .getFile(file)
+                        .addOnSuccessListener {
+                            it.storage.getFile(file).addOnSuccessListener {
+                            onPicReceived()
+                        }
+                            .addOnFailureListener {onStorageFailure(it.message ?: "")}
                         }
                         .addOnFailureListener { onStorageFailure(it.message ?: "")}
                 } else {
                     onStorageFailure(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
                 }
-            })
+            }
+            ref.addValueEventListener(picListener!!)
+        }
     }
-    fun uploadUserPicture(id: String,
-                       file: File,
-                       onSuccess: () -> Unit) {
-        picsRef.child(id)
-            .child("$id.jpg")
+    fun uploadUserPicture(file: File,
+                          lowQuality: Boolean,
+                          onError: (String) -> Unit,
+                          onSuccess: () -> Unit) {
+        picsRef.child(userId)
+            .child(if (lowQuality) "lowQuality" else "normalQuality")
+            .child("$userId.jpg")
             .putFile(file.toUri())
             .addOnSuccessListener {
-                usersRef.child(id)
-                    .child("profilePicUpdated").setValue("$id.jpg").addOnSuccessListener {
+                usersRef.child(userId)
+                    .child("profilePicUpdated").setValue(UUID.randomUUID().toString()).addOnSuccessListener {
                         onSuccess()
                     }
+                    .addOnFailureListener { onError(it.message ?: "") }
             }
+            .addOnFailureListener {
+                onError(it.message ?: "")}
     }
-    fun removeUserPicture(id: String,
+    fun removeUserPicture(lowQuality: Boolean,
+        onError: (String) -> Unit,
                           onSuccess: (String) -> Unit) {
-        picsRef.child(id)
-            .child("$id.jpg")
+        picsRef.child(userId)
+            .child(if (lowQuality) "lowQuality" else "normalQuality")
+            .child("$userId.jpg")
             .delete()
             .addOnSuccessListener {
-                usersRef.child(id)
+                usersRef.child(userId)
                     .child("profilePicUpdated")
                     .removeValue().addOnSuccessListener {
                         onSuccess(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
-                    }
+                    }.addOnFailureListener { onError(it.message ?: "") }
             }
     }
-    fun changeUsername(id: String,
-                              newName: String) {
-        usersRef.child(id)
+    fun changeUsername(newName: String, onSuccess: () -> Unit) {
+        usersRef.child(userId)
             .child("name")
             .setValue(newName)
+        usersRef.child(userId)
+            .child("private_chats")
+            .get().addOnSuccessListener { chatIds ->
+                (chatIds.value as Map<String, Boolean>).keys.forEach{chatId ->
+                    val otherUserId = chatId.split("_").first { it != userId }
+                    val chatRef = database.child("private_chats")
+                        .child(otherUserId)
+                        .child(chatId)
+                    chatRef.get().addOnSuccessListener { chat ->
+                            chatRef.setValue(chat.getValue<Chat>()!!.copy(title = newName))
+                                .addOnSuccessListener { onSuccess() }
+                        }
+                        .addOnFailureListener {  }
+                }
+            }
     }
-    fun changeUserInfo(id: String,
-                       newInfo: String) {
-        usersRef.child(id)
+    fun changeUserInfo(newInfo: String, onSuccess: () -> Unit) {
+        usersRef.child(userId)
             .child("info")
             .setValue(newInfo)
+            .addOnSuccessListener { onSuccess() }
     }
 }
-class UserProfileServiceImpl: UserProfileService

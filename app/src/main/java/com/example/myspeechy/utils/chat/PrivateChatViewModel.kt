@@ -23,76 +23,89 @@ open class PrivateChatViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PrivateChatUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
-    private val otherUserId = chatId.split("_").filter { id -> id != userId }[0]
-    val chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)
+    val otherUserId = chatId.split("_").filter { id -> id != userId }[0]
 
-    init {
-        chatServiceImpl.usernameListener(otherUserId, {}) {otherUsername ->
-            _uiState.update {
-                it.copy(chat = it.chat.copy(title = otherUsername.getValue<String>() ?: ""))
-            }
+    fun startOrStopListening(removeListeners: Boolean) {
+        if (!removeListeners) {
+            _uiState.update { it.copy(chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)) }
         }
-        listenForCurrentChat()
-        listenForMessages()
-        listenForProfilePic()
+        listenForCurrentChat(removeListeners)
+        listenForMessages(removeListeners)
+        listenForProfilePic(removeListeners)
+        listenForUsername(removeListeners)
     }
-    private fun listenForProfilePic() {
+
+    private fun listenForUsername(remove: Boolean) {
+        chatServiceImpl.usernameListener(userId, {}, {username ->
+            val name = username.getValue<String>() ?: ""
+            val messages = _uiState.value.messages.toMutableMap()
+            messages.forEach { if (it.value.sender == userId) it.value.senderUsername = name}
+            _uiState.update {
+                it.copy(messages = messages.toMap(), currUsername = name)
+            }
+        }, remove)
+    }
+
+    private fun listenForProfilePic(remove: Boolean) {
         chatServiceImpl.chatProfilePictureListener(otherUserId, filesDir.path, {}, {m ->
-            _uiState.update { it.copy(storageErrorMessage = m) }
-        }) {
-            _uiState.update { it.copy(storageErrorMessage = "") }
-        }
+            _uiState.update { it.copy(storageErrorMessage = m, chatPic = null) }
+        }, {
+            _uiState.update { it.copy(storageErrorMessage = "", chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)) }
+        }, remove)
     }
-    private fun listenForMessages() {
-        chatServiceImpl.messagesListener(chatId, {errorCode ->
-            _uiState.update {
-                it.copy(errorCode = errorCode)
-            } }) {messages ->
-            for (snapshot in messages) {
-                val messageId = snapshot.key!!
-                val messageContent = snapshot.getValue<Message>() ?: Message()
-                    chatServiceImpl.usernameListener(messageContent.sender, {}) {senderUserName ->
-                        val newMessages = _uiState.value.messages.toMutableMap()
-                        //Update only those messages that's content has changed or is empty
-                        if (newMessages[messageId]?.text != messageContent.text ||
-                            newMessages[messageId]?.text.isNullOrEmpty()) {
-                            newMessages[messageId] = messageContent
-                                .copy(senderUsername = senderUserName.getValue<String>() ?: "")
-                            _uiState.update {
-                                it.copy(messages = newMessages, errorCode = 0)
-                            }
-                        }
-                    }
-            }
-        }
+    private fun listenForMessages(remove: Boolean) {
+        chatServiceImpl.messagesListener(chatId,
+            onAdded = {m ->
+                _uiState.update { it.copy(it.messages + m) }
+            },
+            onChanged = {m ->
+                _uiState.update { it.copy(messages = it.messages.toMutableMap().apply { this[m.keys.first()] = m.values.first()})}
+            },
+            onRemoved = {m ->
+                        _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
+            },
+            onCancelled = {updateErrorCode(it)
+                          if (it == -3) {
+                              _uiState.update { it.copy(messages = mapOf()) }
+                          }
+                          },
+            remove)
     }
-    private fun listenForCurrentChat() {
-        chatServiceImpl.chatListener(chatId, {}) {chat ->
+    private fun listenForCurrentChat(remove: Boolean) {
+        chatServiceImpl.chatListener(chatId, {updateErrorCode(it)}, {chat ->
             val value = chat.getValue<Chat>()
             if (value != null) {
                 _uiState.update {
                     it.copy(chat = value)
                 }
             }
-        }
+        }, remove)
     }
     fun sendMessage(text: String) {
         //If error code is -3, the user has not jet joined a chat
         if (_uiState.value.errorCode == -3) {
+
             chatServiceImpl.joinChat(chatId)
             /*Call listener again because if there was an error,
             the previous one was cancelled*/
-            listenForMessages()
+            listenForMessages(true)
+            listenForMessages(false)
         }
         val chatTitle = _uiState.value.chat.title
-        val timestamp = chatServiceImpl.sendMessage(chatId, chatTitle, text)
+        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
         chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
+    }
+    private fun updateErrorCode(code: Int) {
+        _uiState.update { it.copy(errorCode = code) }
     }
 
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
+        val chatPic: File? = null,
+        val currUsername: String = "",
         val storageErrorMessage: String = "",
-        val errorCode: Int = 0
+        val errorCode: Int = 0,
+        val removeListeners: Boolean = false
     )
 }

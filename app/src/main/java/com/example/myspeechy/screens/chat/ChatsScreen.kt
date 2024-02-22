@@ -1,24 +1,20 @@
 package com.example.myspeechy.screens.chat
 
 import android.graphics.BitmapFactory
-import android.util.Log
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -27,6 +23,8 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -69,12 +67,12 @@ import com.example.myspeechy.screens
 import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.utils.chat.ChatsViewModel
 import kotlinx.coroutines.delay
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 
 @Composable
-fun ChatsScreen(navController: NavHostController = rememberNavController()) {
+fun ChatsScreen(
+    navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
         ?.route in screens.map { it.route }
@@ -83,31 +81,30 @@ fun ChatsScreen(navController: NavHostController = rememberNavController()) {
             navBar[showNavBarDataStore] = showNavBar
         }
     }
-    NavHost(navController = navController, startDestination = NavScreens.ChatsScreen.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None }
-    ) {
-        composable(NavScreens.ChatsScreen.route) {
-            ChatsColumn(navController)
-        }
-        composable("chats/{type}/{chatId}",
-            arguments = listOf(
-                navArgument("type") {type = NavType.StringType},
-                navArgument("chatId") {type = NavType.StringType}),
-            enterTransition = {slideIntoContainer(towards = AnimatedContentTransitionScope.SlideDirection.End,
-                tween(500))},
-            exitTransition = {slideOutOfContainer(towards = AnimatedContentTransitionScope.SlideDirection.End,
-            tween(500))}
-        ) {backStackEntry ->
-            if (backStackEntry.arguments!!.getString("type") == "public") {
-                PublicChatScreen(navController)
-            } else {
-                PrivateChatScreen(navController)
+    Surface {
+        NavHost(navController = navController, startDestination = NavScreens.ChatsScreen.route,
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            composable(NavScreens.ChatsScreen.route) {
+                ChatsColumn(navController)
             }
-        }
-        composable("userProfile/{userId}",
-            arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
-            UserProfileScreen {navController.navigateUp()}
+            composable("chats/{type}/{chatId}",
+                arguments = listOf(
+                    navArgument("type") {type = NavType.StringType},
+                    navArgument("chatId") {type = NavType.StringType}),
+            ) {backStackEntry ->
+                if (backStackEntry.arguments!!.getString("type") == "public") {
+                    PublicChatScreen(navController)
+                } else {
+                    PrivateChatScreen(navController)
+                }
+            }
+            composable("userProfile/{userId}",
+                arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
+                UserProfileScreen {navController.navigateUp()}
+            }
         }
     }
 }
@@ -127,7 +124,14 @@ fun ChatsColumn(navController: NavHostController,
         delay(400)
         viewModel.searchForChat(chatSearchTitle)
     }
-    Column {
+    LaunchedEffect(Unit) {
+        viewModel.startOrStopListening(false)
+    }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.onPrimaryContainer)
+    ) {
         Row(Modifier.fillMaxWidth()) {
             TextField(value = chatSearchTitle,
                 maxLines = 1,
@@ -135,19 +139,29 @@ fun ChatsColumn(navController: NavHostController,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {focusManager.clearFocus()}
+                    onDone = { focusManager.clearFocus() }
                 ),
-                suffix = {if (chatSearchTitle.isNotEmpty())  IconButton(onClick = { chatSearchTitle = "" }) {
-                    Icon(imageVector = Icons.Filled.Clear, contentDescription = null,
-                        modifier = Modifier.size(30.dp))
-                }},
+                suffix = {
+                    if (chatSearchTitle.isNotEmpty()) IconButton(onClick = {
+                        chatSearchTitle = ""
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear, contentDescription = null,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                },
                 onValueChange = {
                     chatSearchTitle = it
                 }, modifier = Modifier
                     .focusRequester(focusRequester)
             )
             IconButton(onClick = { navController.navigate("userProfile/${viewModel.userId}") }) {
-                Icon(Icons.Filled.AccountBox, contentDescription = null)
+                Icon(
+                    Icons.Filled.AccountBox,
+                    tint = MaterialTheme.colorScheme.primary,
+                    contentDescription = null
+                )
             }
         }
         if (uiState.searchedChat.values.isNotEmpty()) {
@@ -172,12 +186,14 @@ fun ChatsColumn(navController: NavHostController,
                                     "hh:mm:ss"
                                 ).format(Date(searchedChat.timestamp)),
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(0.5f))
+                                modifier = Modifier.weight(0.5f)
+                            )
                             Spacer(modifier = Modifier.weight(0.1f))
                             Text(
                                 searchedChat.lastMessage,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(0.5f))
+                                modifier = Modifier.weight(0.5f)
+                            )
                         }
                     }
                 }
@@ -185,7 +201,10 @@ fun ChatsColumn(navController: NavHostController,
         }
         LazyColumn(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 9.dp)
         ) {
             val chatsKeys = uiState.chats.keys.toList()
             val chatsValues = uiState.chats.values.toList()
@@ -193,50 +212,66 @@ fun ChatsColumn(navController: NavHostController,
                 if (chatsValues[i] != null) {
                     val currChat = chatsValues[i]!!
                     ElevatedButton(
-                        onClick = { navController.navigate("chats/${currChat.type}/${chatsKeys[i]}") },
+                        onClick = {
+                            viewModel.startOrStopListening(true)
+                            navController.navigate("chats/${currChat.type}/${chatsKeys[i]}")
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row {
+                        Row{
                             if (currChat.type == "private") {
-                                val otherUserId = chatsKeys[i]?.split("_")?.first { it != viewModel.userId }
+                                val otherUserId =
+                                    chatsKeys[i]?.split("_")?.first { it != viewModel.userId }
                                 val picRef = viewModel.getChatPic(otherUserId ?: "")
-                                val decodedPic = BitmapFactory.decodeFile(picRef.path)
-                                if (decodedPic != null) {
-                                    Image(
-                                        bitmap = decodedPic.asImageBitmap(),
-                                        contentScale = ContentScale.Crop,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(chatPicSize)
-                                            .clip(CircleShape))
-                                } else {
-                                    Image(painter = painterResource(R.drawable.user),
-                                        contentScale = ContentScale.Crop,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(chatPicSize)
-                                            .clip(CircleShape))
+                                val decodedPic by remember {
+                                    mutableStateOf(BitmapFactory.decodeFile(picRef.path))
                                 }
-                            }
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    currChat.title,
-                                    overflow = TextOverflow.Ellipsis)
-                                Row(horizontalArrangement = Arrangement.SpaceBetween) {
+                                    if (decodedPic != null) {
+                                        Image(
+                                            bitmap = decodedPic.asImageBitmap(),
+                                            contentScale = ContentScale.Crop,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(chatPicSize)
+                                                .clip(CircleShape))
+                                    }
+                                    else {
+                                        Image(
+                                            painter = painterResource(R.drawable.user),
+                                            contentScale = ContentScale.Crop,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(chatPicSize)
+                                                .clip(CircleShape))
+                                    }
+                                    }
+                                }
+                                Column(modifier = Modifier.padding(start = 10.dp)) {
                                     Text(
-                                        SimpleDateFormat("hh:mm:ss").format(Date(currChat.timestamp)),
-                                        modifier = Modifier.weight(0.5f))
-                                    Spacer(modifier = Modifier.weight(0.1f))
-                                    Text(
-                                        currChat.lastMessage,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(0.8f))
+                                        currChat.title,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Row(horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text(
+                                            SimpleDateFormat("hh:mm:ss").format(Date(currChat.timestamp)),
+                                            modifier = Modifier.weight(0.5f)
+                                        )
+                                        Text(
+                                            currChat.lastMessage,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        DisposableEffect(Unit) {
+            onDispose {
+                viewModel.startOrStopListening(true)
+            }
         }
-    }
 }
