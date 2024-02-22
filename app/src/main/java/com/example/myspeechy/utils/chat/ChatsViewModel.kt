@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.services.chat.ChatsServiceImpl
@@ -21,36 +22,80 @@ class ChatsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChatsUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatsService.userId
-    init {
-        chatsService.membershipListener({}) {membership ->
-            if (membership.value != null) {
-                (membership.value as Map<String, Map<String, String>>).keys.forEach { chatId ->
-                    chatsService.chatsListener(chatId, {}) {chat ->
-                    _uiState.update {
-                        it.copy(chats = it.chats + mapOf(chatId to chat.getValue<Chat>()?.copy(type = "public")))
-                    }
-                }
+    fun startOrStopListening(removeListeners: Boolean) {
+        listenForPublicChats(removeListeners)
+        listenForPrivateChats(removeListeners)
+    }
+    private fun listenForPublicChats(remove: Boolean) {
+        if (remove) {
+            _uiState.value.chats.forEach {
+                if (it.value!!.type == "public") {
+                    publicChatListener(it.key!!, true)
                 }
             }
         }
-    listenForPrivateChats()
+        chatsService.publicChatsStateListener(
+            onAdded = {chatId ->
+                publicChatListener(chatId, remove)
+            },
+            onChanged = {},
+            onRemoved = {chatId ->
+                publicChatListener(chatId, true)
+                _uiState.value.chats.forEach { publicChatListener(it.key!!, true) }
+            },
+            onCancelled = {},
+            remove
+        )
     }
-    fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getChatPic(filesDir.path, otherUserId)
-    private fun listenForPrivateChats() {
-        chatsService.privateChatsListener({}) {chats ->
+    private fun publicChatListener(chatId: String, remove: Boolean) {
+        chatsService.publicChatListener(chatId,
+            {chat ->
+                _uiState.update { it.copy(chats = it.chats.toMutableMap().apply { this[chat.key] = chat.getValue<Chat>()}) }
+            },
+            onCancelled = {},
+            remove)
+    }
+    private fun listenForPrivateChats(remove: Boolean) {
+        if (remove) {
+            _uiState.value.chats.forEach {
+                if (it.value!!.type == "private") {
+                    privateChatListener(it.key!!, true)
+                }
+            }
+        }
+        chatsService.privateChatsStateListener(
+            onAdded = {chatId ->
+                privateChatListener(chatId, remove)
+            },
+            onChanged = {},
+            onRemoved = {chatId ->
+                privateChatListener(chatId, true)
+                _uiState.value.chats.forEach { privateChatListener(it.key!!, true) }
+            },
+            onCancelled = {},
+            remove
+        )
+    }
+    private fun privateChatListener(chatId: String, remove: Boolean) {
+        chatsService.privateChatListener(chatId,
+            {chat ->
+                //Log.d("PRIVATE CHAT", chat.toString())
+                _uiState.update { it.copy(chats = it.chats.toMutableMap().apply { this[chat.key] = chat.getValue<Chat>()}) }
+            },
+            onCancelled = {},
+            remove)
+    }
+
+   /* private fun listenForPrivateChats(remove: Boolean) {
+        chatsService.privateChatsStateListener({}, { chats ->
             val chatsMap = chats.getValue<Map<String, Chat>>()
             chatsMap?.keys?.forEach { key ->
-                val otherUserId = key.split("_").first { it != userId }
-                privateChatServiceImpl.chatProfilePictureListener(otherUserId, filesDir.path, {}, { m ->
-                    _uiState.update { it.copy(storageErrorMessage = m) } }) {
-                    _uiState.update { it.copy(storageErrorMessage = "") }
-                }
                 _uiState.update {
                     it.copy(chats = it.chats + mapOf(key to chatsMap[key]?.copy(type = "private")))
                 }
             }
-        }
-    }
+        }, remove)
+    }*/
 
     fun searchForChat(title: String) {
         chatsService.searchChatByTitle(title, {}) {chat ->
@@ -59,7 +104,7 @@ class ChatsViewModel @Inject constructor(
                 val key = chatMap!!.keys.first()
                 _uiState.update {
                     it.copy(searchedChat = mapOf(
-                        key to chatMap[key]))
+                        key to (chatMap[key] ?: Chat())))
                 }
             } else {
                 _uiState.update {
@@ -68,9 +113,10 @@ class ChatsViewModel @Inject constructor(
             }
         }
     }
+    fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getChatPic(filesDir.path, otherUserId)
 
     data class ChatsUiState(
-        val searchedChat: Map<String?, Chat?> = mapOf(),
+        val searchedChat: Map<String, Chat> = mapOf(),
         val chats: Map<String?, Chat?> = mapOf(),
         val storageErrorMessage: String = ""
     )

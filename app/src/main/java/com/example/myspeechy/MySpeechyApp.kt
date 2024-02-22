@@ -6,27 +6,34 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.Scaffold
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +57,11 @@ import com.example.myspeechy.screens.AuthScreen
 import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationStatsScreen
 import com.example.myspeechy.screens.chat.ChatsScreen
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore("NavBar")
 val showNavBarDataStore = booleanPreferencesKey("showNavBar")
@@ -66,20 +75,20 @@ val screens = listOf(NavScreens.Main, NavScreens.Stats, NavScreens.ChatsScreen)
 
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
-    val startDestination = if (Firebase.auth.currentUser == null) "auth" else NavScreens.Main.route
+    val startDestination = if (FirebaseAuth.getInstance().currentUser == null) "auth" else NavScreens.Main.route
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currDestination = navBackStackEntry?.destination
     var showNavBar by remember {
-        mutableStateOf(true)
+        mutableStateOf(false)
     }
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         context.dataStore.edit {navBar ->
-            navBar[showNavBarDataStore] = startDestination != "auth"
-        }
+                navBar[showNavBarDataStore] = startDestination != "auth"
+            }
         context.dataStore.data.collectLatest {
-            showNavBar = it[showNavBarDataStore] ?: true
-        }
+                showNavBar = it[showNavBarDataStore] ?: false
+            }
     }
     Scaffold(
         bottomBar = {
@@ -87,7 +96,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                 enter = slideInVertically()
                         + expandVertically(expandFrom = Alignment.Top) + fadeIn(initialAlpha = 0.3f),
                 exit = shrinkVertically()
-                ) {
+            ){
                 BottomNavigation {
                     screens.forEach { screen ->
                         val selected = currDestination?.route == screen.route
@@ -119,39 +128,40 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
             }
         }
     ) { innerPadding ->
-            NavHost(
-                navController, startDestination,
-                enterTransition = { EnterTransition.None },
-                exitTransition = { ExitTransition.None },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                composable(NavScreens.Main.route,
-                    enterTransition = { slideIntoContainer(
-                        animationSpec = tween(500),
-                        towards = AnimatedContentTransitionScope
-                            .SlideDirection.End)}) {
-                    MainScreen()
-                }
-                composable(NavScreens.Stats.route,
-                    enterTransition = {slideIntoContainer(
-                        animationSpec = tween(500),
-                        towards = AnimatedContentTransitionScope
-                            .SlideDirection.End)}) {
-                    MeditationStatsScreen()
-                }
-                composable(NavScreens.ChatsScreen.route,
-                    enterTransition = {slideIntoContainer(
-                        animationSpec = tween(500),
-                        towards = AnimatedContentTransitionScope
-                            .SlideDirection.End)}) {
-                    ChatsScreen()
-                }
-                composable("auth") {
-                    AuthScreen(onNavigateToMain = {
-                        navController.navigate(NavScreens.Main.route) { popUpTo(0) }
-                    })
+            Surface(modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background) {
+                NavHost(
+                    navController, startDestination,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    composable(NavScreens.Main.route,
+                        enterTransition = { slideIntoContainer(
+                            animationSpec = tween(500),
+                            towards = AnimatedContentTransitionScope
+                                .SlideDirection.End)}) {
+                        MainScreen()
+                    }
+                    composable(NavScreens.Stats.route,
+                        enterTransition = {slideIntoContainer(
+                            animationSpec = tween(700),
+                            towards = AnimatedContentTransitionScope
+                                .SlideDirection.End)}) {
+                        MeditationStatsScreen()
+                    }
+                    composable(NavScreens.ChatsScreen.route,
+                        enterTransition = { slideIntoContainer(
+                            animationSpec = tween(700),
+                            towards = AnimatedContentTransitionScope
+                                .SlideDirection.End)}) {
+                        ChatsScreen()
+                    }
+                    composable("auth") {
+                        AuthScreen(onNavigateToMain = {
+                            navController.navigate(NavScreens.Main.route) { popUpTo(0) }
+                        })
+                    }
                 }
             }
     }

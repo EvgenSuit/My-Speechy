@@ -54,7 +54,7 @@ android {
 dependencies {
     val room_version = "2.6.1"
     val hilt_version = "2.50"
-    implementation("androidx.compose.material:material:1.6.0")
+    implementation("androidx.compose.material:material:1.7.0-alpha01")
     //Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth")
@@ -94,7 +94,7 @@ dependencies {
 
     implementation("androidx.work:work-runtime-ktx:2.7.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.2")

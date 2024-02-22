@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,38 +83,48 @@ fun AuthScreen(
     val painter = rememberAsyncImagePainter(R.raw.auth_page_background, imageLoader)
     val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
-        snackbarHost = {SnackbarHost(hostState = snackbarHostState)}
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { contentPadding ->
-        Box(
-            modifier = Modifier.padding(contentPadding)
-        ) {
-            Image(painter = painter,
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier.fillMaxSize(),
-                contentDescription = null)
-
-            if (painter.state is AsyncImagePainter.State.Loading) {
-                Box(modifier = Modifier
-                    .background(Color.White)
-                    .fillMaxSize()) {
-                    CircularProgressIndicator(
-                        color = Color.Black,
-                        modifier = Modifier.align(Alignment.Center))
+            Box(
+                modifier = Modifier.padding(contentPadding)
+            ) {
+                Image(
+                    painter = painter,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
+                    contentDescription = null
+                )
+                Column(modifier = Modifier
+                    .padding(contentPadding)
+                    .verticalScroll(rememberScrollState())
+                    .align(Alignment.Center),/*
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center*/) {
+                    if (painter.state is AsyncImagePainter.State.Loading) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.White)
+                                .fillMaxSize()
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color.Black,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                    if (painter.state is AsyncImagePainter.State.Success) {
+                        MainBox(
+                            onNavigateToMain = onNavigateToMain,
+                            imageLoader = imageLoader,
+                            snackbarHostState,
+                            modifier = Modifier
+                                //.align(Alignment.Center)
+                        )
+                    }
+                }
                 }
             }
-            if (painter.state is AsyncImagePainter.State.Success) {
-                MainBox(
-                    onNavigateToMain = onNavigateToMain,
-                    imageLoader = imageLoader,
-                    snackbarHostState,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                )
-
-            }
-        }
     }
-}
 
 @Composable
 fun MainBox(onNavigateToMain: () -> Unit,
@@ -140,7 +152,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
         .width(dimensionResource(id = R.dimen.auth_components_width)))
-
     {
         Column (
             modifier = Modifier
