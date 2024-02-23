@@ -1,9 +1,13 @@
 package com.example.myspeechy.utils.chat
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +15,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,10 +32,11 @@ open class PrivateChatViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
     val otherUserId = chatId.split("_").filter { id -> id != userId }[0]
+    val picRef = File("$filesDir/profilePics/$otherUserId/lowQuality/$otherUserId.jpg")
 
     fun startOrStopListening(removeListeners: Boolean) {
         if (!removeListeners) {
-            _uiState.update { it.copy(chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)) }
+            _uiState.update { it.copy(picPath = picRef.path) }
         }
         listenForCurrentChat(removeListeners)
         listenForMessages(removeListeners)
@@ -48,9 +57,17 @@ open class PrivateChatViewModel @Inject constructor(
 
     private fun listenForProfilePic(remove: Boolean) {
         chatServiceImpl.chatProfilePictureListener(otherUserId, filesDir.path, {}, {m ->
-            _uiState.update { it.copy(storageErrorMessage = m, chatPic = null) }
+            updateStorageErrorMessage(m)
+            val errorMessage = _uiState.value.storageErrorMessage
+            Log.d("ERROR", errorMessage)
+            if (PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name.contains(errorMessage) ||
+                PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name.contains(errorMessage)) {
+                _uiState.update { it.copy(picPath = null, picId = UUID.randomUUID().toString()) }
+            }
+            picRef.delete()
+            _uiState.update { it.copy(storageErrorMessage = m, picPath = null, picId = UUID.randomUUID().toString()) }
         }, {
-            _uiState.update { it.copy(storageErrorMessage = "", chatPic = chatServiceImpl.getChatPic(filesDir.path, otherUserId)) }
+            _uiState.update { it.copy(storageErrorMessage = "", picPath = picRef.path, picId = UUID.randomUUID().toString()) }
         }, remove)
     }
     private fun listenForMessages(remove: Boolean) {
@@ -95,6 +112,10 @@ open class PrivateChatViewModel @Inject constructor(
         val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
         chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
     }
+    private fun updateStorageErrorMessage(e: String) {
+        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(
+            Locale.ROOT).dropLast(1)) }
+    }
     private fun updateErrorCode(code: Int) {
         _uiState.update { it.copy(errorCode = code) }
     }
@@ -102,7 +123,8 @@ open class PrivateChatViewModel @Inject constructor(
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
-        val chatPic: File? = null,
+        val picPath: String? = null,
+        val picId: String = "",
         val currUsername: String = "",
         val storageErrorMessage: String = "",
         val errorCode: Int = 0,

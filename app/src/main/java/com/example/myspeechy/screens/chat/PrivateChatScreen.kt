@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens.chat
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,9 +40,8 @@ import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.utils.chat.PrivateChatViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun PrivateChatScreen(navController: NavHostController,
@@ -53,13 +52,12 @@ fun PrivateChatScreen(navController: NavHostController,
         mutableStateOf("")
     }
     val chatPicSize = dimensionResource(R.dimen.chat_pic_size)
-    val decodedPic by remember(uiState.chatPic) {
-        mutableStateOf(BitmapFactory.decodeFile(uiState.chatPic?.path))
-    }
-
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
+    }
+    val decodedPic by rememberSaveable(uiState.picId) {
+        mutableStateOf(if (viewModel.picRef.exists()) BitmapFactory.decodeFile(viewModel.picRef.path) else null)
     }
     Column(modifier = Modifier
         .background(MaterialTheme.colorScheme.onPrimaryContainer)
@@ -88,7 +86,8 @@ fun PrivateChatScreen(navController: NavHostController,
                             .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") })
                 }
             }
-            MessagesColumn(viewModel.userId, listState, uiState.messages, Modifier.weight(1f)) {chatId ->
+            MessagesColumn(viewModel.userId, listState, uiState.messages,
+                LocalContext.current.filesDir.path, Modifier.weight(1f)) {chatId ->
                 navController.navigate("chats/private/$chatId")
             }
             BottomRow(textFieldValue, onFieldValueChange = {textFieldValue = it},

@@ -22,7 +22,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
+import es.dmoral.toasty.Toasty
 import java.io.File
+import javax.inject.Named
 
 @Module
 @InstallIn(ViewModelComponent::class)
@@ -93,8 +95,14 @@ object ViewModelModule {
         return context.filesDir
     }
     @Provides
+    @Named("ProfilePictureSizeError")
+    fun provideProfilePictureSizeError(@ApplicationContext context: Context): Toast {
+        return Toasty.error(context, "Picture must be less than 2 mb in size", Toast.LENGTH_LONG, true)
+    }
+
+    @Provides
     fun provideListenErrorToast(@ApplicationContext context: Context): Toast {
-        return Toast.makeText(context, "Error listening to remote data", Toast.LENGTH_SHORT)
+        return Toasty.error(context, "Error listening to remote data", Toast.LENGTH_LONG, true)
     }
     @Provides
     fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):

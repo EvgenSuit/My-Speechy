@@ -1,6 +1,5 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.services.chat.ChatsServiceImpl
@@ -79,24 +78,11 @@ class ChatsViewModel @Inject constructor(
     private fun privateChatListener(chatId: String, remove: Boolean) {
         chatsService.privateChatListener(chatId,
             {chat ->
-                //Log.d("PRIVATE CHAT", chat.toString())
                 _uiState.update { it.copy(chats = it.chats.toMutableMap().apply { this[chat.key] = chat.getValue<Chat>()}) }
             },
             onCancelled = {},
             remove)
     }
-
-   /* private fun listenForPrivateChats(remove: Boolean) {
-        chatsService.privateChatsStateListener({}, { chats ->
-            val chatsMap = chats.getValue<Map<String, Chat>>()
-            chatsMap?.keys?.forEach { key ->
-                _uiState.update {
-                    it.copy(chats = it.chats + mapOf(key to chatsMap[key]?.copy(type = "private")))
-                }
-            }
-        }, remove)
-    }*/
-
     fun searchForChat(title: String) {
         chatsService.searchChatByTitle(title, {}) {chat ->
             if (chat.value != null) {
@@ -113,7 +99,7 @@ class ChatsViewModel @Inject constructor(
             }
         }
     }
-    fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getChatPic(filesDir.path, otherUserId)
+    fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDir.path, otherUserId)
 
     data class ChatsUiState(
         val searchedChat: Map<String, Chat> = mapOf(),
