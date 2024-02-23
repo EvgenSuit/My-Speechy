@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -50,7 +51,8 @@ fun PublicChatScreen(navController: NavHostController,
                 Text(uiState.chat.title,
                     overflow = TextOverflow.Ellipsis)
             }
-            MessagesColumn(viewModel.userId, listState, uiState.messages, Modifier.weight(1f)){chatId ->
+            MessagesColumn(viewModel.userId, listState, uiState.messages,
+                LocalContext.current.filesDir.path, Modifier.weight(1f)){ chatId ->
                 navController.navigate("chats/private/$chatId")
             }
             if (!uiState.joined) {

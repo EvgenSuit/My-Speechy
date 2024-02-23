@@ -68,6 +68,7 @@ import com.example.myspeechy.ui.theme.lalezarFamily
 import com.example.myspeechy.utils.AuthViewModel
 import com.example.myspeechy.utils.isValidEmail
 import com.example.myspeechy.utils.meetsPasswordRequirements
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -81,13 +82,7 @@ fun AuthScreen(
             add(SvgDecoder.Factory())
         }.build()
     val painter = rememberAsyncImagePainter(R.raw.auth_page_background, imageLoader)
-    val snackbarHostState = remember { SnackbarHostState() }
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { contentPadding ->
-            Box(
-                modifier = Modifier.padding(contentPadding)
-            ) {
+    Box{
                 Image(
                     painter = painter,
                     contentScale = ContentScale.FillBounds,
@@ -95,11 +90,8 @@ fun AuthScreen(
                     contentDescription = null
                 )
                 Column(modifier = Modifier
-                    .padding(contentPadding)
                     .verticalScroll(rememberScrollState())
-                    .align(Alignment.Center),/*
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center*/) {
+                    .align(Alignment.Center)) {
                     if (painter.state is AsyncImagePainter.State.Loading) {
                         Box(
                             modifier = Modifier
@@ -115,23 +107,18 @@ fun AuthScreen(
                     if (painter.state is AsyncImagePainter.State.Success) {
                         MainBox(
                             onNavigateToMain = onNavigateToMain,
-                            imageLoader = imageLoader,
-                            snackbarHostState,
-                            modifier = Modifier
-                                //.align(Alignment.Center)
-                        )
+                            imageLoader = imageLoader)
                     }
                 }
                 }
             }
-    }
 
 @Composable
 fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
-            snackbarHostState: SnackbarHostState,
             modifier: Modifier = Modifier) {
     val viewModel: AuthViewModel = hiltViewModel()
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val coroutine = rememberCoroutineScope()
     val exceptionState by viewModel.exceptionState.collectAsState()
@@ -198,13 +185,13 @@ fun MainBox(onNavigateToMain: () -> Unit,
                            withContext(Dispatchers.Main) {
                                if (enabled) {
                                    focusManager.clearFocus()
-                                   snackbarHostState.showSnackbar("Signed Up")
+                                   Toasty.success(context, "Signed Up", Toast.LENGTH_LONG, true)
                                }
                            }
                        }
                    }
                }
-               GoogleAuthButton(viewModel, imageLoader, snackbarHostState) {
+               GoogleAuthButton(viewModel, imageLoader) {
                    onNavigateToMain()
                }
            }
@@ -215,8 +202,8 @@ fun MainBox(onNavigateToMain: () -> Unit,
 @Composable
 fun GoogleAuthButton(viewModel: AuthViewModel,
                      imageLoader: ImageLoader,
-                     snackbarHostState: SnackbarHostState,
                      onClick: () -> Unit) {
+    val context = LocalContext.current
     val painter = rememberAsyncImagePainter(R.raw.google_icon, imageLoader)
     val coroutine = rememberCoroutineScope()
     val launcher = rememberLauncherForActivityResult(
@@ -235,8 +222,8 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
         coroutine.launch {
             val signInIntentSender = viewModel.googleSignIn()
             if (signInIntentSender == null) {
-                snackbarHostState.showSnackbar("Error signing in with google, make sure to" +
-                        " add your account to the current device")
+                Toasty.error(context, "Error signing in with google, make sure to" +
+                        " add your account to the current device", Toast.LENGTH_LONG, true)
             } else {
                 launcher.launch(
                     IntentSenderRequest.Builder(

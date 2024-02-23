@@ -1,5 +1,6 @@
 package com.example.myspeechy.services.chat
 
+import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.google.firebase.auth.ktx.auth
@@ -16,7 +17,6 @@ import com.google.firebase.storage.ktx.storage
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.Locale
 import java.util.UUID
 import kotlin.io.path.notExists
 
@@ -27,6 +27,10 @@ interface ChatService {
         get() = Firebase.auth.currentUser!!.uid
     val messagesRef: DatabaseReference
         get() = database.child("messages")
+    val picsRef: StorageReference
+        get() = storage.child("profilePics")
+    val usersRef: DatabaseReference
+        get() = database.child("users")
     fun listener(
         onCancelled: (Int) -> Unit,
         onDataReceived: (List<DataSnapshot>) -> Unit): ValueEventListener {
@@ -96,6 +100,34 @@ interface ChatService {
                          remove: Boolean) {
 
     }
+    fun picListener(id: String,
+                    name: DataSnapshot,
+                    filesDir: String,
+                    onStorageFailure: (String) -> Unit,
+                    onPicReceived: () -> Unit) {
+        val picName = name.getValue<String>()
+        Log.d("PICNAME", picName.toString())
+        if (picName != null) {
+            val picDir = getPicDir(filesDir, id)
+            val file = getPic(filesDir, id)
+            if (!file.exists()) {
+                createPicDir(picDir)
+                file.createNewFile()
+            }
+            val picRef = File(picDir, "$id.jpg")
+            picsRef.child(id)
+                .child("lowQuality")
+                .child("$id.jpg")
+                .getFile(picRef)
+                .addOnSuccessListener {
+                    //insert picture into the file
+                    it.storage.getFile(picRef).addOnSuccessListener { onPicReceived() }
+                }
+                .addOnFailureListener {onStorageFailure(it.message?:"")}
+        } else {
+            onStorageFailure(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
+        }
+    }
 
     fun sendMessage(chatId: String, senderUsername: String, text: String): Long {
         val timestamp = System.currentTimeMillis()
@@ -104,10 +136,20 @@ interface ChatService {
                     .setValue(Message(userId, senderUsername, text, timestamp))
         return timestamp
     }
+    fun getPicDir(filesDir: String, otherUserId: String): String
+            = "${filesDir}/profilePics/$otherUserId/lowQuality"
+    fun getPic(filesDir: String, otherUserId: String): File {
+        val picDir = getPicDir(filesDir, otherUserId)
+        return File(picDir, "$otherUserId.jpg")
+    }
+    fun createPicDir(picDir: String) {
+        if (!Files.isDirectory(Paths.get(picDir))) {
+            Files.createDirectories(Paths.get(picDir))
+        }
+    }
 
     fun updateLastMessage(chatId: String,chat: Chat)
     fun joinChat(chatId: String)
-    fun createPicDir(picDir: String) {}
     fun chatProfilePictureListener(id: String,
                                    filesDir: String,
                                    onCancelled: (Int) -> Unit,
@@ -126,6 +168,7 @@ class PublicChatServiceImpl: ChatService {
     private var messagesListener: ChildEventListener? = null
     private var chatListener: ValueEventListener? = null
     private var membershipListener: ChildEventListener? = null
+    private var usersProfilePicListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
 
     private fun chatMembersChildListener(
         onAdded: (Map<String, String>) -> Unit,
@@ -212,6 +255,27 @@ class PublicChatServiceImpl: ChatService {
         }
     }
 
+    fun usersProfilePicListener(id: String,
+                                filesDir: String,
+                                onCancelled: (Int) -> Unit,
+                                onStorageFailure: (String) -> Unit,
+                                onPicReceived: () -> Unit,
+                                remove: Boolean) {
+        val ref = usersRef
+            .child(id)
+            .child("profilePicUpdated")
+        val currListener = usersProfilePicListeners[id]
+        if (remove && currListener != null) {
+            ref.removeEventListener(currListener)
+        } else {
+            usersProfilePicListeners[id] = chatEventListener(onCancelled) { name ->
+                picListener(id, name, filesDir, onStorageFailure, onPicReceived)
+            }
+            ref.addValueEventListener(usersProfilePicListeners[id]!!)
+        }
+
+    }
+
     override fun updateLastMessage(chatId: String, chat: Chat) {
         val publicChat = chat.copy(type = "public")
         chatsRef.child(chatId)
@@ -227,10 +291,6 @@ class PublicChatServiceImpl: ChatService {
 class PrivateChatServiceImpl: ChatService {
     private val chatsRef: DatabaseReference
         get() = database.child("private_chats")
-    private val usersRef: DatabaseReference
-        get() = database.child("users")
-    private val picsRef: StorageReference
-        get() = storage.child("profilePics")
     private var chatListener: ValueEventListener? = null
     private var usernameListener: ValueEventListener? = null
     private var chatPicListener: ValueEventListener? = null
@@ -320,12 +380,7 @@ class PrivateChatServiceImpl: ChatService {
             Files.createDirectories(Paths.get(picDir))
         }
     }
-    fun getChatPicDir(filesDir: String, otherUserId: String): String
-    = "${filesDir}/profilePics/$otherUserId"
-    fun getChatPic(filesDir: String, otherUserId: String): File {
-        val picDir = getChatPicDir(filesDir, otherUserId)
-        return File(picDir, "$otherUserId.jpg")
-    }
+
     override fun chatProfilePictureListener(id: String,
                                             filesDir: String,
                                             onCancelled: (Int) -> Unit,
@@ -340,29 +395,22 @@ class PrivateChatServiceImpl: ChatService {
         } else {
             chatPicListener = chatEventListener(onCancelled) { name ->
                 val picName = name.getValue<String>()
-                if (!picName.isNullOrEmpty()) {
-                    val picDir = getChatPicDir(filesDir, id)
-                    if (Paths.get(picDir).notExists()) {
+                if (picName != null) {
+                    val picDir = getPicDir(filesDir, id)
+                    if (Paths.get(picDir).notExists() || !getPic(filesDir, id).exists()) {
                         createPicDir(picDir)
+                        getPic(filesDir, id).createNewFile()
                     }
                     val picRef = File(picDir, "$id.jpg")
                     picsRef.child(id)
-                        .child(picName).getFile(picRef)
+                        .child("lowQuality")
+                        .child("$id.jpg")
+                        .getFile(picRef)
                         .addOnSuccessListener {
                             //insert picture into the file
                             it.storage.getFile(picRef).addOnSuccessListener { onPicReceived() }
                         }
-                        .addOnFailureListener {
-                            val message = it.message?.split(" ")?.joinToString("_") { it.uppercase(
-                                Locale.ROOT) }?.dropLast(1) ?: ""
-                            onStorageFailure(message)
-                            if (message == PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name) {
-                                if (picRef.exists()) {
-                                    picRef.delete()
-                                }
-                                Files.deleteIfExists(Paths.get(picDir))
-                            }
-                        }
+                        .addOnFailureListener {onStorageFailure(it.message?:"")}
                 } else {
                     onStorageFailure(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
                 }

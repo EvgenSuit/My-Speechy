@@ -2,6 +2,7 @@ package com.example.myspeechy.utils.chat
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.services.chat.PictureStorageError
@@ -16,12 +17,15 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
     private val userProfileServiceImpl: UserProfileServiceImpl,
     filesDir: File,
+    @Named("ProfilePictureSizeError") private val storageSizeError: Toast,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val _uiState = MutableStateFlow(UserProfileUiState())
@@ -30,7 +34,7 @@ class UserProfileViewModel @Inject constructor(
     val currUserId = userProfileServiceImpl.userId
     private val normalQualityPicDir = "${filesDir}/profilePics/${userId}/normalQuality/"
     private val lowQualityPicDir = "${filesDir}/profilePics/${userId}/lowQuality/"
-    private val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
+    val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
     private val lowQualityPicRef = File(lowQualityPicDir, "$userId.jpg")
 
     fun startOrStopListening(removeListeners: Boolean) {
@@ -62,14 +66,17 @@ class UserProfileViewModel @Inject constructor(
             onCancelled = {updateErrorCode(it)},
             onStorageFailure = {m ->
                 updateStorageErrorMessage(m)
-                if (m == PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name ||
-                    m == PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name) {
-                _uiState.update { it.copy(storageErrorMessage = m, pic = null) }
+                val errorMessage = _uiState.value.storageErrorMessage
+                if (PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name.contains(errorMessage) ||
+                    PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name.contains(errorMessage)) {
+                _uiState.update { it.copy(picPath = null) }
                     normalQualityPicRef.delete()
                     File(normalQualityPicDir).deleteRecursively()
                 }
             }, {
-                _uiState.update { it.copy(pic = BitmapFactory.decodeFile(normalQualityPicRef.path) , uploadingPicture = false, storageErrorMessage = "") }
+                _uiState.update { it.copy(picPath = normalQualityPicRef.path , uploadingPicture = false, storageErrorMessage = "",
+                    picId = UUID.randomUUID().toString()
+                ) }
                 updateStorageErrorMessage("")
             }, remove)
     }
@@ -93,14 +100,14 @@ class UserProfileViewModel @Inject constructor(
             }
             uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef, lowQuality)
         } else {
-            updateStorageErrorMessage(PictureStorageError.PICTURE_MUST_BE_LESS_THAN_2_MB_IN_SIZE.name)
+            storageSizeError.show()
         }
     }
 
     init {
         createPicDir(lowQualityPicDir)
         createPicDir(normalQualityPicDir)
-        _uiState.update { it.copy(pic = if (normalQualityPicRef.exists()) BitmapFactory.decodeFile(normalQualityPicRef.path) else null) }
+        _uiState.update { it.copy(picPath = if (normalQualityPicRef.exists()) normalQualityPicRef.path else null) }
     }
     fun changeUserInfo(newName: String, newInfo: String, onSuccess: () -> Unit) {
         val nameIsSame = _uiState.value.name == newName
@@ -127,7 +134,7 @@ class UserProfileViewModel @Inject constructor(
     fun removeUserPicture() {
         listOf(true, false).forEach {lowQuality ->
             userProfileServiceImpl.removeUserPicture(lowQuality, {updateStorageErrorMessage(it)}, {m ->
-                _uiState.update { it.copy(storageErrorMessage = m, pic = null) }
+                _uiState.update { it.copy(storageErrorMessage = m, picPath = null) }
                 if (lowQuality) File(lowQualityPicDir).deleteRecursively()
                 else File(normalQualityPicDir).deleteRecursively()
             })
@@ -137,14 +144,14 @@ class UserProfileViewModel @Inject constructor(
         _uiState.update { it.copy(errorCode = e) }
     }
     private fun updateStorageErrorMessage(e: String) {
-        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_") { e.uppercase(
-            Locale.ROOT) }.dropLast(1)) }
+        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(Locale.ROOT).dropLast(1)) }
     }
 
     data class UserProfileUiState(
         val name: String? = null,
         val info: String? = null,
-        val pic: Bitmap? = null,
+        val picPath: String? = null,
+        val picId: String = "",
         val uploadingPicture: Boolean = false,
         val errorCode: Int = 0,
         val storageErrorMessage: String = ""

@@ -1,5 +1,7 @@
 package com.example.myspeechy.components
+import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,11 +30,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Message
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -54,8 +64,10 @@ fun MessagesColumn(
     userId: String,
     listState: LazyListState,
     messages: Map<String, Message>,
+    filesDir: String,
     modifier: Modifier,
     onNavigate: (String) -> Unit) {
+    val picSize = dimensionResource(R.dimen.chat_pic_size)
     LazyColumn(
         state = listState,
         modifier = modifier
@@ -65,9 +77,28 @@ fun MessagesColumn(
         verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.Bottom)) {
         if (messages.isNotEmpty()) {
             items(messages.values.toList().reversed()) { message ->
-                    Row(Modifier.fillMaxWidth(),
+                val chatId = listOf(message.sender, userId).sortedWith(
+                compareBy(String.CASE_INSENSITIVE_ORDER) {it})
+                .joinToString("_")
+                Row(Modifier.fillMaxWidth(),
                         horizontalArrangement = if (message.sender != userId) Arrangement.Start
                         else Arrangement.End) {
+                        val picPath = "${filesDir}/profilePics/${message.sender}/lowQuality/${message.sender}.jpg"
+                        if (message.sender != userId && File(picPath).exists()) {
+                            Image(bitmap = BitmapFactory.decodeFile(picPath).asImageBitmap(),
+                                contentScale = ContentScale.Crop,
+                                contentDescription = null,
+                            modifier = Modifier.size(picSize)
+                                .clip(CircleShape)
+                                .clickable { onNavigate(chatId) })
+                        } else if (!File(picPath).exists()) {
+                            Image(painter = painterResource(R.drawable.user),
+                                contentScale = ContentScale.Crop,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(picSize)
+                                    .clip(CircleShape))
+                        }
                         ElevatedButton(
                             onClick = {},
                             colors = ButtonDefaults.buttonColors(
@@ -78,19 +109,19 @@ fun MessagesColumn(
                             modifier = Modifier.fillMaxWidth(0.7f)
                         ) {
                             Column(Modifier.fillMaxSize()) {
-                                AnimatedVisibility(message.senderUsername != null){
-                                    Text(message.senderUsername!!,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontSize = 18.sp,
-                                        modifier = Modifier.clickable {
-                                            if (message.sender != userId) {
-                                                val chatId = listOf(message.sender, userId).sortedWith(
-                                                    compareBy(String.CASE_INSENSITIVE_ORDER) {it})
-                                                    .joinToString("_")
-                                                onNavigate(chatId)
+                                val senderUsername = message.senderUsername
+                                AnimatedVisibility(senderUsername != null){
+                                    if (senderUsername != null) {
+                                        Text(senderUsername,
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontSize = 18.sp,
+                                            modifier = Modifier.clickable {
+                                                if (message.sender != userId) {
+                                                    onNavigate(chatId)
+                                                }
                                             }
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                                 Text(
                                     message.text,

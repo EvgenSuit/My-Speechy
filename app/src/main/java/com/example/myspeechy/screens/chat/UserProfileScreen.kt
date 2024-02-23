@@ -1,7 +1,7 @@
 package com.example.myspeechy.screens.chat
 
+import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -40,7 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,8 +57,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.R
-import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.utils.chat.UserProfileViewModel
+import java.io.File
 
 @Composable
 fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
@@ -82,11 +82,8 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
-    val decodedPic by remember(uiState.pic) {
-        mutableStateOf(uiState.pic)
-    }
-    if (uiState.storageErrorMessage == PictureStorageError.PICTURE_MUST_BE_LESS_THAN_2_MB_IN_SIZE.name) {
-        Toast.makeText(context, "Picture must be less than 2 mb in size", Toast.LENGTH_SHORT).show()
+    val decodedPic by rememberSaveable(uiState.picId) {
+        mutableStateOf(if (viewModel.normalQualityPicRef.exists()) BitmapFactory.decodeFile(viewModel.normalQualityPicRef.path) else null)
     }
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
     if (isCurrentUser)
@@ -111,9 +108,13 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
+            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = null)
+        }
         Box(Modifier.padding(top = 50.dp)) {
-            if (decodedPic != null) {
-                        Image(decodedPic!!.asImageBitmap(),
+            if (decodedPic != null && viewModel.normalQualityPicRef.exists()) {
+                        Image(
+                            decodedPic!!.asImageBitmap(),
                             contentScale = ContentScale.FillBounds,
                             contentDescription = null,
                             modifier = Modifier
@@ -126,7 +127,7 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                     }
 
             androidx.compose.animation.AnimatedVisibility(
-                decodedPic == null && !uiState.uploadingPicture
+                uiState.picPath == null && !uiState.uploadingPicture
                     || uiState.storageErrorMessage.isNotEmpty(),
                 enter = slideInHorizontally(),
                 exit = shrinkHorizontally()
@@ -143,7 +144,7 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             }
         }
         AnimatedVisibility(
-            decodedPic != null &&
+            uiState.picPath != null &&
             !uiState.uploadingPicture &&
                     uiState.storageErrorMessage.isEmpty() && isCurrentUser,
             enter = slideInHorizontally()) {
@@ -180,12 +181,14 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         Spacer(Modifier.weight(1f))
-        ElevatedButton(onClick = {
-            if (name != null && info != null && viewModel.userId == viewModel.currUserId)
-                viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
-            else onOkClick()
-        }, modifier = Modifier.size(200.dp, 50.dp)) {
-            Text("OK")
+        if(isCurrentUser) {
+            ElevatedButton(onClick = {
+                if (name != null && info != null)
+                    viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
+                else onOkClick()
+            }, modifier = Modifier.size(200.dp, 50.dp)) {
+                Text("Save")
+            }
         }
     }
     DisposableEffect(Unit) {

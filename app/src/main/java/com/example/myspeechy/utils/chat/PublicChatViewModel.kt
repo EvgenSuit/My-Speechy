@@ -11,11 +11,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.io.File
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 open class PublicChatViewModel @Inject constructor(
     private val chatServiceImpl: PublicChatServiceImpl,
+    private val filesDir: File,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
@@ -49,10 +53,8 @@ open class PublicChatViewModel @Inject constructor(
         chatServiceImpl.chatMembersListener(chatId,
             onAdded = {m ->
                 m.keys.forEach { userId ->
-                    chatServiceImpl.usernameListener(userId, {}, {username ->
-                        _uiState.update { it.copy(messages = it.messages.mapValues { (_, v) ->
-                            if (v.sender == userId) v.copy(senderUsername = username.getValue<String>()) else v }) }
-                    }, remove)
+                    listenForUsername(userId, remove)
+                    listenForProfilePic(userId, remove)
                 }
                 _uiState.update { it.copy(members = it.members + m, joined = (it.members + m).containsKey(userId)) }
             },
@@ -65,9 +67,31 @@ open class PublicChatViewModel @Inject constructor(
             },
             onRemoved = {m ->
                 _uiState.update { it.copy(members = it.members.filterKeys { key -> key != m.keys.first() }) }
+                m.keys.forEach {
+                    listenForUsername(userId, true)
+                    listenForProfilePic(userId, true)
+                }
             },
             onCancelled = {},
             remove)
+    }
+    private fun listenForProfilePic(id: String, remove: Boolean) {
+        if (id != userId) {
+            val picDir = "${filesDir}/profilePics/${id}/"
+            val picPath = "$picDir/lowQuality/$id.jpg"
+            chatServiceImpl.usersProfilePicListener(id, filesDir.path, {}, {updateStorageErrorMessage(it)
+                File(picPath).delete()
+                File(picDir).deleteRecursively() }, {
+                _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
+                    picsId = UUID.randomUUID().toString()) }
+            }, remove)
+        }
+    }
+    private fun listenForUsername(id: String, remove: Boolean) {
+        chatServiceImpl.usernameListener(id, {}, {username ->
+            _uiState.update { it.copy(messages = it.messages.mapValues { (_, v) ->
+                if (v.sender == id) v.copy(senderUsername = username.getValue<String>()) else v }) }
+        }, remove)
     }
         private fun listenForCurrentChat(remove: Boolean) {
             chatServiceImpl.chatListener(chatId, {}, { chat ->
@@ -86,16 +110,20 @@ open class PublicChatViewModel @Inject constructor(
         fun joinChat() {
             chatServiceImpl.joinChat(chatId)
         }
+    private fun updateStorageErrorMessage(e: String) {
+        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(
+            Locale.ROOT).dropLast(1)) }
+    }
 
 
     data class PublicChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
-        //UserId to username map
-        val members: Map<String, String> = mapOf(),
+        val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,
         val joined: Boolean = true,
-        val isChatPublic: Boolean = false,
-        val removeListeners: Boolean = false
+        val storageErrorMessage: String = "",
+        val picPaths: Map<String, String> = mapOf(), //user id to pic path map
+        val picsId: String = ""
     )
 }

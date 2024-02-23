@@ -81,15 +81,15 @@ class UserProfileServiceImpl {
             ref.removeEventListener(picListener!!)
         } else {
             picListener = listener(onCancelled) { name ->
-                val picName = "$userId.jpg"
-                if (!name.getValue<String>().isNullOrEmpty()) {
+                val picName = name.getValue<String>()
+                if (picName != null) {
                     if (!file.exists()) {
                         onDirCreate()
                         file.createNewFile()
                     }
                     picsRef.child(id)
                         .child("normalQuality")
-                        .child(picName)
+                        .child("$id.jpg")
                         .getFile(file)
                         .addOnSuccessListener {
                             it.storage.getFile(file).addOnSuccessListener {
