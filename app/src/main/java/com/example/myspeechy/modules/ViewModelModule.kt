@@ -7,16 +7,16 @@ import com.example.myspeechy.data.lesson.LessonDb
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.meditation.MeditationStatsDb
 import com.example.myspeechy.data.meditation.MeditationStatsRepository
-import com.example.myspeechy.services.chat.ChatsServiceImpl
-import com.example.myspeechy.services.lesson.MainLessonServiceImpl
-import com.example.myspeechy.services.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
-import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
+import com.example.myspeechy.services.chat.ChatsServiceImpl
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
 import com.example.myspeechy.services.chat.PublicChatServiceImpl
 import com.example.myspeechy.services.chat.UserProfileServiceImpl
+import com.example.myspeechy.services.lesson.MainLessonServiceImpl
+import com.example.myspeechy.services.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.services.lesson.ReadingLessonServiceImpl
 import com.example.myspeechy.services.lesson.RegularLessonServiceImpl
+import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -92,7 +92,7 @@ object ViewModelModule {
     }
     @Provides
     fun provideFilesDir(@ApplicationContext context: Context): File {
-        return context.filesDir
+        return context.cacheDir
     }
     @Provides
     @Named("ProfilePictureSizeError")

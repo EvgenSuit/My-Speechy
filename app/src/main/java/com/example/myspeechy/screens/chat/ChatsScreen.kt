@@ -60,6 +60,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.dataStore
@@ -223,12 +226,14 @@ fun ChatsColumn(navController: NavHostController,
                                 val otherUserId =
                                     chatsKeys[i]?.split("_")?.first { it != viewModel.userId }
                                 val picRef = viewModel.getChatPic(otherUserId ?: "")
-                                val decodedPic by remember {
-                                    mutableStateOf(BitmapFactory.decodeFile(picRef.path))
-                                }
-                                    if (decodedPic != null) {
-                                        Image(
-                                            bitmap = decodedPic.asImageBitmap(),
+                                if (picRef.exists()) {
+                                        var retryHash by remember { mutableStateOf(0) }
+                                        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+                                            .data(picRef.path)
+                                            .setParameter("retry_hash", retryHash)
+                                            .build())
+                                        if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
+                                        Image(painter,
                                             contentScale = ContentScale.Crop,
                                             contentDescription = null,
                                             modifier = Modifier

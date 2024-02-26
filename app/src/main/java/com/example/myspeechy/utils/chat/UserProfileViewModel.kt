@@ -69,12 +69,11 @@ class UserProfileViewModel @Inject constructor(
                 val errorMessage = _uiState.value.storageErrorMessage
                 if (PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name.contains(errorMessage) ||
                     PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name.contains(errorMessage)) {
-                _uiState.update { it.copy(picPath = null) }
                     normalQualityPicRef.delete()
                     File(normalQualityPicDir).deleteRecursively()
                 }
             }, {
-                _uiState.update { it.copy(picPath = normalQualityPicRef.path , uploadingPicture = false, storageErrorMessage = "",
+                _uiState.update { it.copy(uploadingPicture = false, storageErrorMessage = "",
                     picId = UUID.randomUUID().toString()
                 ) }
                 updateStorageErrorMessage("")
@@ -107,7 +106,6 @@ class UserProfileViewModel @Inject constructor(
     init {
         createPicDir(lowQualityPicDir)
         createPicDir(normalQualityPicDir)
-        _uiState.update { it.copy(picPath = if (normalQualityPicRef.exists()) normalQualityPicRef.path else null) }
     }
     fun changeUserInfo(newName: String, newInfo: String, onSuccess: () -> Unit) {
         val nameIsSame = _uiState.value.name == newName
@@ -134,7 +132,7 @@ class UserProfileViewModel @Inject constructor(
     fun removeUserPicture() {
         listOf(true, false).forEach {lowQuality ->
             userProfileServiceImpl.removeUserPicture(lowQuality, {updateStorageErrorMessage(it)}, {m ->
-                _uiState.update { it.copy(storageErrorMessage = m, picPath = null) }
+                _uiState.update { it.copy(storageErrorMessage = m) }
                 if (lowQuality) File(lowQualityPicDir).deleteRecursively()
                 else File(normalQualityPicDir).deleteRecursively()
             })
@@ -150,7 +148,6 @@ class UserProfileViewModel @Inject constructor(
     data class UserProfileUiState(
         val name: String? = null,
         val info: String? = null,
-        val picPath: String? = null,
         val picId: String = "",
         val uploadingPicture: Boolean = false,
         val errorCode: Int = 0,

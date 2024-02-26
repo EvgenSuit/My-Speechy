@@ -4,5 +4,7 @@ data class Message(
     var sender: String = "",
     var senderUsername: String? = null,
     val text: String = "",
-    val timestamp: Long = 0
+    val timestamp: Long = 0,
+    val edited: Boolean = false,
+    val replyTo: String = "" //message id
 )

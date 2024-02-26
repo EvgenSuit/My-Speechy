@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.services.chat.ChatsServiceImpl
@@ -10,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.io.File
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,6 +44,7 @@ class ChatsViewModel @Inject constructor(
             onRemoved = {chatId ->
                 publicChatListener(chatId, true)
                 _uiState.value.chats.forEach { publicChatListener(it.key!!, true) }
+                _uiState.update { it.copy(chats = it.chats.filterKeys { key -> key != null && key != chatId }) }
             },
             onCancelled = {},
             remove
@@ -54,6 +58,7 @@ class ChatsViewModel @Inject constructor(
             onCancelled = {},
             remove)
     }
+
     private fun listenForPrivateChats(remove: Boolean) {
         if (remove) {
             _uiState.value.chats.forEach {
@@ -65,10 +70,14 @@ class ChatsViewModel @Inject constructor(
         chatsService.privateChatsStateListener(
             onAdded = {chatId ->
                 privateChatListener(chatId, remove)
+                val otherUserId = chatId.split("_").first { it != userId }
+                listenForPrivateChatProfilePic(otherUserId, remove)
             },
             onChanged = {},
             onRemoved = {chatId ->
                 privateChatListener(chatId, true)
+                val otherUserId = chatId.split("_").first { it != userId }
+                listenForPrivateChatProfilePic(otherUserId, true)
                 _uiState.value.chats.forEach { privateChatListener(it.key!!, true) }
             },
             onCancelled = {},
@@ -82,6 +91,17 @@ class ChatsViewModel @Inject constructor(
             },
             onCancelled = {},
             remove)
+    }
+    private fun listenForPrivateChatProfilePic(id: String, remove: Boolean) {
+        val picDir = "${filesDir}/profilePics/${id}/"
+        val picPath = "$picDir/lowQuality/$id.jpg"
+        privateChatServiceImpl.chatProfilePictureListener(id, filesDir.path, {}, {
+            updateStorageErrorMessage(it)
+            File(picPath).delete()
+            File(picDir).deleteRecursively()
+        }, {
+            _uiState.update { it.copy(picsId = UUID.randomUUID().toString()) }
+        }, remove)
     }
     fun searchForChat(title: String) {
         chatsService.searchChatByTitle(title, {}) {chat ->
@@ -100,10 +120,16 @@ class ChatsViewModel @Inject constructor(
         }
     }
     fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDir.path, otherUserId)
+    private fun updateStorageErrorMessage(e: String) {
+        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(
+            Locale.ROOT).dropLast(1)) }
+    }
 
     data class ChatsUiState(
         val searchedChat: Map<String, Chat> = mapOf(),
         val chats: Map<String?, Chat?> = mapOf(),
+        val picPaths: Map<String, String> = mapOf(), //user id to pic path map
+        val picsId: String = "",
         val storageErrorMessage: String = ""
     )
 }
