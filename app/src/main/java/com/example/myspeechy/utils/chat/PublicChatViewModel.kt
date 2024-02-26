@@ -67,6 +67,7 @@ open class PublicChatViewModel @Inject constructor(
             },
             onRemoved = {m ->
                 _uiState.update { it.copy(members = it.members.filterKeys { key -> key != m.keys.first() }) }
+                if (!_uiState.value.members.containsKey(userId)) _uiState.update { it.copy(joined = false)}
                 m.keys.forEach {
                     listenForUsername(userId, true)
                     listenForProfilePic(userId, true)
@@ -89,8 +90,12 @@ open class PublicChatViewModel @Inject constructor(
     }
     private fun listenForUsername(id: String, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {}, {username ->
-            _uiState.update { it.copy(messages = it.messages.mapValues { (_, v) ->
-                if (v.sender == id) v.copy(senderUsername = username.getValue<String>()) else v }) }
+            val name = username.getValue<String>()
+            if (name != null) {
+                _uiState.update { it.copy(//members = it.members.mapValues { (k, v) -> if (k == id) name else ""},
+                    messages = it.messages.mapValues { (_, v) ->
+                        if (v.sender == id) v.copy(senderUsername = name) else v }) }
+            }
         }, remove)
     }
         private fun listenForCurrentChat(remove: Boolean) {
@@ -101,11 +106,17 @@ open class PublicChatViewModel @Inject constructor(
             }, remove)
         }
 
-        fun sendMessage(text: String) {
+        fun sendMessage(text: String, replyTo: String) {
             val chatTitle = _uiState.value.chat.title
-            val timestamp = chatServiceImpl.sendMessage(chatId, chatTitle, text)
+            val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.members.entries.first { it.key == userId }.value, text, replyTo)
             chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
         }
+    fun editMessage(message: Map<String, Message>) {
+        chatServiceImpl.editMessage(chatId, message)
+    }
+    fun deleteMessage(message: Map<String, Message>) {
+        chatServiceImpl.deleteMessage(chatId, message)
+    }
 
         fun joinChat() {
             chatServiceImpl.joinChat(chatId)
@@ -121,7 +132,7 @@ open class PublicChatViewModel @Inject constructor(
         val chat: Chat = Chat(),
         val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,
-        val joined: Boolean = true,
+        val joined: Boolean = false,
         val storageErrorMessage: String = "",
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
         val picsId: String = ""

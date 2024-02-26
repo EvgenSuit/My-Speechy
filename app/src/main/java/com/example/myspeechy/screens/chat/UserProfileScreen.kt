@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens.chat
 
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -41,13 +40,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -56,9 +55,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.utils.chat.UserProfileViewModel
-import java.io.File
 
 @Composable
 fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
@@ -81,9 +82,6 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
-    }
-    val decodedPic by rememberSaveable(uiState.picId) {
-        mutableStateOf(if (viewModel.normalQualityPicRef.exists()) BitmapFactory.decodeFile(viewModel.normalQualityPicRef.path) else null)
     }
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
     if (isCurrentUser)
@@ -111,10 +109,15 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
         ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
             Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = null)
         }
+        var retryHash by remember { mutableStateOf(0) }
+        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+            .data(viewModel.normalQualityPicRef.path)
+            .setParameter("retry_hash", retryHash)
+            .build())
         Box(Modifier.padding(top = 50.dp)) {
-            if (decodedPic != null && viewModel.normalQualityPicRef.exists()) {
-                        Image(
-                            decodedPic!!.asImageBitmap(),
+            if (viewModel.normalQualityPicRef.exists()) {
+                if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
+                        Image(painter,
                             contentScale = ContentScale.FillBounds,
                             contentDescription = null,
                             modifier = Modifier
@@ -126,9 +129,8 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                                 .size(picSize))
                     }
 
-            androidx.compose.animation.AnimatedVisibility(
-                uiState.picPath == null && !uiState.uploadingPicture
-                    || uiState.storageErrorMessage.isNotEmpty(),
+            androidx.compose.animation.AnimatedVisibility(!uiState.uploadingPicture
+                    && (uiState.storageErrorMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
                 enter = slideInHorizontally(),
                 exit = shrinkHorizontally()
             ) {
@@ -144,7 +146,6 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             }
         }
         AnimatedVisibility(
-            uiState.picPath != null &&
             !uiState.uploadingPicture &&
                     uiState.storageErrorMessage.isEmpty() && isCurrentUser,
             enter = slideInHorizontally()) {

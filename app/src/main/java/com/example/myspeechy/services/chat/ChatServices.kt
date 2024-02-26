@@ -106,7 +106,6 @@ interface ChatService {
                     onStorageFailure: (String) -> Unit,
                     onPicReceived: () -> Unit) {
         val picName = name.getValue<String>()
-        Log.d("PICNAME", picName.toString())
         if (picName != null) {
             val picDir = getPicDir(filesDir, id)
             val file = getPic(filesDir, id)
@@ -129,13 +128,24 @@ interface ChatService {
         }
     }
 
-    fun sendMessage(chatId: String, senderUsername: String, text: String): Long {
+    fun sendMessage(chatId: String, senderUsername: String, text: String, replyTo: String): Long {
         val timestamp = System.currentTimeMillis()
         messagesRef.child(chatId)
                     .child(UUID.randomUUID().toString())
-                    .setValue(Message(userId, senderUsername, text, timestamp))
+                    .setValue(Message(userId, senderUsername, text, timestamp,false, replyTo))
         return timestamp
     }
+    fun editMessage(chatId: String, message: Map<String, Message>) {
+        messagesRef.child(chatId)
+            .child(message.keys.first())
+            .setValue(message.values.first().copy(edited = true))
+    }
+    fun deleteMessage(chatId: String, message: Map<String, Message>) {
+        messagesRef.child(chatId)
+            .child(message.keys.first())
+            .removeValue()
+    }
+
     fun getPicDir(filesDir: String, otherUserId: String): String
             = "${filesDir}/profilePics/$otherUserId/lowQuality"
     fun getPic(filesDir: String, otherUserId: String): File {
@@ -177,6 +187,7 @@ class PublicChatServiceImpl: ChatService {
         onCancelled: (Int) -> Unit): ChildEventListener {
         return object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("SNAPSHOT", snapshot.value.toString())
                 onAdded(mapOf(snapshot.key!! to (snapshot.value as String)))
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
@@ -186,6 +197,7 @@ class PublicChatServiceImpl: ChatService {
                 onRemoved(mapOf(snapshot.key!! to ""))
             }
             override fun onCancelled(error: DatabaseError) {
+                Log.d("SNAPSHOT", error.toString())
                 onCancelled(error.code)
             }
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
@@ -283,7 +295,8 @@ class PublicChatServiceImpl: ChatService {
     }
 
     override fun joinChat(chatId: String) {
-        membersRef.child(chatId).setValue(mapOf(userId to true))
+        membersRef.child(chatId)
+            .child(userId).setValue("")
     }
 
 }

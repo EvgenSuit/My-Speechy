@@ -35,9 +35,6 @@ open class PrivateChatViewModel @Inject constructor(
     val picRef = File("$filesDir/profilePics/$otherUserId/lowQuality/$otherUserId.jpg")
 
     fun startOrStopListening(removeListeners: Boolean) {
-        if (!removeListeners) {
-            _uiState.update { it.copy(picPath = picRef.path) }
-        }
         listenForCurrentChat(removeListeners)
         listenForMessages(removeListeners)
         listenForProfilePic(removeListeners)
@@ -59,15 +56,14 @@ open class PrivateChatViewModel @Inject constructor(
         chatServiceImpl.chatProfilePictureListener(otherUserId, filesDir.path, {}, {m ->
             updateStorageErrorMessage(m)
             val errorMessage = _uiState.value.storageErrorMessage
-            Log.d("ERROR", errorMessage)
             if (PictureStorageError.OBJECT_DOES_NOT_EXIST_AT_LOCATION.name.contains(errorMessage) ||
                 PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name.contains(errorMessage)) {
-                _uiState.update { it.copy(picPath = null, picId = UUID.randomUUID().toString()) }
+                _uiState.update { it.copy(picId = UUID.randomUUID().toString()) }
             }
             picRef.delete()
-            _uiState.update { it.copy(storageErrorMessage = m, picPath = null, picId = UUID.randomUUID().toString()) }
+            _uiState.update { it.copy(storageErrorMessage = m, picId = UUID.randomUUID().toString()) }
         }, {
-            _uiState.update { it.copy(storageErrorMessage = "", picPath = picRef.path, picId = UUID.randomUUID().toString()) }
+            _uiState.update { it.copy(storageErrorMessage = "", picId = UUID.randomUUID().toString()) }
         }, remove)
     }
     private fun listenForMessages(remove: Boolean) {
@@ -98,10 +94,9 @@ open class PrivateChatViewModel @Inject constructor(
             }
         }, remove)
     }
-    fun sendMessage(text: String) {
-        //If error code is -3, the user has not jet joined a chat
+    fun sendMessage(text: String, replyTo: String) {
+        //If error code is -3, the user has not jet joined the chat
         if (_uiState.value.errorCode == -3) {
-
             chatServiceImpl.joinChat(chatId)
             /*Call listener again because if there was an error,
             the previous one was cancelled*/
@@ -109,8 +104,14 @@ open class PrivateChatViewModel @Inject constructor(
             listenForMessages(false)
         }
         val chatTitle = _uiState.value.chat.title
-        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
+        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text, replyTo)
         chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
+    }
+    fun editMessage(message: Map<String, Message>) {
+        chatServiceImpl.editMessage(chatId, message)
+    }
+    fun deleteMessage(message: Map<String, Message>) {
+        chatServiceImpl.deleteMessage(chatId, message)
     }
     private fun updateStorageErrorMessage(e: String) {
         _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(
@@ -123,7 +124,6 @@ open class PrivateChatViewModel @Inject constructor(
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
-        val picPath: String? = null,
         val picId: String = "",
         val currUsername: String = "",
         val storageErrorMessage: String = "",
