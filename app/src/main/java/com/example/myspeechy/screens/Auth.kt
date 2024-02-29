@@ -1,6 +1,7 @@
 package com.example.myspeechy.screens
 
 import android.app.Activity.RESULT_OK
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -28,17 +29,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDefaults
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -65,14 +60,19 @@ import com.example.myspeechy.components.advancedShadow
 import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
-import com.example.myspeechy.utils.AuthViewModel
-import com.example.myspeechy.utils.isValidEmail
-import com.example.myspeechy.utils.meetsPasswordRequirements
+import com.example.myspeechy.utils.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private fun String.isValidEmail() = !isNullOrEmpty() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
+private fun String.isLongEnough() = length >= 8
+private fun String.hasEnoughDigits() = count(Char::isDigit) > 0
+private fun String.isMixedCase() = any(Char::isLowerCase) && any(Char::isUpperCase)
+private val passwordRequirements = listOf(String::isLongEnough, String::hasEnoughDigits, String::isMixedCase)
+private fun String.meetsPasswordRequirements() = passwordRequirements.all { check -> check(this) }
 
 @Composable
 fun AuthScreen(

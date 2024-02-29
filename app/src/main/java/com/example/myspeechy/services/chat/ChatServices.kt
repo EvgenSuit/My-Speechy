@@ -3,6 +3,8 @@ package com.example.myspeechy.services.chat
 import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
@@ -31,18 +33,6 @@ interface ChatService {
         get() = storage.child("profilePics")
     val usersRef: DatabaseReference
         get() = database.child("users")
-    fun listener(
-        onCancelled: (Int) -> Unit,
-        onDataReceived: (List<DataSnapshot>) -> Unit): ValueEventListener {
-        return object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                onDataReceived(snapshot.children.toList())
-            }
-            override fun onCancelled(error: DatabaseError) {
-                onCancelled(error.code)
-            }
-        }
-    }
     fun messagesChildListener(onAdded: (Map<String, Message>) -> Unit,
                       onChanged: (Map<String, Message>) -> Unit,
                       onRemoved: (Map<String, Message>) -> Unit,
@@ -93,13 +83,11 @@ interface ChatService {
         onChanged: (Map<String, Message>) -> Unit,
         onRemoved: (Map<String, Message>) -> Unit,
         onCancelled: (Int) -> Unit,
-        remove: Boolean) {}
+        remove: Boolean)
     fun usernameListener(id: String,
                         onCancelled: (Int) -> Unit,
                         onDataReceived: (DataSnapshot) -> Unit,
-                         remove: Boolean) {
-
-    }
+                         remove: Boolean)
     fun picListener(id: String,
                     name: DataSnapshot,
                     filesDir: String,
@@ -158,8 +146,8 @@ interface ChatService {
         }
     }
 
-    fun updateLastMessage(chatId: String,chat: Chat)
     fun joinChat(chatId: String)
+    suspend fun leaveChat(chatId: String)
     fun chatProfilePictureListener(id: String,
                                    filesDir: String,
                                    onCancelled: (Int) -> Unit,
@@ -169,7 +157,9 @@ interface ChatService {
 
 }
 
-class PublicChatServiceImpl: ChatService {
+class PublicChatServiceImpl(
+    private val leavePublicChatUseCase: LeavePublicChatUseCase
+): ChatService {
     private val chatsRef: DatabaseReference
         get() = database.child("public_chats")
     private val membersRef: DatabaseReference
@@ -181,23 +171,21 @@ class PublicChatServiceImpl: ChatService {
     private var usersProfilePicListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
 
     private fun chatMembersChildListener(
-        onAdded: (Map<String, String>) -> Unit,
-        onChanged: (Map<String, String>) -> Unit,
-        onRemoved: (Map<String, String>) -> Unit,
+        onAdded: (Map<String, Boolean>) -> Unit,
+        onChanged: (Map<String, Boolean>) -> Unit,
+        onRemoved: (Map<String, Boolean>) -> Unit,
         onCancelled: (Int) -> Unit): ChildEventListener {
         return object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                Log.d("SNAPSHOT", snapshot.value.toString())
-                onAdded(mapOf(snapshot.key!! to (snapshot.value as String)))
+                onAdded(mapOf(snapshot.key!! to (snapshot.getValue<Boolean>() ?: false)))
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                onChanged(mapOf(snapshot.key!! to (snapshot.value as String)))
+                snapshot.getValue<Map<String, Boolean>>()?.let { onChanged(it) }
             }
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                onRemoved(mapOf(snapshot.key!! to ""))
+                onRemoved(mapOf(snapshot.key!! to false))
             }
             override fun onCancelled(error: DatabaseError) {
-                Log.d("SNAPSHOT", error.toString())
                 onCancelled(error.code)
             }
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
@@ -227,6 +215,7 @@ class PublicChatServiceImpl: ChatService {
         remove: Boolean) {
         val ref = messagesRef.child(id)
             .orderByChild("timestamp")
+            //.limitToLast(5)
         if (remove && messagesListener != null) {
             ref.removeEventListener(messagesListener!!)
         } else {
@@ -253,9 +242,9 @@ class PublicChatServiceImpl: ChatService {
 
     fun chatMembersListener(
         id: String,
-        onAdded: (Map<String, String>) -> Unit,
-        onChanged: (Map<String, String>) -> Unit,
-        onRemoved: (Map<String, String>) -> Unit,
+        onAdded: (Map<String, Boolean>) -> Unit,
+        onChanged: (Map<String, Boolean>) -> Unit,
+        onRemoved: (Map<String, Boolean>) -> Unit,
         onCancelled: (Int) -> Unit,
         remove: Boolean) {
         val ref = membersRef.child(id)
@@ -288,7 +277,7 @@ class PublicChatServiceImpl: ChatService {
 
     }
 
-    override fun updateLastMessage(chatId: String, chat: Chat) {
+    fun updateLastMessage(chatId: String, chat: Chat) {
         val publicChat = chat.copy(type = "public")
         chatsRef.child(chatId)
             .setValue(publicChat)
@@ -296,16 +285,26 @@ class PublicChatServiceImpl: ChatService {
 
     override fun joinChat(chatId: String) {
         membersRef.child(chatId)
-            .child(userId).setValue("")
+            .child(userId).setValue(true)
+        usersRef.child(userId)
+            .child("public_chats")
+            .child(chatId)
+            .setValue(true)
+    }
+
+    override suspend fun leaveChat(chatId: String) {
+        leavePublicChatUseCase(chatId)
     }
 
 }
 
-class PrivateChatServiceImpl: ChatService {
+class PrivateChatServiceImpl(
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase
+): ChatService {
     private val chatsRef: DatabaseReference
         get() = database.child("private_chats")
     private var chatListener: ValueEventListener? = null
-    private var usernameListener: ValueEventListener? = null
+    private var usernamesListener: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var chatPicListener: ValueEventListener? = null
     private var messagesListener: ChildEventListener? = null
     override fun chatListener(
@@ -314,7 +313,6 @@ class PrivateChatServiceImpl: ChatService {
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean) {
         val ref = chatsRef.child(userId).child(id)
-
         if (remove && chatListener != null) {
             ref.removeEventListener(chatListener!!)
         } else {
@@ -348,44 +346,42 @@ class PrivateChatServiceImpl: ChatService {
     ) {
         val ref = database.child("users").child(id)
             .child("name")
-        if (remove && usernameListener != null) {
-            ref.removeEventListener(usernameListener!!)
+        if (remove && usernamesListener[id] != null) {
+            ref.removeEventListener(usernamesListener[id]!!)
         } else {
-            usernameListener = chatEventListener(onCancelled, onDataReceived)
-            ref.addValueEventListener(usernameListener!!)
+            usernamesListener[id] = chatEventListener(onCancelled, onDataReceived)
+            ref.addValueEventListener(usernamesListener[id]!!)
         }
     }
 
-    override fun updateLastMessage(chatId: String, chat: Chat) {
+    fun updateLastMessage(chatId: String, currentUsername: String? = null, otherUsername: String? = null, chat: Chat) {
         val userIds = chatId.split("_")
-        val privateChat = chat.copy(type = "private")
+        val privateChat = chat.copy(type = "private", lastMessage = if (chat.lastMessage.length > 40) chat.lastMessage.substring(0, 40)
+        else chat.lastMessage)
         //Update chat title for each of the users
-        usersRef.child(userIds[1]).child("name").get().addOnSuccessListener { username ->
-             chatsRef.child(userIds[0])
-                 .child(chatId)
-                 .setValue(privateChat.copy(title = username.getValue<String>() ?: ""))
-         }
-        usersRef.child(userIds[0]).child("name").get().addOnSuccessListener { username ->
+        if (currentUsername != null && (userIds[0] == userId || userIds[1] == userId)) {
             chatsRef.child(userIds[1])
                 .child(chatId)
-                .setValue(privateChat.copy(title = username.getValue<String>() ?: ""))
+                .setValue(privateChat.copy(title = currentUsername))
+        }
+        if (otherUsername != null && (userIds[0] != userId || userIds[1] != userId)) {
+            chatsRef.child(userIds[0])
+                .child(chatId)
+                .setValue(privateChat.copy(title = otherUsername))
         }
     }
 
     override fun joinChat(chatId: String) {
         val userIds = chatId.split("_")
-        chatsRef.child(userIds[0])
-            .child(chatId)
-            .setValue(Chat())
-        chatsRef.child(userIds[1])
-            .child(chatId)
-            .setValue(Chat())
-        usersRef.child(userIds[0])
-            .child("private_chats")
-            .setValue(mapOf(chatId to true))
-        usersRef.child(userIds[1])
-            .child("private_chats")
-            .setValue(mapOf(chatId to true))
+        userIds.forEach { id ->
+            chatsRef.child(id)
+                .child(chatId)
+                .setValue(Chat())
+            usersRef.child(id)
+                .child("private_chats")
+                .child(chatId)
+                .setValue(true)
+        }
     }
 
     override fun createPicDir(picDir: String) {
@@ -430,5 +426,9 @@ class PrivateChatServiceImpl: ChatService {
             }
             ref.addValueEventListener(chatPicListener!!)
         }
+    }
+
+    override suspend fun leaveChat(chatId: String) {
+        leavePrivateChatUseCase(chatId)
     }
 }

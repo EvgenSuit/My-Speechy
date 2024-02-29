@@ -87,7 +87,8 @@ fun PrivateChatScreen(navController: NavHostController,
     if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
     Column(modifier = Modifier
         .background(MaterialTheme.colorScheme.onPrimaryContainer)
-        .fillMaxSize()
+        .fillMaxSize(),
+        verticalArrangement = Arrangement.Center
     ) {
             Row(modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -110,30 +111,32 @@ fun PrivateChatScreen(navController: NavHostController,
                             .clip(CircleShape)
                             .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") })
                 }
-                Text(uiState.chat.title,
+                Text(uiState.otherUsername,
                     color = MaterialTheme.colorScheme.onPrimary,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 50.dp))
             }
-            MessagesColumn(viewModel.userId, true, listState, uiState.messages,
-                LocalContext.current.filesDir.path, Modifier.weight(1f),
-                onEdit = {
-                    focusManager.clearFocus(true)
-                    messageToEdit = it
-                    replyMessageId = ""
-                    val message = it.values.first()
-                         textFieldState = TextFieldValue(message.text,
-                             selection = TextRange(message.text.length))
-                         focusRequester.requestFocus()},
-                onDelete = { viewModel.deleteMessage(it)},
-                onReply = {
-                    focusManager.clearFocus(true)
-                    replyMessageId = it
-                    messageToEdit = mapOf()
-                    textFieldState = TextFieldValue()
-                focusRequester.requestFocus()}) {chatId ->
-                navController.navigate("chats/private/$chatId")
-            }
+        MessagesColumn(viewModel.userId, true, listState, uiState.messages,
+                    LocalContext.current.filesDir.path, Modifier.weight(1f),
+                    onEdit = {
+                        focusManager.clearFocus(true)
+                        messageToEdit = it
+                        replyMessageId = ""
+                        val message = it.values.first()
+                        textFieldState = TextFieldValue(message.text,
+                            selection = TextRange(message.text.length))
+                        focusRequester.requestFocus()},
+                    onDelete = {
+                        viewModel.deleteMessage(it)},
+                    onReply = {
+                        focusManager.clearFocus(true)
+                        replyMessageId = it
+                        messageToEdit = mapOf()
+                        textFieldState = TextFieldValue()
+                        focusRequester.requestFocus()}) {chatId ->
+                    navController.navigate("chats/private/$chatId")
+                }
+
             if (replyMessageId.isNotEmpty()) {
                 val message = uiState.messages.filter { it.key == replyMessageId }.entries.first().value
                 ReplyMessageInfo(message) {
@@ -152,8 +155,11 @@ fun PrivateChatScreen(navController: NavHostController,
                 if (messageToEdit.isEmpty()) {
                     viewModel.sendMessage(textFieldState.text, replyMessageId)
                 } else {
-                    viewModel.editMessage(mapOf(messageToEdit.keys.first() to messageToEdit.values.first().copy(text = textFieldState.text)))
-                    messageToEdit = mapOf()
+                    val messageToEditValue = messageToEdit.values.first()
+                    if (messageToEditValue.text != textFieldState.text) {
+                        viewModel.editMessage(mapOf(messageToEdit.keys.first() to messageToEditValue.copy(text = textFieldState.text)))
+                        messageToEdit = mapOf()
+                    } else return@BottomRow
                 }
                 textFieldState = TextFieldValue()
                 replyMessageId = ""

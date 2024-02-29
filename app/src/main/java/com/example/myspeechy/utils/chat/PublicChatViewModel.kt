@@ -3,6 +3,7 @@ package com.example.myspeechy.utils.chat
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.services.chat.PublicChatServiceImpl
@@ -11,30 +12,52 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
-import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
-open class PublicChatViewModel @Inject constructor(
+class PublicChatViewModel @Inject constructor(
     private val chatServiceImpl: PublicChatServiceImpl,
-    private val filesDir: File,
+    private val filesDirPath: String,
+    @Named("ChatDataStore") private val chatDataStore: ChatDatastore,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
     private val _uiState = MutableStateFlow(PublicChatUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
+    init {
+        runBlocking {
+            val joined = chatDataStore.checkState(chatId)
+            if (joined != null) {
+                _uiState.update { it.copy(joined = joined) }
+            }
+        }
+        viewModelScope.launch {
+            chatDataStore.collectState(chatId) {joined ->
+                _uiState.update { it.copy(joined = joined) }
+            }
+        }
+    }
     fun startOrStopListening(removeListeners: Boolean) {
+        listenForChatMembers(removeListeners)
         listenForCurrentChat(removeListeners)
         listenForMessages(removeListeners)
-        listenForChatMembers(removeListeners)
     }
     private fun listenForMessages(remove: Boolean) {
         chatServiceImpl.messagesListener(chatId,
             onAdded = {m ->
-                _uiState.update { it.copy(it.messages + m) }
+                val id = m.keys.first()
+                val savedMessage = _uiState.value.messages[id]
+                if (savedMessage != null) {
+                    _uiState.update { it.copy(it.messages + mapOf(id to m.values.first().copy(senderUsername = savedMessage.senderUsername))) }
+                } else {
+                    _uiState.update { it.copy(it.messages + m)}
+                }
             },
             onChanged = {m ->
                 _uiState.update { it.copy(messages = it.messages.toMutableMap().apply { this[m.keys.first()] = m.values.first()})}
@@ -52,23 +75,26 @@ open class PublicChatViewModel @Inject constructor(
         }
         chatServiceImpl.chatMembersListener(chatId,
             onAdded = {m ->
+                _uiState.update { it.copy(members = it.members + mapOf(m.keys.first() to "")) }
                 m.keys.forEach { userId ->
                     listenForUsername(userId, remove)
                     listenForProfilePic(userId, remove)
                 }
-                _uiState.update { it.copy(members = it.members + m, joined = (it.members + m).containsKey(userId)) }
+                if ((_uiState.value.members + m).containsKey(userId) && !uiState.value.joined) {
+                    viewModelScope.launch {
+                        chatDataStore.addToChatList(chatId)
+                    }
+                }
             },
-            onChanged = {m ->
-                val id = m.keys.first()
-                val value = m.values.first()
-                _uiState.update { it.copy(members = it.members.toMutableMap().apply { this[id] = value },
-                    messages = it.messages.mapValues { (key, v) ->
-                        if (key == id) v.copy(senderUsername = value) else v }) }
-            },
+            onChanged = { },
             onRemoved = {m ->
                 _uiState.update { it.copy(members = it.members.filterKeys { key -> key != m.keys.first() }) }
-                if (!_uiState.value.members.containsKey(userId)) _uiState.update { it.copy(joined = false)}
-                m.keys.forEach {
+                if (!_uiState.value.members.containsKey(userId)) {
+                    viewModelScope.launch {
+                        chatDataStore.removeFromChatList(chatId)
+                    }
+                }
+                m.keys.forEach {userId ->
                     listenForUsername(userId, true)
                     listenForProfilePic(userId, true)
                 }
@@ -78,9 +104,9 @@ open class PublicChatViewModel @Inject constructor(
     }
     private fun listenForProfilePic(id: String, remove: Boolean) {
         if (id != userId) {
-            val picDir = "${filesDir}/profilePics/${id}/"
+            val picDir = "${filesDirPath}/profilePics/${id}/"
             val picPath = "$picDir/lowQuality/$id.jpg"
-            chatServiceImpl.usersProfilePicListener(id, filesDir.path, {}, {updateStorageErrorMessage(it)
+            chatServiceImpl.usersProfilePicListener(id, filesDirPath, {}, {updateStorageErrorMessage(it)
                 File(picPath).delete()
                 File(picDir).deleteRecursively() }, {
                 _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
@@ -92,19 +118,19 @@ open class PublicChatViewModel @Inject constructor(
         chatServiceImpl.usernameListener(id, {}, {username ->
             val name = username.getValue<String>()
             if (name != null) {
-                _uiState.update { it.copy(//members = it.members.mapValues { (k, v) -> if (k == id) name else ""},
+                _uiState.update { it.copy(members = it.members.mapValues { (k, v) -> if (k == id) name else v},
                     messages = it.messages.mapValues { (_, v) ->
                         if (v.sender == id) v.copy(senderUsername = name) else v }) }
             }
         }, remove)
     }
-        private fun listenForCurrentChat(remove: Boolean) {
+    private fun listenForCurrentChat(remove: Boolean) {
             chatServiceImpl.chatListener(chatId, {}, { chat ->
                 _uiState.update {
                     it.copy(chat = chat.getValue<Chat>() ?: Chat())
                 }
             }, remove)
-        }
+    }
 
         fun sendMessage(text: String, replyTo: String) {
             val chatTitle = _uiState.value.chat.title
@@ -113,17 +139,30 @@ open class PublicChatViewModel @Inject constructor(
         }
     fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
+        chatServiceImpl.updateLastMessage(chatId,
+            _uiState.value.chat.copy(lastMessage = message.values.first().text))
     }
     fun deleteMessage(message: Map<String, Message>) {
+        val messages = _uiState.value.messages
+        val entries = messages.entries
         chatServiceImpl.deleteMessage(chatId, message)
+        if (entries.last().value == message.values.first() && entries.size > 1) {
+            val prevMessage = messages.values.toList()[messages.values.toList().indexOf(message.values.first())-1]
+            chatServiceImpl.updateLastMessage(chatId, _uiState.value.chat.copy(lastMessage = prevMessage.text,
+                timestamp = prevMessage.timestamp))
+        } else if (entries.size <= 1) {
+            viewModelScope.launch {
+                chatServiceImpl.updateLastMessage(chatId, Chat(_uiState.value.chat.title))
+                chatServiceImpl.leaveChat(chatId)
+            }
+        }
     }
 
-        fun joinChat() {
-            chatServiceImpl.joinChat(chatId)
-        }
+    fun joinChat() {
+        chatServiceImpl.joinChat(chatId)
+    }
     private fun updateStorageErrorMessage(e: String) {
-        _uiState.update { it.copy(storageErrorMessage = e.split(" ").joinToString("_").uppercase(
-            Locale.ROOT).dropLast(1)) }
+        _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }
     }
 
 

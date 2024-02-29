@@ -17,13 +17,15 @@ import com.example.myspeechy.services.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.services.lesson.ReadingLessonServiceImpl
 import com.example.myspeechy.services.lesson.RegularLessonServiceImpl
 import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
+import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.utils.chat.ChatDatastore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import es.dmoral.toasty.Toasty
-import java.io.File
 import javax.inject.Named
 
 @Module
@@ -76,23 +78,28 @@ object ViewModelModule {
     }
     @Provides
     fun provideChatsServiceImpl(): ChatsServiceImpl {
-        return ChatsServiceImpl()
+        return ChatsServiceImpl(LeavePrivateChatUseCase())
     }
     @Provides
-    fun providePublicChatServiceImpl(): PublicChatServiceImpl {
-        return PublicChatServiceImpl()
+    fun providePublicChatServiceImpl(@ApplicationContext context: Context): PublicChatServiceImpl {
+        return PublicChatServiceImpl(LeavePublicChatUseCase(provideChatDataStore(context)))
     }
     @Provides
     fun providePrivateChatServiceImpl(): PrivateChatServiceImpl {
-        return PrivateChatServiceImpl()
+        return PrivateChatServiceImpl(LeavePrivateChatUseCase())
     }
     @Provides
     fun provideUserProfileServiceImpl(): UserProfileServiceImpl {
         return UserProfileServiceImpl()
     }
     @Provides
-    fun provideFilesDir(@ApplicationContext context: Context): File {
-        return context.cacheDir
+    fun provideFilesDirPath(@ApplicationContext context: Context): String {
+        return context.cacheDir.path
+    }
+    @Provides
+    @Named("ChatDataStore")
+    fun provideChatDataStore(@ApplicationContext context: Context): ChatDatastore {
+        return ChatDatastore(context)
     }
     @Provides
     @Named("ProfilePictureSizeError")

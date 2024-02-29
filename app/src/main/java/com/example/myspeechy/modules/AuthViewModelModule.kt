@@ -3,7 +3,7 @@ package com.example.myspeechy.modules
 import android.content.Context
 import com.example.myspeechy.services.AuthService
 import com.example.myspeechy.services.GoogleAuthService
-import com.example.myspeechy.utils.AuthViewModel
+import com.example.myspeechy.utils.auth.AuthViewModel
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
