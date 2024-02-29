@@ -25,7 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -68,17 +68,11 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
-    var name by rememberSaveable {
+    var name by rememberSaveable(uiState.name) {
         mutableStateOf(uiState.name)
     }
-    var info by rememberSaveable {
+    var info by rememberSaveable(uiState.name) {
         mutableStateOf(uiState.info)
-    }
-    LaunchedEffect(uiState.name) {
-        name = uiState.name
-    }
-    LaunchedEffect(uiState.info) {
-        info = uiState.info
     }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
@@ -97,43 +91,44 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             }
         }
     }
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.onPrimaryContainer)
-            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
-            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = null)
-        }
-        var retryHash by remember { mutableStateOf(0) }
-        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-            .data(viewModel.normalQualityPicRef.path)
-            .setParameter("retry_hash", retryHash)
-            .build())
-        Box(Modifier.padding(top = 50.dp)) {
-            if (viewModel.normalQualityPicRef.exists()) {
-                if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
-                        Image(painter,
-                            contentScale = ContentScale.FillBounds,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .clickable {
-                                    if (!uiState.uploadingPicture && launcher != null) launcher.launch(
-                                        arrayOf("image/png", "image/jpeg")
-                                    )
-                                }
-                                .size(picSize))
-                    }
+    Box {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.onPrimaryContainer)
+                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            }
+            var retryHash by remember { mutableStateOf(0) }
+            val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+                .data(viewModel.normalQualityPicRef.path)
+                .setParameter("retry_hash", retryHash)
+                .build())
+            Box(Modifier.padding(top = 50.dp)) {
+                if (viewModel.normalQualityPicRef.exists()) {
+                    if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
+                    Image(painter,
+                        contentScale = ContentScale.FillBounds,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .clickable {
+                                if (!uiState.uploadingPicture && launcher != null) launcher.launch(
+                                    arrayOf("image/png", "image/jpeg")
+                                )
+                            }
+                            .size(picSize))
+                }
 
-            androidx.compose.animation.AnimatedVisibility(!uiState.uploadingPicture
-                    && (uiState.storageErrorMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
-                enter = slideInHorizontally(),
-                exit = shrinkHorizontally()
-            ) {
+                this@Column.AnimatedVisibility(!uiState.uploadingPicture
+                        && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
+                    enter = slideInHorizontally(),
+                    exit = shrinkHorizontally()
+                ) {
                     Image(painter = painterResource(R.drawable.user),
                         contentDescription = null,
                         modifier = Modifier
@@ -143,18 +138,18 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                                     arrayOf("image/png", "image/jpeg")
                                 )
                             })
+                }
             }
-        }
-        AnimatedVisibility(
-            !uiState.uploadingPicture &&
-                    uiState.storageErrorMessage.isEmpty() && isCurrentUser,
-            enter = slideInHorizontally()) {
-            ElevatedButton(onClick = viewModel::removeUserPicture) {
-                Icon(imageVector = Icons.Filled.Delete,
-                    tint = MaterialTheme.colorScheme.error,
-                    contentDescription = null)
+            AnimatedVisibility(
+                !uiState.uploadingPicture &&
+                        uiState.storageMessage.isEmpty() && isCurrentUser,
+                enter = slideInHorizontally()) {
+                ElevatedButton(onClick = viewModel::removeUserPicture) {
+                    Icon(imageVector = Icons.Filled.Delete,
+                        tint = MaterialTheme.colorScheme.error,
+                        contentDescription = null)
+                }
             }
-        }
 
             Column(
                 Modifier
@@ -181,20 +176,21 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             AnimatedVisibility(uiState.uploadingPicture) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
-        Spacer(Modifier.weight(1f))
-        if(isCurrentUser) {
-            ElevatedButton(onClick = {
-                if (name != null && info != null)
-                    viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
-                else onOkClick()
-            }, modifier = Modifier.size(200.dp, 50.dp)) {
-                Text("Save")
+            Spacer(Modifier.weight(1f))
+            if(isCurrentUser && (name != uiState.name || info != uiState.info)) {
+                ElevatedButton(onClick = {
+                    if (name != null && info != null)
+                        viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
+                    else onOkClick()
+                }, modifier = Modifier.size(200.dp, 50.dp)) {
+                    Text("Save")
+                }
             }
         }
-    }
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.startOrStopListening(true)
+        DisposableEffect(Unit) {
+            onDispose {
+                viewModel.startOrStopListening(true)
+            }
         }
     }
 }

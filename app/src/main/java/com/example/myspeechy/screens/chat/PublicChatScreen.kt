@@ -73,23 +73,23 @@ fun PublicChatScreen(navController: NavHostController,
                     modifier = Modifier.padding(start = 50.dp))
             }
             MessagesColumn(viewModel.userId, uiState.joined, listState, uiState.messages,
-                LocalContext.current.cacheDir.path, Modifier.weight(1f),
-                onEdit = {focusManager.clearFocus(true)
-                    messageToEdit = it
-                    replyMessageId = ""
-                    val message = it.values.first()
-                    textFieldState = TextFieldValue(message.text,
-                        selection = TextRange(message.text.length)
-                    )
-                    focusRequester.requestFocus()},
-                onDelete = {viewModel.deleteMessage(it)},
-                onReply = {focusManager.clearFocus(true)
-                    replyMessageId = it
-                    messageToEdit = mapOf()
-                    textFieldState = TextFieldValue()
-                    focusRequester.requestFocus()}){ chatId ->
-                navController.navigate("chats/private/$chatId")
-            }
+                    LocalContext.current.cacheDir.path, Modifier.weight(1f),
+                    onEdit = {focusManager.clearFocus(true)
+                        messageToEdit = it
+                        replyMessageId = ""
+                        val message = it.values.first()
+                        textFieldState = TextFieldValue(message.text,
+                            selection = TextRange(message.text.length)
+                        )
+                        focusRequester.requestFocus()},
+                    onDelete = {viewModel.deleteMessage(it)},
+                    onReply = {focusManager.clearFocus(true)
+                        replyMessageId = it
+                        messageToEdit = mapOf()
+                        textFieldState = TextFieldValue()
+                        focusRequester.requestFocus()}){ chatId ->
+                    navController.navigate("chats/private/$chatId")
+                }
         if (replyMessageId.isNotEmpty()) {
             val message = uiState.messages.filter { it.key == replyMessageId }.entries.first().value
             ReplyMessageInfo(message) {

@@ -1,7 +1,9 @@
 package com.example.myspeechy.services.chat
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.core.net.toUri
-import com.example.myspeechy.data.chat.Chat
+import com.example.myspeechy.utils.chat.getOtherUserId
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -10,7 +12,10 @@ import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.UUID
 
 enum class PictureStorageError {
@@ -67,9 +72,24 @@ class UserProfileServiceImpl {
             ref.addValueEventListener(infoListener!!)
         }
     }
+    fun createPicDir(dir: String) {
+        if (!Files.isDirectory(Paths.get(dir))) {
+            Files.createDirectories(Paths.get(dir))
+        }
+    }
+    fun compressPicture(imgBytes: ByteArray,
+                        quality: Int,
+                     onSuccess: (ByteArray) -> Unit,
+                     onError: () -> Unit) {
+        val baos = ByteArrayOutputStream()
+        val bmp = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.size)
+        bmp.compress(Bitmap.CompressFormat.JPEG, quality, baos)
+        val compressedBytes = baos.toByteArray()
+        if (compressedBytes.size < 2 * 1024 * 1024) { onSuccess(compressedBytes) } else { onError() }
+    }
     fun userPictureListener(id: String,
                             file: File,
-                            onDirCreate: () -> Unit,
+                            dir: String,
                             onCancelled: (Int) -> Unit,
                             onStorageFailure: (String) -> Unit,
                             onPicReceived: () -> Unit,
@@ -84,7 +104,7 @@ class UserProfileServiceImpl {
                 val picName = name.getValue<String>()
                 if (picName != null) {
                     if (!file.exists()) {
-                        onDirCreate()
+                        createPicDir(dir)
                         file.createNewFile()
                     }
                     picsRef.child(id)
@@ -94,8 +114,7 @@ class UserProfileServiceImpl {
                         .addOnSuccessListener {
                             it.storage.getFile(file).addOnSuccessListener {
                             onPicReceived()
-                        }
-                            .addOnFailureListener {onStorageFailure(it.message ?: "")}
+                        }.addOnFailureListener {onStorageFailure(it.message ?: "")}
                         }
                         .addOnFailureListener { onStorageFailure(it.message ?: "")}
                 } else {
@@ -145,16 +164,14 @@ class UserProfileServiceImpl {
         usersRef.child(userId)
             .child("private_chats")
             .get().addOnSuccessListener { chatIds ->
-                (chatIds.value as Map<String, Boolean>).keys.forEach{chatId ->
-                    val otherUserId = chatId.split("_").first { it != userId }
-                    val chatRef = database.child("private_chats")
+                (chatIds.getValue<Map<String, Boolean>>())?.keys?.forEach{chatId ->
+                    val otherUserId = chatId.getOtherUserId(userId)
+                    database.child("private_chats")
                         .child(otherUserId)
                         .child(chatId)
-                    chatRef.get().addOnSuccessListener { chat ->
-                            chatRef.setValue(chat.getValue<Chat>()!!.copy(title = newName))
-                                .addOnSuccessListener { onSuccess() }
-                        }
-                        .addOnFailureListener {  }
+                        .child("title")
+                        .setValue(newName)
+                        .addOnSuccessListener { onSuccess() }
                 }
             }
     }

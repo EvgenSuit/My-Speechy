@@ -1,5 +1,6 @@
 package com.example.myspeechy.services.chat
 
+import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
@@ -40,7 +41,7 @@ interface ChatsService {
                 onChanged(snapshot.key!!)
             }
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                onRemoved("")
+                onRemoved(snapshot.key!!)
             }
             override fun onCancelled(error: DatabaseError) {
                 onCancelled(error.code)
@@ -75,12 +76,21 @@ interface ChatsService {
                             onDataReceived: (DataSnapshot) -> Unit,
                             onCancelled: (Int) -> Unit,
                             remove: Boolean)
+    fun privateChatTitleListener(id: String,
+                                 onDataReceived: (DataSnapshot) -> Unit,
+                                 onCancelled: (Int) -> Unit,
+                                 remove: Boolean)
+    fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit)
+    suspend fun leavePrivateChat(chatId: String)
 }
-class ChatsServiceImpl: ChatsService {
+class ChatsServiceImpl(
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase
+): ChatsService {
     private var publicChatsStateListener: ChildEventListener? = null
     private var privateChatsStateListener: ChildEventListener? = null
     private var publicChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var privateChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
+    private var usersUsernameListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
 
     override fun publicChatsStateListener(
         onAdded: (String) -> Unit,
@@ -142,10 +152,44 @@ class ChatsServiceImpl: ChatsService {
         val currListener = privateChatsListeners[id]
         if (remove && currListener != null) {
             ref.removeEventListener(currListener)
-            privateChatsListeners.remove(id)
         } else {
             privateChatsListeners[id] = listener(onCancelled, onDataReceived)
             ref.addValueEventListener(privateChatsListeners[id]!!)
         }
+    }
+
+    override fun privateChatTitleListener(
+        id: String,
+        onDataReceived: (DataSnapshot) -> Unit,
+        onCancelled: (Int) -> Unit,
+        remove: Boolean
+    ) {
+        val ref = database.child("users").child(id)
+            .child("name")
+        if (remove && usersUsernameListeners[id] != null) {
+            ref.removeEventListener(usersUsernameListeners[id]!!)
+        } else {
+            usersUsernameListeners[id] = listener(onCancelled, onDataReceived)
+            ref.addValueEventListener(usersUsernameListeners[id]!!)
+        }
+    }
+
+    override fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit) {
+            database.child("users")
+                .child(userId)
+                .child(if (type == "private") "private_chats" else "public_chats")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        onSuccess(snapshot.exists())
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+
+                    }
+                })
+    }
+
+    override suspend fun leavePrivateChat(chatId: String) {
+        leavePrivateChatUseCase(chatId)
     }
 }

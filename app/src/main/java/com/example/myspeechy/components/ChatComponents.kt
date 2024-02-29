@@ -1,5 +1,6 @@
 package com.example.myspeechy.components
 import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -170,10 +171,11 @@ fun MessagesColumn(
                                 Column(Modifier.fillMaxSize()) {
                                     val senderUsername = message.senderUsername
                                     AnimatedVisibility(senderUsername != null){
-                                        if (senderUsername != null) {
+                                        if (senderUsername != null && message.sender != userId) {
                                             Text(senderUsername,
                                                 overflow = TextOverflow.Ellipsis,
                                                 fontSize = 18.sp,
+                                                maxLines = 1,
                                                 modifier = Modifier.clickable {
                                                     if (message.sender != userId) {
                                                         onNavigate(chatId)
@@ -217,8 +219,7 @@ fun MessagesColumn(
                         Box {
                             DropdownMenu(expanded = true,
                                 properties = PopupProperties(focusable = false),
-                                onDismissRequest = { selectedMessageIndex = -1},
-                                modifier = Modifier) {
+                                onDismissRequest = { selectedMessageIndex = -1}) {
                                 if (message.sender == userId) {
                                     DropdownMenuItem(
                                         text = { Text("Edit") },

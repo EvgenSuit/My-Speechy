@@ -69,7 +69,7 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
         Text("Meditation time in minutes",
             style = MaterialTheme.typography.titleLarge)
         AnimatedVisibility(moveColors,
-            enter = fadeIn(tween(200))
+            enter = fadeIn(tween(1000))
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 30.dp)) {
