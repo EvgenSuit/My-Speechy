@@ -118,6 +118,7 @@ class PublicChatViewModel @Inject constructor(
         chatServiceImpl.usernameListener(id, {}, {username ->
             val name = username.getValue<String>()
             if (name != null) {
+                Log.d("NAME", name)
                 _uiState.update { it.copy(members = it.members.mapValues { (k, v) -> if (k == id) name else v},
                     messages = it.messages.mapValues { (_, v) ->
                         if (v.sender == id) v.copy(senderUsername = name) else v }) }
@@ -151,9 +152,10 @@ class PublicChatViewModel @Inject constructor(
             chatServiceImpl.updateLastMessage(chatId, _uiState.value.chat.copy(lastMessage = prevMessage.text,
                 timestamp = prevMessage.timestamp))
         } else if (entries.size <= 1) {
-            viewModelScope.launch {
-                chatServiceImpl.updateLastMessage(chatId, Chat(_uiState.value.chat.title))
-                chatServiceImpl.leaveChat(chatId)
+            chatServiceImpl.updateLastMessage(chatId, Chat(_uiState.value.chat.title)) {
+                viewModelScope.launch {
+                    chatServiceImpl.leaveChat(chatId)
+                }
             }
         }
     }

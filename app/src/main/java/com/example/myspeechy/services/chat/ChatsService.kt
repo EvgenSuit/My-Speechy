@@ -1,6 +1,7 @@
 package com.example.myspeechy.services.chat
 
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
@@ -82,9 +83,11 @@ interface ChatsService {
                                  remove: Boolean)
     fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit)
     suspend fun leavePrivateChat(chatId: String)
+    suspend fun leavePublicChat(chatId: String)
 }
 class ChatsServiceImpl(
-    private val leavePrivateChatUseCase: LeavePrivateChatUseCase
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
+    private val leavePublicChatUseCase: LeavePublicChatUseCase
 ): ChatsService {
     private var publicChatsStateListener: ChildEventListener? = null
     private var privateChatsStateListener: ChildEventListener? = null
@@ -182,7 +185,6 @@ class ChatsServiceImpl(
                     override fun onDataChange(snapshot: DataSnapshot) {
                         onSuccess(snapshot.exists())
                     }
-
                     override fun onCancelled(error: DatabaseError) {
 
                     }
@@ -191,5 +193,9 @@ class ChatsServiceImpl(
 
     override suspend fun leavePrivateChat(chatId: String) {
         leavePrivateChatUseCase(chatId)
+    }
+
+    override suspend fun leavePublicChat(chatId: String) {
+        leavePublicChatUseCase(chatId)
     }
 }

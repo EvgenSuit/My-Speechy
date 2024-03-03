@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -36,7 +37,7 @@ import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
-import com.example.myspeechy.components.ReplyMessageInfo
+import com.example.myspeechy.components.ReplyOrEditMessageInfo
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.utils.chat.PublicChatViewModel
 import kotlinx.coroutines.launch
@@ -53,8 +54,8 @@ fun PublicChatScreen(navController: NavHostController,
     var messageToEdit by rememberSaveable {
         mutableStateOf(mapOf<String, Message>())
     }
-    var replyMessageId by rememberSaveable {
-        mutableStateOf("")
+    var replyMessage by rememberSaveable {
+        mutableStateOf(mapOf<String, Message>())
     }
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -76,7 +77,7 @@ fun PublicChatScreen(navController: NavHostController,
                     LocalContext.current.cacheDir.path, Modifier.weight(1f),
                     onEdit = {focusManager.clearFocus(true)
                         messageToEdit = it
-                        replyMessageId = ""
+                        replyMessage = mapOf()
                         val message = it.values.first()
                         textFieldState = TextFieldValue(message.text,
                             selection = TextRange(message.text.length)
@@ -84,19 +85,24 @@ fun PublicChatScreen(navController: NavHostController,
                         focusRequester.requestFocus()},
                     onDelete = {viewModel.deleteMessage(it)},
                     onReply = {focusManager.clearFocus(true)
-                        replyMessageId = it
+                        replyMessage = it
+                        Log.d("REPLY MESSAGE", replyMessage.toString())
                         messageToEdit = mapOf()
                         textFieldState = TextFieldValue()
                         focusRequester.requestFocus()}){ chatId ->
                     navController.navigate("chats/private/$chatId")
                 }
-        if (replyMessageId.isNotEmpty()) {
-            val message = uiState.messages.filter { it.key == replyMessageId }.entries.first().value
-            ReplyMessageInfo(message) {
-                replyMessageId = ""
+        if (replyMessage.isNotEmpty()) {
+            ReplyOrEditMessageInfo(replyMessage.values.first()) {
+                replyMessage = mapOf()
                 messageToEdit = mapOf()
                 textFieldState = TextFieldValue()
-                focusManager.clearFocus(true)
+            }
+        } else if (messageToEdit.isNotEmpty()) {
+            ReplyOrEditMessageInfo(messageToEdit.values.first()) {
+                replyMessage = mapOf()
+                messageToEdit = mapOf()
+                textFieldState = TextFieldValue()
             }
         }
             if (!uiState.joined) {
@@ -104,17 +110,17 @@ fun PublicChatScreen(navController: NavHostController,
             } else {
                 BottomRow(textFieldState,
                     focusRequester = focusRequester,
-                    onFieldValueChange = {textFieldState = it},
-                    modifier = Modifier.height(IntrinsicSize.Min)) {
-
+                    modifier = Modifier.height(IntrinsicSize.Min),
+                    onFieldValueChange = {textFieldState = it}) {
                     if (messageToEdit.isEmpty()) {
-                        viewModel.sendMessage(textFieldState.text, replyMessageId)
+                        viewModel.sendMessage(textFieldState.text,
+                            if (replyMessage.keys.isNotEmpty()) replyMessage.keys.first() else "")
                     } else {
                         viewModel.editMessage(mapOf(messageToEdit.keys.first() to messageToEdit.values.first().copy(text = textFieldState.text)))
                         messageToEdit = mapOf()
                     }
                     textFieldState = TextFieldValue()
-                    replyMessageId = ""
+                    replyMessage = mapOf()
                     coroutineScope.launch {
                         listState.animateScrollToItem(0)
                     }

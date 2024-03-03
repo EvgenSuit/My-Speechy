@@ -136,6 +136,12 @@ class PrivateChatViewModel @Inject constructor(
                 _uiState.value.chat.copy(prevMessage.sender, prevMessage.text,
                 prevMessage.timestamp))
         } else if (entries.size <= 1) {
+            /*chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
+                _uiState.value.otherUsername, Chat()) {
+                viewModelScope.launch {
+                    chatServiceImpl.leaveChat(chatId)
+                }
+            }*/
             viewModelScope.launch {
                 chatServiceImpl.leaveChat(chatId)
             }

@@ -277,10 +277,11 @@ class PublicChatServiceImpl(
 
     }
 
-    fun updateLastMessage(chatId: String, chat: Chat) {
+    fun updateLastMessage(chatId: String, chat: Chat, onSuccess: () -> Unit = {}) {
         val publicChat = chat.copy(type = "public")
         chatsRef.child(chatId)
             .setValue(publicChat)
+            .addOnSuccessListener { onSuccess() }
     }
 
     override fun joinChat(chatId: String) {
@@ -354,7 +355,8 @@ class PrivateChatServiceImpl(
         }
     }
 
-    fun updateLastMessage(chatId: String, currentUsername: String? = null, otherUsername: String? = null, chat: Chat) {
+    fun updateLastMessage(chatId: String, currentUsername: String? = null, otherUsername: String? = null, chat: Chat,
+                          onSuccess: () -> Unit = {}) {
         val userIds = chatId.split("_")
         val privateChat = chat.copy(type = "private", lastMessage = if (chat.lastMessage.length > 40) chat.lastMessage.substring(0, 40)
         else chat.lastMessage)
