@@ -77,8 +77,11 @@ object ViewModelModule {
         return MeditationStatsServiceImpl()
     }
     @Provides
-    fun provideChatsServiceImpl(): ChatsServiceImpl {
-        return ChatsServiceImpl(LeavePrivateChatUseCase())
+    fun provideChatsServiceImpl(@ApplicationContext context: Context): ChatsServiceImpl {
+        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(
+            provideChatDataStore(context)
+        )
+        )
     }
     @Provides
     fun providePublicChatServiceImpl(@ApplicationContext context: Context): PublicChatServiceImpl {

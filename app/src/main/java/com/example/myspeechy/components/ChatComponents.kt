@@ -1,28 +1,21 @@
 package com.example.myspeechy.components
-import android.graphics.BitmapFactory
-import android.util.Log
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +29,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -55,20 +47,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
-import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -103,7 +90,7 @@ fun MessagesColumn(
     modifier: Modifier,
     onEdit: (Map<String, Message>) -> Unit,
     onDelete: (Map<String, Message>) -> Unit,
-    onReply: (String) -> Unit,
+    onReply: (Map<String, Message>) -> Unit,
     onNavigate: (String) -> Unit) {
     val picSize = dimensionResource(R.dimen.chat_pic_size)
     var selectedMessageIndex by rememberSaveable {
@@ -160,7 +147,7 @@ fun MessagesColumn(
                         }
                         Box {
                             ElevatedButton(
-                                onClick = { selectedMessageIndex = index },
+                                onClick = { if (joined) selectedMessageIndex = index },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -232,7 +219,7 @@ fun MessagesColumn(
                                 }
                                 DropdownMenuItem(
                                     text = { Text("Reply") },
-                                    onClick = { onReply(messageId)
+                                    onClick = { onReply(mapOf(messageId to message))
                                         selectedMessageIndex = -1})
                             }
                         }
@@ -243,6 +230,8 @@ fun MessagesColumn(
         }
 }
 
+//This row contains input field and send button
+//Currently supports 10 max lines
 @Composable
 fun BottomRow(textFieldValue: TextFieldValue,
               modifier: Modifier,
@@ -252,7 +241,7 @@ fun BottomRow(textFieldValue: TextFieldValue,
     Row(modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.Bottom) {
         OutlinedTextField(
-            value = textFieldValue, onValueChange = onFieldValueChange,
+            value = textFieldValue, onValueChange = { if (it.text.length < 500) onFieldValueChange(it) },
             shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onPrimary,
@@ -289,14 +278,17 @@ fun JoinButton(onClick: () -> Unit, modifier: Modifier) {
 }
 
 @Composable
-fun ReplyMessageInfo(message: Message, onClick: () -> Unit) {
+fun ReplyOrEditMessageInfo(message: Message, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth()) {
         Column(
             Modifier
                 .fillMaxWidth(0.9f)
                 .background(MaterialTheme.colorScheme.onTertiaryContainer)) {
-            Text(message.senderUsername ?: "", color = MaterialTheme.colorScheme.onPrimary)
+            Text(message.senderUsername ?: "", color = MaterialTheme.colorScheme.onPrimary,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1)
             Text(message.text, Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onPrimary,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onClick, Modifier) {

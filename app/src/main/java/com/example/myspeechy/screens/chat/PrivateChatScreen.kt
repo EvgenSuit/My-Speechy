@@ -12,13 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +48,7 @@ import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.MessagesColumn
-import com.example.myspeechy.components.ReplyMessageInfo
+import com.example.myspeechy.components.ReplyOrEditMessageInfo
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.utils.chat.PrivateChatViewModel
 import kotlinx.coroutines.launch
@@ -69,8 +64,8 @@ fun PrivateChatScreen(navController: NavHostController,
     var messageToEdit by rememberSaveable {
         mutableStateOf(mapOf<String, Message>())
     }
-    var replyMessageId by rememberSaveable {
-        mutableStateOf("")
+    var replyMessage by rememberSaveable {
+        mutableStateOf(mapOf<String, Message>())
     }
     val chatPicSize = dimensionResource(R.dimen.chat_pic_size)
     val listState = rememberLazyListState()
@@ -121,7 +116,7 @@ fun PrivateChatScreen(navController: NavHostController,
                     onEdit = {
                         focusManager.clearFocus(true)
                         messageToEdit = it
-                        replyMessageId = ""
+                        replyMessage = mapOf()
                         val message = it.values.first()
                         textFieldState = TextFieldValue(message.text,
                             selection = TextRange(message.text.length))
@@ -130,30 +125,34 @@ fun PrivateChatScreen(navController: NavHostController,
                         viewModel.deleteMessage(it)},
                     onReply = {
                         focusManager.clearFocus(true)
-                        replyMessageId = it
+                        replyMessage = it
                         messageToEdit = mapOf()
                         textFieldState = TextFieldValue()
                         focusRequester.requestFocus()}) {chatId ->
                     navController.navigate("chats/private/$chatId")
                 }
 
-            if (replyMessageId.isNotEmpty()) {
-                val message = uiState.messages.filter { it.key == replyMessageId }.entries.first().value
-                ReplyMessageInfo(message) {
-                    replyMessageId = ""
+            if (replyMessage.isNotEmpty()) {
+                ReplyOrEditMessageInfo(replyMessage.values.first()) {
+                    replyMessage = mapOf()
                     messageToEdit = mapOf()
                     textFieldState = TextFieldValue()
-                    focusManager.clearFocus(true)
+                }
+            } else if (messageToEdit.isNotEmpty()) {
+                ReplyOrEditMessageInfo(messageToEdit.values.first()) {
+                    replyMessage = mapOf()
+                    messageToEdit = mapOf()
+                    textFieldState = TextFieldValue()
                 }
             }
             BottomRow(textFieldState,
                 focusRequester = focusRequester,
-                onFieldValueChange = {textFieldState = it},
-                modifier = Modifier
-                    .height(IntrinsicSize.Min)
+                modifier = Modifier.height(IntrinsicSize.Min),
+                onFieldValueChange = {textFieldState = it}
             ) {
                 if (messageToEdit.isEmpty()) {
-                    viewModel.sendMessage(textFieldState.text, replyMessageId)
+                    viewModel.sendMessage(textFieldState.text,
+                        if (replyMessage.keys.isNotEmpty()) replyMessage.keys.first() else "")
                 } else {
                     val messageToEditValue = messageToEdit.values.first()
                     if (messageToEditValue.text != textFieldState.text) {
@@ -162,7 +161,7 @@ fun PrivateChatScreen(navController: NavHostController,
                     } else return@BottomRow
                 }
                 textFieldState = TextFieldValue()
-                replyMessageId = ""
+                replyMessage = mapOf()
                 coroutineScope.launch {
                     listState.animateScrollToItem(0)
                 }

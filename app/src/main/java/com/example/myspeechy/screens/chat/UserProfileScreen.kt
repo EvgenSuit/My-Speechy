@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -52,8 +53,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -97,7 +102,7 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .background(MaterialTheme.colorScheme.onPrimaryContainer)
-                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                .padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -109,7 +114,7 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 .data(viewModel.normalQualityPicRef.path)
                 .setParameter("retry_hash", retryHash)
                 .build())
-            Box(Modifier.padding(top = 50.dp)) {
+            Box(Modifier.padding(top = 20.dp)) {
                 if (viewModel.normalQualityPicRef.exists()) {
                     if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
                     Image(painter,
@@ -144,7 +149,11 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 !uiState.uploadingPicture &&
                         uiState.storageMessage.isEmpty() && isCurrentUser,
                 enter = slideInHorizontally()) {
-                ElevatedButton(onClick = viewModel::removeUserPicture) {
+                ElevatedButton(onClick = viewModel::removeUserPicture,
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 10.dp
+                    ),
+                    modifier = Modifier.width(200.dp)) {
                     Icon(imageVector = Icons.Filled.Delete,
                         tint = MaterialTheme.colorScheme.error,
                         contentDescription = null)
@@ -198,6 +207,8 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
 @Composable
 fun UserInfoTextField(value: String, onChange: (String) -> Unit, last: Boolean=false) {
     val focusManager = LocalFocusManager.current
+    val descriptionMaxChar = 70
+    val usernameMaxChar = 30
     OutlinedTextField(value = value,
         singleLine = !last,
         keyboardOptions = KeyboardOptions.Default.copy(
@@ -209,13 +220,22 @@ fun UserInfoTextField(value: String, onChange: (String) -> Unit, last: Boolean=f
                 else focusManager.moveFocus(FocusDirection.Next)
             }
         ),
-        onValueChange = onChange,
+        onValueChange = {
+            if (last && it.length < descriptionMaxChar) onChange(it) //description
+            if (!last && it.length < usernameMaxChar) onChange(it) //username
+        },
+        supportingText = {Text(if (!last) "${value.length} / $usernameMaxChar" else "${value.length} / $descriptionMaxChar",
+            Modifier.fillMaxWidth(),
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.onPrimary,
+            textAlign = TextAlign.End)},
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onPrimary,
             unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
             focusedBorderColor = MaterialTheme.colorScheme.inversePrimary,
             unfocusedContainerColor = MaterialTheme.colorScheme.primary
         ),
+        textStyle = TextStyle(fontSize = 22.sp),
         modifier = Modifier.fillMaxWidth())
 }
 
@@ -227,6 +247,7 @@ fun UserInfoTable(value: String) {
             .background(MaterialTheme.colorScheme.primary)
             .fillMaxWidth()) {
         Text(value, color = MaterialTheme.colorScheme.onPrimary,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(20.dp))
     }
 }

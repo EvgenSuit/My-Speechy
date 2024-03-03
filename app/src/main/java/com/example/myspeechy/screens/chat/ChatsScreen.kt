@@ -189,6 +189,8 @@ fun ChatsColumn(navController: NavHostController,
             ElevatedButton(
                 onClick = {
                     chatSearchTitle = ""
+                    viewModel.onNavigateToSearchedChat()
+                    focusManager.clearFocus(true)
                     navController.navigate("chats/public/${searchedChatId}")
                 },
                 modifier = Modifier
@@ -231,12 +233,15 @@ fun ChatsColumn(navController: NavHostController,
             items(chatsValues.size) { i ->
                 if (chatsValues[i] != null) {
                     val currChat = chatsValues[i]!!
+                    val chatId = chatsKeys[i]
                     Box(contentAlignment = Alignment.Center) {
                         ElevatedCard(
                             modifier = Modifier.fillMaxWidth()
                                 .combinedClickable(
                                     onClick = {
-                                        navController.navigate("chats/${currChat.type}/${chatsKeys[i]}")
+                                        if (chatId != null) {
+                                            navController.navigate("chats/${currChat.type}/${chatId}")
+                                        }
                                     },
                                     onLongClick = {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -299,7 +304,12 @@ fun ChatsColumn(navController: NavHostController,
                                 DropdownMenu(expanded = true,
                                     properties = PopupProperties(focusable = false),
                                     onDismissRequest = {selectedChatIndex = -1}) {
-                                    DropdownMenuItem(text = { Text("Delete chat") }, onClick = { })
+                                    DropdownMenuItem(text = { Text("Leave chat") },
+                                        onClick = { if (chatId != null) {
+                                            viewModel.leaveChat(chatId, currChat.type)
+                                            selectedChatIndex = -1
+                                        }
+                                        })
                                 }
                             }
                         }

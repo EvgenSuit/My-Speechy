@@ -119,6 +119,9 @@ class ChatsViewModel @Inject constructor(
             _uiState.update { it.copy(picsId = UUID.randomUUID().toString()) }
         }, remove)
     }
+    fun onNavigateToSearchedChat() {
+        _uiState.update { it.copy(searchedChat = mapOf()) }
+    }
     fun searchForChat(title: String) {
         chatsService.searchChatByTitle(title, {}) {chat ->
             if (chat.value != null) {
@@ -135,9 +138,13 @@ class ChatsViewModel @Inject constructor(
             }
         }
     }
-    fun leaveChat(chatId: String) {
+    fun leaveChat(chatId: String, type: String) {
         viewModelScope.launch {
-            chatsService.leavePrivateChat(chatId)
+            if (type == "private") {
+                chatsService.leavePrivateChat(chatId)
+            } else if (type == "public") {
+                chatsService.leavePublicChat(chatId)
+            }
         }
     }
     fun sortChatsOnStartup() {
@@ -147,8 +154,11 @@ class ChatsViewModel @Inject constructor(
     }
     private fun updateOrSortChats(id: String, chat: Chat?, update: Boolean) {
         val newChatMap = if (update) _uiState.value.chats.toMutableMap().apply { this[id] = chat} else _uiState.value.chats
+        /* Sort by chat id (to account for a case where timestamps of multiple chats
+         are identical) and timestamp. Also filter out chat entries with null values */
         _uiState.update { it.copy(chats = newChatMap
-            .toSortedMap(compareByDescending { k -> newChatMap[k]?.timestamp }).filterValues { v -> v != null }) }
+            .toSortedMap(compareByDescending<String?> { k -> k }.thenByDescending{ k -> newChatMap[k]?.timestamp})
+            .filterValues { v -> v != null }) }
     }
     fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDirPath, otherUserId)
     private fun updateStorageErrorMessage(e: String) {
