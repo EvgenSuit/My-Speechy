@@ -21,7 +21,6 @@ import java.util.UUID
 enum class PictureStorageError {
     USING_DEFAULT_PROFILE_PICTURE,
     OBJECT_DOES_NOT_EXIST_AT_LOCATION,
-    PICTURE_MUST_BE_LESS_THAN_2_MB_IN_SIZE
 }
 
 private val database = Firebase.database.reference

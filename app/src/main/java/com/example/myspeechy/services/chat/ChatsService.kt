@@ -1,5 +1,10 @@
 package com.example.myspeechy.services.chat
 
+import android.util.Log
+import com.example.myspeechy.data.chat.Chat
+import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.ktx.auth
@@ -8,8 +13,10 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import java.util.UUID
 
 private val database = Firebase.database.reference
 interface ChatsService {
@@ -40,6 +47,27 @@ interface ChatsService {
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
                 onChanged(snapshot.key!!)
+            }
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                onRemoved(snapshot.key!!)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                onCancelled(error.code)
+            }
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+        }
+    }
+
+    fun allChatsChildListener(onAdded: (Map<String, Chat?>) -> Unit,
+                              onChanged: (Map<String, Chat?>) -> Unit,
+                              onRemoved: (String) -> Unit,
+                              onCancelled: (Int) -> Unit): ChildEventListener {
+        return object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                onAdded(mapOf(snapshot.key!! to snapshot.getValue<Chat>()))
+            }
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                onChanged(mapOf(snapshot.key!! to snapshot.getValue<Chat>()))
             }
             override fun onChildRemoved(snapshot: DataSnapshot) {
                 onRemoved(snapshot.key!!)
@@ -82,14 +110,21 @@ interface ChatsService {
                                  onCancelled: (Int) -> Unit,
                                  remove: Boolean)
     fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit)
+    fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit)
+    fun createPublicChat(title: String, description: String)
+    fun deletePublicChat(chatId: String, onDeleted: () -> Unit)
     suspend fun leavePrivateChat(chatId: String)
     suspend fun leavePublicChat(chatId: String)
 }
 class ChatsServiceImpl(
     private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
-    private val leavePublicChatUseCase: LeavePublicChatUseCase
+    private val leavePublicChatUseCase: LeavePublicChatUseCase,
+    private val joinPublicChatUseCase: JoinPublicChatUseCase,
+    private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
+    private val deletePublicChatUseCase: DeletePublicChatUseCase
 ): ChatsService {
     private var publicChatsStateListener: ChildEventListener? = null
+    private var allPublicChatsListener: ChildEventListener? = null
     private var privateChatsStateListener: ChildEventListener? = null
     private var publicChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var privateChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
@@ -126,6 +161,21 @@ class ChatsServiceImpl(
         }
     }
 
+    fun allPublicChatsListener(
+        onAdded: (Map<String, Chat?>) -> Unit,
+        onChanged: (Map<String, Chat?>) -> Unit,
+        onRemoved: (String) -> Unit,
+        onCancelled: (Int) -> Unit,
+        remove: Boolean
+    ) {
+        val ref = database.child("public_chats")
+        if (remove && allPublicChatsListener != null) {
+            ref.removeEventListener(allPublicChatsListener!!)
+        } else {
+            allPublicChatsListener = allChatsChildListener(onAdded, onChanged, onRemoved, onCancelled)
+            ref.addChildEventListener(allPublicChatsListener!!)
+        }
+    }
     override fun publicChatListener(
         id: String,
         onDataReceived: (DataSnapshot) -> Unit,
@@ -189,6 +239,25 @@ class ChatsServiceImpl(
 
                     }
                 })
+    }
+
+    override fun createPublicChat(title: String, description: String) {
+        val chatId = UUID.randomUUID().toString()
+        database.child("admins")
+            .child(chatId)
+            .setValue(userId).addOnSuccessListener {
+                database.child("public_chats")
+                    .child(chatId)
+                    .setValue(Chat(title = title, type = "public"))
+                    .addOnSuccessListener { joinPublicChatUseCase(chatId) }
+            }
+    }
+
+    override fun deletePublicChat(chatId: String, onDeleted: () -> Unit) {
+        deletePublicChatUseCase(chatId) {onDeleted()}
+    }
+    override fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
+        checkIfIsAdminUseCase(chatId) {onReceived(it)}
     }
 
     override suspend fun leavePrivateChat(chatId: String) {

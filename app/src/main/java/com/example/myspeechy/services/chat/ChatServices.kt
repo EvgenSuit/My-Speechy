@@ -3,6 +3,7 @@ package com.example.myspeechy.services.chat
 import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.ktx.auth
@@ -158,7 +159,8 @@ interface ChatService {
 }
 
 class PublicChatServiceImpl(
-    private val leavePublicChatUseCase: LeavePublicChatUseCase
+    private val leavePublicChatUseCase: LeavePublicChatUseCase,
+    private val joinPublicChatUseCase: JoinPublicChatUseCase
 ): ChatService {
     private val chatsRef: DatabaseReference
         get() = database.child("public_chats")
@@ -285,12 +287,7 @@ class PublicChatServiceImpl(
     }
 
     override fun joinChat(chatId: String) {
-        membersRef.child(chatId)
-            .child(userId).setValue(true)
-        usersRef.child(userId)
-            .child("public_chats")
-            .child(chatId)
-            .setValue(true)
+        joinPublicChatUseCase(chatId)
     }
 
     override suspend fun leaveChat(chatId: String) {
@@ -308,6 +305,7 @@ class PrivateChatServiceImpl(
     private var usernamesListener: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var chatPicListener: ValueEventListener? = null
     private var messagesListener: ChildEventListener? = null
+    private var isMemberOfChatListener: ValueEventListener? = null
     override fun chatListener(
         id: String,
         onCancelled: (Int) -> Unit,
@@ -432,5 +430,21 @@ class PrivateChatServiceImpl(
 
     override suspend fun leaveChat(chatId: String) {
         leavePrivateChatUseCase(chatId)
+    }
+    fun listenIfIsMemberOfChat(chatId: String, onReceived: (Boolean) -> Unit, remove: Boolean) {
+        val ref = usersRef.child(userId)
+            .child("private_chats")
+            .child(chatId)
+        if (remove && isMemberOfChatListener != null) {
+            ref.removeEventListener(isMemberOfChatListener!!)
+        } else {
+            isMemberOfChatListener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    onReceived(snapshot.exists())
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            }
+            ref.addValueEventListener(isMemberOfChatListener!!)
+        }
     }
 }

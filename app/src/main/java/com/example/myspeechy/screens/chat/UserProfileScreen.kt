@@ -42,7 +42,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +63,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
+import com.example.myspeechy.components.CommonTextField
 import com.example.myspeechy.utils.chat.UserProfileViewModel
 
 @Composable
@@ -73,11 +73,21 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
-    var name by rememberSaveable(uiState.name) {
+    var retryHash by remember(uiState.recomposePic) { mutableStateOf(0) }
+    val placeholders = Pair("Username", "Description")
+    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+        .data(viewModel.normalQualityPicRef.path)
+        .size(coil.size.Size.ORIGINAL)
+        .setParameter("retry_hash", retryHash)
+        .build())
+    var name by remember(uiState.name) {
         mutableStateOf(uiState.name)
     }
-    var info by rememberSaveable(uiState.name) {
+    var info by remember(uiState.info) {
         mutableStateOf(uiState.info)
+    }
+    LaunchedEffect(uiState.recomposePic) {
+        retryHash++
     }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
@@ -109,26 +119,20 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
             }
-            var retryHash by remember { mutableStateOf(0) }
-            val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-                .data(viewModel.normalQualityPicRef.path)
-                .setParameter("retry_hash", retryHash)
-                .build())
             Box(Modifier.padding(top = 20.dp)) {
-                if (viewModel.normalQualityPicRef.exists()) {
-                    if (painter.state is AsyncImagePainter.State.Error) {retryHash++ }
-                    Image(painter,
-                        contentScale = ContentScale.FillBounds,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .clickable {
-                                if (!uiState.uploadingPicture && launcher != null) launcher.launch(
-                                    arrayOf("image/png", "image/jpeg")
-                                )
-                            }
-                            .size(picSize))
-                }
-
+                    if (viewModel.normalQualityPicRef.exists()) {
+                        if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
+                        Image(painter,
+                            contentScale = ContentScale.FillBounds,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .clickable {
+                                    if (!uiState.uploadingPicture && launcher != null) launcher.launch(
+                                        arrayOf("image/png", "image/jpeg")
+                                    )
+                                }
+                                .size(picSize))
+                    }
                 this@Column.AnimatedVisibility(!uiState.uploadingPicture
                         && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
                     enter = slideInHorizontally(),
@@ -168,14 +172,14 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AnimatedVisibility(name != null) {
                     if (isCurrentUser) {
-                        UserInfoTextField(value = name!!, onChange = {name = it})
+                        CommonTextField(value = name!!, onChange = {name = it}, placeholders = placeholders)
                     } else {
                         UserInfoTable(value = name!!)
                     }
                 }
                 AnimatedVisibility(info != null) {
                     if (isCurrentUser) {
-                        UserInfoTextField(value = info!!, onChange = {info = it}, true)
+                        CommonTextField(value = info!!, onChange = {info = it}, true, placeholders = placeholders)
                     }else {
                         UserInfoTable(value = info!!)
                     }
@@ -204,40 +208,6 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     }
 }
 
-@Composable
-fun UserInfoTextField(value: String, onChange: (String) -> Unit, last: Boolean=false) {
-    val focusManager = LocalFocusManager.current
-    val descriptionMaxChar = 70
-    val usernameMaxChar = 30
-    OutlinedTextField(value = value,
-        singleLine = !last,
-        keyboardOptions = KeyboardOptions.Default.copy(
-            imeAction = ImeAction.Next
-        ),
-        keyboardActions = KeyboardActions(
-            onNext = {
-                if (last) focusManager.clearFocus()
-                else focusManager.moveFocus(FocusDirection.Next)
-            }
-        ),
-        onValueChange = {
-            if (last && it.length < descriptionMaxChar) onChange(it) //description
-            if (!last && it.length < usernameMaxChar) onChange(it) //username
-        },
-        supportingText = {Text(if (!last) "${value.length} / $usernameMaxChar" else "${value.length} / $descriptionMaxChar",
-            Modifier.fillMaxWidth(),
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onPrimary,
-            textAlign = TextAlign.End)},
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = MaterialTheme.colorScheme.onPrimary,
-            unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
-            focusedBorderColor = MaterialTheme.colorScheme.inversePrimary,
-            unfocusedContainerColor = MaterialTheme.colorScheme.primary
-        ),
-        textStyle = TextStyle(fontSize = 22.sp),
-        modifier = Modifier.fillMaxWidth())
-}
 
 @Composable
 fun UserInfoTable(value: String) {

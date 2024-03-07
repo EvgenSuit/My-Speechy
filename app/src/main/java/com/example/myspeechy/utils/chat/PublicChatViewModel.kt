@@ -1,12 +1,12 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.services.chat.PublicChatServiceImpl
+import com.example.myspeechy.useCases.GetProfileOrChatPictureUseCase
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +24,15 @@ class PublicChatViewModel @Inject constructor(
     private val chatServiceImpl: PublicChatServiceImpl,
     private val filesDirPath: String,
     @Named("ChatDataStore") private val chatDataStore: ChatDatastore,
+    private val getProfileOrChatPictureUseCase: GetProfileOrChatPictureUseCase,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
-    private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+    val chatId: String = checkNotNull(savedStateHandle["chatId"])
     private val _uiState = MutableStateFlow(PublicChatUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
     init {
+        //immediately check if user has joined the chat
         runBlocking {
             val joined = chatDataStore.checkState(chatId)
             if (joined != null) {
@@ -103,22 +105,18 @@ class PublicChatViewModel @Inject constructor(
             remove)
     }
     private fun listenForProfilePic(id: String, remove: Boolean) {
-        if (id != userId) {
             val picDir = "${filesDirPath}/profilePics/${id}/"
             val picPath = "$picDir/lowQuality/$id.jpg"
             chatServiceImpl.usersProfilePicListener(id, filesDirPath, {}, {updateStorageErrorMessage(it)
-                File(picPath).delete()
                 File(picDir).deleteRecursively() }, {
                 _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
-                    picsId = UUID.randomUUID().toString()) }
+                    picsRecomposeId = UUID.randomUUID().toString()) }
             }, remove)
-        }
     }
     private fun listenForUsername(id: String, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {}, {username ->
             val name = username.getValue<String>()
             if (name != null) {
-                Log.d("NAME", name)
                 _uiState.update { it.copy(members = it.members.mapValues { (k, v) -> if (k == id) name else v},
                     messages = it.messages.mapValues { (_, v) ->
                         if (v.sender == id) v.copy(senderUsername = name) else v }) }
@@ -159,6 +157,7 @@ class PublicChatViewModel @Inject constructor(
             }
         }
     }
+    fun getProfilePicture(otherUserId: String): File = getProfileOrChatPictureUseCase.getPic(otherUserId)
 
     fun joinChat() {
         chatServiceImpl.joinChat(chatId)
@@ -176,6 +175,6 @@ class PublicChatViewModel @Inject constructor(
         val joined: Boolean = false,
         val storageErrorMessage: String = "",
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
-        val picsId: String = ""
+        val picsRecomposeId: String = ""
     )
 }

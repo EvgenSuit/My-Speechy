@@ -1,8 +1,8 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.components.AlertDialogDataClass
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.services.chat.ChatsServiceImpl
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Named
@@ -36,14 +35,33 @@ class ChatsViewModel @Inject constructor(
                 }
             }
         }
+        //listen for chats of which the current user is a member of
         listenForPublicChats(removeListeners)
         listenForPrivateChats(removeListeners)
+        //listen for all public chats
+        listenForAllPublicChats(removeListeners)
+    }
+    private fun listenForAllPublicChats(remove: Boolean) {
+        chatsService.allPublicChatsListener(
+            onAdded = {chat ->
+                updateOrSortAllPublicChats(chat.keys.first(), chat.values.first())
+            },
+            onChanged = {chat ->
+                updateOrSortAllPublicChats(chat.keys.first(), chat.values.first())
+            },
+            onRemoved = {chatId ->
+                        _uiState.update { it.copy(allPublicChats =
+                        it.allPublicChats.filterKeys { k -> k != chatId}) }
+            },
+            onCancelled = {},
+            remove
+        )
     }
     private fun listenForPublicChats(remove: Boolean) {
         if (remove) {
             _uiState.value.chats.forEach {
-                if (it.value!!.type == "public") {
-                    listenForPublicChat(it.key!!, true)
+                if (it.value != null && it.value!!.type == "public") {
+                    listenForPublicChat(it.key, true)
                 }
             }
         }
@@ -60,7 +78,7 @@ class ChatsViewModel @Inject constructor(
                     chatDataStore.removeFromChatList(userId)
                 }
                 listenForPublicChat(chatId, true)
-                _uiState.update { it.copy(chats = it.chats.filterKeys { key -> key != null && key != chatId }) }
+                _uiState.update { it.copy(chats = it.chats.filterKeys { key -> key != chatId }) }
             },
             onCancelled = {},
             remove
@@ -69,7 +87,7 @@ class ChatsViewModel @Inject constructor(
     private fun listenForPublicChat(chatId: String, remove: Boolean) {
         chatsService.publicChatListener(chatId,
             {chat ->
-                updateOrSortChats(chat.key!!, chat.getValue<Chat>(), true)
+                updateOrSortChats(chat.key!!, chat.getValue<Chat>())
             },
             onCancelled = {},
             remove)
@@ -78,8 +96,8 @@ class ChatsViewModel @Inject constructor(
     private fun listenForPrivateChats(remove: Boolean) {
         if (remove) {
             _uiState.value.chats.forEach {
-                if (it.value!!.type == "private") {
-                    listenForPrivateChat(it.key!!, true)
+                if (it.value != null && it.value!!.type == "private") {
+                    listenForPrivateChat(it.key, true)
                 }
             }
         }
@@ -94,6 +112,7 @@ class ChatsViewModel @Inject constructor(
                 listenForPrivateChat(chatId, true)
                 val otherUserId = chatId.split("_").first { it != userId }
                 listenForPrivateChatProfilePic(otherUserId, true)
+                _uiState.update { it.copy(chats = it.chats.filterKeys { key -> key != chatId }) }
             },
             onCancelled = {},
             remove
@@ -102,7 +121,7 @@ class ChatsViewModel @Inject constructor(
     private fun listenForPrivateChat(chatId: String, remove: Boolean) {
         chatsService.privateChatListener(chatId,
             {chat ->
-                updateOrSortChats(chat.key!!, chat.getValue<Chat>(), true)
+                updateOrSortChats(chat.key!!, chat.getValue<Chat>())
             },
             onCancelled = {},
             remove)
@@ -113,10 +132,10 @@ class ChatsViewModel @Inject constructor(
         val picPath = "$picDir/lowQuality/$id.jpg"
         privateChatServiceImpl.chatProfilePictureListener(id, filesDirPath, {}, {
             updateStorageErrorMessage(it)
-            File(picPath).delete()
             File(picDir).deleteRecursively()
         }, {
-            _uiState.update { it.copy(picsId = UUID.randomUUID().toString()) }
+            _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
+                picsId = UUID.randomUUID().toString()) }
         }, remove)
     }
     fun onNavigateToSearchedChat() {
@@ -133,32 +152,53 @@ class ChatsViewModel @Inject constructor(
                 }
             } else {
                 _uiState.update {
-                    ChatsUiState(chats = it.chats)
+                    it.copy(searchedChat = mapOf())
                 }
             }
         }
     }
-    fun leaveChat(chatId: String, type: String) {
+    fun leaveChat(type: String, chatId: String) {
         viewModelScope.launch {
             if (type == "private") {
                 chatsService.leavePrivateChat(chatId)
-            } else if (type == "public") {
-                chatsService.leavePublicChat(chatId)
+            }
+            if (type == "public") {
+                chatsService.checkIfIsAdmin(chatId) {isAdmin ->
+                    if (isAdmin) {
+                        _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass(
+                                title = "Are you sure?",
+                                text = "If you leave the chat it will be deleted since you're an admin",
+                                onConfirm = {chatsService.deletePublicChat(chatId) {
+                                    viewModelScope.launch {
+                                        chatsService.leavePublicChat(chatId)
+                                        _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
+                                    }
+                                }},
+                                onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
+                            )) }
+                    } else {
+                        viewModelScope.launch {
+                            chatsService.leavePublicChat(chatId)
+                        }
+                    }
+                }
             }
         }
     }
-    fun sortChatsOnStartup() {
-        _uiState.value.chats.forEach {c ->
-            updateOrSortChats(c.key!!, c.value, false)
-        }
+    fun createPublicChat(title: String, description: String) {
+        chatsService.createPublicChat(title, description)
     }
-    private fun updateOrSortChats(id: String, chat: Chat?, update: Boolean) {
-        val newChatMap = if (update) _uiState.value.chats.toMutableMap().apply { this[id] = chat} else _uiState.value.chats
+    private fun updateOrSortChats(id: String, chat: Chat?) {
+        val newChatMap = _uiState.value.chats.toMutableMap().apply { this[id] = chat}
         /* Sort by chat id (to account for a case where timestamps of multiple chats
-         are identical) and timestamp. Also filter out chat entries with null values */
+         are identical) and timestamp */
         _uiState.update { it.copy(chats = newChatMap
-            .toSortedMap(compareByDescending<String?> { k -> k }.thenByDescending{ k -> newChatMap[k]?.timestamp})
-            .filterValues { v -> v != null }) }
+            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })) }
+    }
+    private fun updateOrSortAllPublicChats(id: String, chat: Chat?) {
+        val newChatMap = _uiState.value.allPublicChats.toMutableMap().apply { this[id] = chat}
+        _uiState.update { it.copy(allPublicChats = newChatMap
+            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })) }
     }
     fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDirPath, otherUserId)
     private fun updateStorageErrorMessage(e: String) {
@@ -167,9 +207,11 @@ class ChatsViewModel @Inject constructor(
 
     data class ChatsUiState(
         val searchedChat: Map<String, Chat> = mapOf(),
-        val chats: Map<String?, Chat?> = mapOf(),
+        val chats: Map<String, Chat?> = mapOf(),
+        val allPublicChats: Map<String, Chat?> = mapOf(),
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
         val picsId: String = "",
+        val alertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
         val storageErrorMessage: String = ""
     )
 }

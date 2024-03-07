@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.example.myspeechy.ui.theme.MySpeechyTheme
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -25,11 +27,13 @@ class MainActivity : ComponentActivity() {
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Firebase.database.setPersistenceEnabled(true)
         createNotificationChannel()
         setContent {
-            MySpeechyTheme(darkTheme = false) {
+            MySpeechyTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.onPrimaryContainer

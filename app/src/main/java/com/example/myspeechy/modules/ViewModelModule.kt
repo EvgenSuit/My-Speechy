@@ -17,6 +17,10 @@ import com.example.myspeechy.services.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.services.lesson.ReadingLessonServiceImpl
 import com.example.myspeechy.services.lesson.RegularLessonServiceImpl
 import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
+import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.GetProfileOrChatPictureUseCase
+import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.example.myspeechy.utils.chat.ChatDatastore
@@ -78,45 +82,38 @@ object ViewModelModule {
     }
     @Provides
     fun provideChatsServiceImpl(@ApplicationContext context: Context): ChatsServiceImpl {
-        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(
-            provideChatDataStore(context)
-        )
+        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(provideChatDataStore(context)),
+            JoinPublicChatUseCase(), CheckIfIsAdminUseCase(),
+            DeletePublicChatUseCase()
         )
     }
     @Provides
     fun providePublicChatServiceImpl(@ApplicationContext context: Context): PublicChatServiceImpl {
-        return PublicChatServiceImpl(LeavePublicChatUseCase(provideChatDataStore(context)))
+        return PublicChatServiceImpl(LeavePublicChatUseCase(provideChatDataStore(context)),
+            JoinPublicChatUseCase()
+        )
     }
     @Provides
-    fun providePrivateChatServiceImpl(): PrivateChatServiceImpl {
-        return PrivateChatServiceImpl(LeavePrivateChatUseCase())
-    }
+    fun providePrivateChatServiceImpl(): PrivateChatServiceImpl = PrivateChatServiceImpl(LeavePrivateChatUseCase())
     @Provides
-    fun provideUserProfileServiceImpl(): UserProfileServiceImpl {
-        return UserProfileServiceImpl()
-    }
+    fun provideUserProfileServiceImpl(): UserProfileServiceImpl = UserProfileServiceImpl()
     @Provides
-    fun provideFilesDirPath(@ApplicationContext context: Context): String {
-        return context.cacheDir.path
-    }
+    fun provideFilesDirPath(@ApplicationContext context: Context): String = context.cacheDir.path
+    @Provides
+    fun provideGetProfileOrChatPictureUseCase(@ApplicationContext context: Context): GetProfileOrChatPictureUseCase =
+        GetProfileOrChatPictureUseCase(context.cacheDir.path)
     @Provides
     @Named("ChatDataStore")
-    fun provideChatDataStore(@ApplicationContext context: Context): ChatDatastore {
-        return ChatDatastore(context)
-    }
+    fun provideChatDataStore(@ApplicationContext context: Context): ChatDatastore = ChatDatastore(context)
     @Provides
     @Named("ProfilePictureSizeError")
-    fun provideProfilePictureSizeError(@ApplicationContext context: Context): Toast {
-        return Toasty.error(context, "Picture must be less than 2 mb in size", Toast.LENGTH_LONG, true)
-    }
+    fun provideProfilePictureSizeError(@ApplicationContext context: Context): Toast =
+        Toasty.error(context, "Picture must be less than 2 mb in size", Toast.LENGTH_LONG, true)
 
     @Provides
-    fun provideListenErrorToast(@ApplicationContext context: Context): Toast {
-        return Toasty.error(context, "Error listening to remote data", Toast.LENGTH_LONG, true)
-    }
+    fun provideListenErrorToast(@ApplicationContext context: Context): Toast =
+        Toasty.error(context, "Error listening to remote data", Toast.LENGTH_LONG, true)
     @Provides
     fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):
-            MeditationNotificationServiceImpl {
-        return MeditationNotificationServiceImpl(context)
-    }
+            MeditationNotificationServiceImpl = MeditationNotificationServiceImpl(context)
 }

@@ -1,4 +1,5 @@
 package com.example.myspeechy.components
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -6,12 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,10 +18,15 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -33,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,14 +49,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +71,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Message
+import com.skydoves.cloudy.Cloudy
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -153,7 +164,7 @@ fun MessagesColumn(
                                     contentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
                                 shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier.fillMaxWidth(if (showReply) 0.85f else 0.75f)
+                                modifier = Modifier.fillMaxWidth(if (showReply) 0.9f else 0.8f)
                             ) {
                                 Column(Modifier.fillMaxSize()) {
                                     val senderUsername = message.senderUsername
@@ -188,6 +199,7 @@ fun MessagesColumn(
                                     Text(
                                         message.text,
                                         overflow = TextOverflow.Ellipsis,
+                                        fontSize = 18.sp,
                                         modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
                                     Row{
                                         Text(
@@ -296,5 +308,137 @@ fun ReplyOrEditMessageInfo(message: Message, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onPrimary,
                 contentDescription = null)
         }
+    }
+}
+
+/**
+ * @param placeholders "Title" or "Username" goes first
+ */
+@Composable
+fun CommonTextField(value: String,
+                    onChange: (String) -> Unit,
+                    last: Boolean=false,
+                    placeholders: Pair<String, String>) {
+    val focusManager = LocalFocusManager.current
+    val descriptionMaxChar = 70
+    val usernameOrTitleMaxChar = 30
+    OutlinedTextField(value = value,
+        singleLine = !last,
+        keyboardOptions = KeyboardOptions.Default.copy(
+            imeAction = ImeAction.Next
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = {
+                if (last) focusManager.clearFocus()
+                else focusManager.moveFocus(FocusDirection.Next)
+            }
+        ),
+        onValueChange = {
+            if (it.isNotBlank()) {
+                if (last && it.length < descriptionMaxChar) onChange(it) //description
+                if (!last && it.length < usernameOrTitleMaxChar) onChange(it) //username or title
+            }
+        },
+        placeholder = {Text(if (!last) placeholders.first else placeholders.second)},
+        supportingText = {Text(if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar",
+            Modifier.fillMaxWidth(),
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.onPrimary,
+            textAlign = TextAlign.End)},
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
+            focusedBorderColor = MaterialTheme.colorScheme.inversePrimary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.primary,
+            cursorColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondary
+        ),
+        textStyle = TextStyle(fontSize = 22.sp),
+        modifier = Modifier.fillMaxWidth())
+}
+
+@Composable
+fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
+        AlertDialog(
+            title = {Text(alertDialogDataClass.title, textAlign = TextAlign.Center)},
+            text = {Text(alertDialogDataClass.text)},
+            onDismissRequest = alertDialogDataClass.onDismiss,
+            confirmButton = {
+                TextButton(onClick = alertDialogDataClass.onConfirm) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = alertDialogDataClass.onDismiss) {
+                    Text("Cancel")
+                }
+            })
+}
+
+data class AlertDialogDataClass(val title: String = "",
+                                val text: String = "",
+                                val onConfirm: () -> Unit = {},
+                                val onDismiss: () -> Unit = {})
+
+@Composable
+fun ChatTopRow(
+    title: String,
+    membersSize: Int?,
+    onSideDrawerShow: () -> Unit,
+    onNavigateUp: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BackButton(onNavigateUp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                title,
+                color = MaterialTheme.colorScheme.onPrimary,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 25.sp,
+                modifier = Modifier.padding(start = 50.dp)
+            )
+            if (membersSize != null) {
+                Row(horizontalArrangement = Arrangement.Center) {
+                    Text(membersSize.toString())
+                    Icon(Icons.Filled.Person, contentDescription = null)
+                }
+            }
+        }
+        IconButton(onClick = onSideDrawerShow) {
+            Icon(Icons.Filled.Menu, contentDescription = null)
+        }
+    }
+}
+
+@Composable
+fun ChatPictureComposable(picRef: File) {
+    val chatPicSize = dimensionResource(R.dimen.chat_pic_size)
+    if (picRef.exists()) {
+        var retryHash by remember { mutableStateOf(0) }
+        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+            .data(picRef.path)
+            .setParameter("retry_hash", retryHash)
+            .build())
+        if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
+        Image(painter,
+            contentScale = ContentScale.Crop,
+            contentDescription = null,
+            modifier = Modifier
+                .size(chatPicSize)
+                .clip(CircleShape)) }
+    else {
+        Image(
+            painter = painterResource(R.drawable.user),
+            contentScale = ContentScale.Crop,
+            contentDescription = null,
+            modifier = Modifier
+                .size(chatPicSize)
+                .clip(CircleShape))
     }
 }
