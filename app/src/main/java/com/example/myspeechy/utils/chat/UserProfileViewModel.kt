@@ -1,6 +1,5 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -108,12 +107,14 @@ class UserProfileViewModel @Inject constructor(
         else onSuccess()
     }
     private fun uploadUserPicture(lowQuality: Boolean) {
-        _uiState.update { it.copy(uploadingPicture = true) }
-        userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef,
-            lowQuality, {updateStorageMessage(it)
-            _uiState.update { it.copy(uploadingPicture = false) }}){
-            _uiState.update { it.copy(uploadingPicture = false) }
-        }
+            _uiState.update { it.copy(uploadingPicture = true) }
+            userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef,
+                lowQuality, {
+                    updateStorageMessage(it)
+                    _uiState.update { it.copy(uploadingPicture = false) }
+                }) {
+                _uiState.update { it.copy(uploadingPicture = false) }
+            }
     }
     fun removeUserPicture() {
         listOf(true, false).forEach {lowQuality ->

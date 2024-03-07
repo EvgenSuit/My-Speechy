@@ -137,10 +137,11 @@ class PrivateChatViewModel @Inject constructor(
         chatServiceImpl.deleteMessage(chatId, message)
         if (entries.last().value == message.values.first() && entries.size > 1) {
             val prevMessage = messages.values.toList()[messages.values.toList().indexOf(message.values.first())-1]
+            val chat = _uiState.value.chat
             chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
                 _uiState.value.otherUsername,
-                _uiState.value.chat.copy(prevMessage.sender, prevMessage.text,
-                prevMessage.timestamp))
+                chat.copy(prevMessage.sender, lastMessage = prevMessage.text,
+               timestamp = prevMessage.timestamp))
         } else if (entries.size <= 1) {
             viewModelScope.launch {
                 chatServiceImpl.leaveChat(chatId)

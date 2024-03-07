@@ -12,9 +12,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -231,7 +233,8 @@ fun ChatComposable(navController: NavHostController,
                 }, label = ""
             ) { targetExpanded ->
                 if (targetExpanded) {
-                    CreatePublicChatForm(onClose = {isFormExpanded = false}) {(title, description) ->
+                    CreateOrChangePublicChatForm(
+                        onClose = {isFormExpanded = false}) { (title, description) ->
                         viewModel.createPublicChat(title, description)
                         isFormExpanded = false
                     }
@@ -327,21 +330,28 @@ fun SearchedChat(
     }
 }
 
+/**
+ * @param onCreate Pair of title and description
+ */
 @Composable
-fun CreatePublicChatForm(onClose: () -> Unit,
-                         onCreate: (Pair<String, String>) -> Unit) {
+fun CreateOrChangePublicChatForm(
+    chat: Chat? = null,
+    onClose: () -> Unit,
+    onCreate: (Pair<String, String>) -> Unit) {
     val placeholders = Pair("Title", "Description")
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(chat?.title ?: "") }
+    var description by remember { mutableStateOf(chat?.description ?: "") }
     Column(
         Modifier
             .fillMaxWidth()
             .height(400.dp)
             .clip(RoundedCornerShape(20.dp))
+            .border(BorderStroke(2.dp, MaterialTheme.colorScheme.onSecondary),
+                shape = RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.primary)
             .padding(20.dp)) {
         Box(contentAlignment = Alignment.Center) {
-                Text("Create a public chat", textAlign = TextAlign.Center,
+                Text("${if (chat == null) "Create" else "Change"} a public chat", textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.fillMaxWidth())
                 IconButton(onClick = onClose, Modifier.align(Alignment.TopStart)) {
@@ -367,7 +377,7 @@ fun CreatePublicChatForm(onClose: () -> Unit,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.inversePrimary
                 )) {
-                Text("Create", fontSize = 20.sp)
+                Text(if (chat == null) "Create" else "Change", fontSize = 20.sp)
             }
         }
     }
@@ -455,8 +465,7 @@ fun ChatLastMessageContent(currChat: Chat?) {
         verticalArrangement = Arrangement.Center) {
         Text(
             currChat?.title ?: "Deleted chat",
-            overflow = TextOverflow.Ellipsis,
-            //modifier = Modifier.padding(15.dp)
+            overflow = TextOverflow.Ellipsis
         )
         Row(horizontalArrangement = Arrangement.SpaceBetween) {
             if (currChat != null && currChat.timestamp != 0L) {
