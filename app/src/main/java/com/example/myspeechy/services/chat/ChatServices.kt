@@ -15,12 +15,18 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FileDownloadTask
 import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.StorageTask
+import com.google.firebase.storage.TaskState
 import com.google.firebase.storage.ktx.storage
+import com.google.firebase.storage.ktx.taskState
+import com.google.firebase.storage.taskState
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.UUID
+import java.util.concurrent.Flow
 import kotlin.io.path.notExists
 
 private val database = Firebase.database.reference
@@ -109,7 +115,9 @@ interface ChatService {
                 .getFile(picRef)
                 .addOnSuccessListener {
                     //insert picture into the file
-                    it.storage.getFile(picRef).addOnSuccessListener { onPicReceived() }
+                    it.storage.getFile(picRef).addOnSuccessListener {
+                            onPicReceived()
+                        }
                 }
                 .addOnFailureListener {onStorageFailure(it.message?:"")}
         } else {
@@ -171,6 +179,7 @@ class PublicChatServiceImpl(
     private var chatListener: ValueEventListener? = null
     private var membershipListener: ChildEventListener? = null
     private var usersProfilePicListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
+    private var adminListener: ValueEventListener? = null
 
     private fun chatMembersChildListener(
         onAdded: (Map<String, Boolean>) -> Unit,
@@ -276,7 +285,18 @@ class PublicChatServiceImpl(
             }
             ref.addValueEventListener(usersProfilePicListeners[id]!!)
         }
-
+    }
+    fun listenForAdmin(chatId: String,
+                       onCancelled: (Int) -> Unit,
+                       onDataReceived: (DataSnapshot) -> Unit,
+                       remove: Boolean) {
+        val ref = database.child("admins").child(chatId)
+        if (remove && adminListener != null) {
+            ref.removeEventListener(adminListener!!)
+        } else {
+            adminListener = chatEventListener(onCancelled, onDataReceived)
+            ref.addValueEventListener(adminListener!!)
+        }
     }
 
     fun updateLastMessage(chatId: String, chat: Chat, onSuccess: () -> Unit = {}) {
@@ -284,6 +304,11 @@ class PublicChatServiceImpl(
         chatsRef.child(chatId)
             .setValue(publicChat)
             .addOnSuccessListener { onSuccess() }
+    }
+    fun changePublicChat(chatId: String, chat: Chat) {
+        database.child("public_chats")
+            .child(chatId)
+            .setValue(chat)
     }
 
     override fun joinChat(chatId: String) {

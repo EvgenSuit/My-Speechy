@@ -132,11 +132,13 @@ class UserProfileServiceImpl {
             .child("$userId.jpg")
             .putFile(file.toUri())
             .addOnSuccessListener {
-                usersRef.child(userId)
-                    .child("profilePicUpdated").setValue(UUID.randomUUID().toString()).addOnSuccessListener {
-                        onSuccess()
-                    }
-                    .addOnFailureListener { onError(it.message ?: "") }
+                if (!lowQuality) {
+                    usersRef.child(userId)
+                        .child("profilePicUpdated").setValue(UUID.randomUUID().toString()).addOnSuccessListener {
+                            onSuccess()
+                        }
+                        .addOnFailureListener { onError(it.message ?: "") }
+                }
             }
             .addOnFailureListener {
                 onError(it.message ?: "")}

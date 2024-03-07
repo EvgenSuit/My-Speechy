@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,32 +30,25 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -75,19 +66,11 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     var retryHash by remember(uiState.recomposePic) { mutableStateOf(0) }
     val placeholders = Pair("Username", "Description")
-    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-        .data(viewModel.normalQualityPicRef.path)
-        .size(coil.size.Size.ORIGINAL)
-        .setParameter("retry_hash", retryHash)
-        .build())
     var name by remember(uiState.name) {
         mutableStateOf(uiState.name)
     }
     var info by remember(uiState.info) {
         mutableStateOf(uiState.info)
-    }
-    LaunchedEffect(uiState.recomposePic) {
-        retryHash++
     }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
@@ -119,9 +102,15 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
             ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
             }
-            Box(Modifier.padding(top = 20.dp)) {
+            key(uiState.recomposePic) {
+                Box(Modifier.padding(top = 20.dp)) {
+                    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+                        .data(viewModel.normalQualityPicRef.path)
+                        .size(coil.size.Size.ORIGINAL)
+                        .setParameter("retry_hash", retryHash)
+                        .build())
+                    if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
                     if (viewModel.normalQualityPicRef.exists()) {
-                        if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
                         Image(painter,
                             contentScale = ContentScale.FillBounds,
                             contentDescription = null,
@@ -133,20 +122,21 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                                 }
                                 .size(picSize))
                     }
-                this@Column.AnimatedVisibility(!uiState.uploadingPicture
-                        && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
-                    enter = slideInHorizontally(),
-                    exit = shrinkHorizontally()
-                ) {
-                    Image(painter = painterResource(R.drawable.user),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(picSize)
-                            .clickable {
-                                if (!uiState.uploadingPicture && launcher != null) launcher.launch(
-                                    arrayOf("image/png", "image/jpeg")
-                                )
-                            })
+                    this@Column.AnimatedVisibility(!uiState.uploadingPicture
+                            && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
+                        enter = slideInHorizontally(),
+                        exit = shrinkHorizontally()
+                    ) {
+                        Image(painter = painterResource(R.drawable.user),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(picSize)
+                                .clickable {
+                                    if (!uiState.uploadingPicture && launcher != null) launcher.launch(
+                                        arrayOf("image/png", "image/jpeg")
+                                    )
+                                })
+                    }
                 }
             }
             AnimatedVisibility(

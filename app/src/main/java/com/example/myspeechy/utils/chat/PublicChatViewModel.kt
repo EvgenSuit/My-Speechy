@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,8 +47,9 @@ class PublicChatViewModel @Inject constructor(
         }
     }
     fun startOrStopListening(removeListeners: Boolean) {
-        listenForChatMembers(removeListeners)
         listenForCurrentChat(removeListeners)
+        listenForAdmin(removeListeners)
+        listenForChatMembers(removeListeners)
         listenForMessages(removeListeners)
     }
     private fun listenForMessages(remove: Boolean) {
@@ -110,7 +112,7 @@ class PublicChatViewModel @Inject constructor(
             chatServiceImpl.usersProfilePicListener(id, filesDirPath, {}, {updateStorageErrorMessage(it)
                 File(picDir).deleteRecursively() }, {
                 _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
-                    picsRecomposeId = UUID.randomUUID().toString()) }
+                    picsRecomposeIds = it.picsRecomposeIds.toMutableMap().apply { this[id] = UUID.randomUUID().toString() }) }
             }, remove)
     }
     private fun listenForUsername(id: String, remove: Boolean) {
@@ -130,11 +132,16 @@ class PublicChatViewModel @Inject constructor(
                 }
             }, remove)
     }
+    private fun listenForAdmin(remove: Boolean) {
+        chatServiceImpl.listenForAdmin(chatId, {}, {snapshot ->
+             _uiState.update { it.copy(isAdmin = (snapshot.exists() && snapshot.value == userId)) }
+        }, remove)
+    }
 
         fun sendMessage(text: String, replyTo: String) {
-            val chatTitle = _uiState.value.chat.title
+            val chat = _uiState.value.chat
             val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.members.entries.first { it.key == userId }.value, text, replyTo)
-            chatServiceImpl.updateLastMessage(chatId, Chat(chatTitle, text, timestamp))
+            chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
         }
     fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
@@ -146,9 +153,14 @@ class PublicChatViewModel @Inject constructor(
         val entries = messages.entries
         chatServiceImpl.deleteMessage(chatId, message)
         if (entries.last().value == message.values.first() && entries.size > 1) {
-            val prevMessage = messages.values.toList()[messages.values.toList().indexOf(message.values.first())-1]
-            chatServiceImpl.updateLastMessage(chatId, _uiState.value.chat.copy(lastMessage = prevMessage.text,
-                timestamp = prevMessage.timestamp))
+            val prevMessage = messages.values.toList()[messages.values.toList()
+                .indexOf(message.values.first()) - 1]
+            chatServiceImpl.updateLastMessage(
+                chatId, _uiState.value.chat.copy(
+                    lastMessage = prevMessage.text,
+                    timestamp = prevMessage.timestamp
+                )
+            )
         } else if (entries.size <= 1) {
             chatServiceImpl.updateLastMessage(chatId, Chat(_uiState.value.chat.title)) {
                 viewModelScope.launch {
@@ -157,7 +169,10 @@ class PublicChatViewModel @Inject constructor(
             }
         }
     }
-    fun getProfilePicture(otherUserId: String): File = getProfileOrChatPictureUseCase.getPic(otherUserId)
+
+    fun changeChat(title: String, description: String) {
+        chatServiceImpl.changePublicChat(chatId, _uiState.value.chat.copy(title = title, description = description))
+    }
 
     fun joinChat() {
         chatServiceImpl.joinChat(chatId)
@@ -173,8 +188,9 @@ class PublicChatViewModel @Inject constructor(
         val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,
         val joined: Boolean = false,
+        val isAdmin: Boolean = false,
         val storageErrorMessage: String = "",
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
-        val picsRecomposeId: String = ""
+        val picsRecomposeIds: Map<String, String> = mapOf()
     )
 }
