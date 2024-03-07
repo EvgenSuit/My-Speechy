@@ -35,9 +35,15 @@ class PrivateChatViewModel @Inject constructor(
         listenForCurrentChat(removeListeners)
         listenForMessages(removeListeners)
         listenForProfilePic(removeListeners)
+        listenIfIsMemberOfChat(removeListeners)
         listOf(userId, otherUserId).forEach {
             listenForUsername(it, removeListeners)
         }
+    }
+    private fun listenIfIsMemberOfChat(remove: Boolean) {
+        chatServiceImpl.listenIfIsMemberOfChat(chatId, {isMemberOfChat ->
+            _uiState.update { it.copy(isMemberOfChat = isMemberOfChat) }
+        }, remove)
     }
 
     private fun listenForUsername(id: String, remove: Boolean) {
@@ -107,7 +113,7 @@ class PrivateChatViewModel @Inject constructor(
     }
     fun sendMessage(text: String, replyTo: String) {
         //If messages are empty, the user has not jet joined the chat
-        if (_uiState.value.messages.isEmpty()) {
+        if (!_uiState.value.isMemberOfChat) {
             chatServiceImpl.joinChat(chatId)
             /*Call listeners again because if there was an error,
             the previous ones were cancelled*/
@@ -136,12 +142,6 @@ class PrivateChatViewModel @Inject constructor(
                 _uiState.value.chat.copy(prevMessage.sender, prevMessage.text,
                 prevMessage.timestamp))
         } else if (entries.size <= 1) {
-            /*chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
-                _uiState.value.otherUsername, Chat()) {
-                viewModelScope.launch {
-                    chatServiceImpl.leaveChat(chatId)
-                }
-            }*/
             viewModelScope.launch {
                 chatServiceImpl.leaveChat(chatId)
             }
@@ -157,6 +157,7 @@ class PrivateChatViewModel @Inject constructor(
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
+        val isMemberOfChat: Boolean = false,
         val picId: String = "",
         val currUsername: String = "",
         val otherUsername: String = "",

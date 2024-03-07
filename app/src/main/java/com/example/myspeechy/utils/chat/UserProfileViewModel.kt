@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.io.File
-import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Named
@@ -68,7 +68,7 @@ class UserProfileViewModel @Inject constructor(
                     File(normalQualityPicDir).deleteRecursively()
                 }
             }, {
-                _uiState.update { it.copy(uploadingPicture = false, picId = UUID.randomUUID().toString()
+                _uiState.update { it.copy(uploadingPicture = false, recomposePic = UUID.randomUUID().toString()
                 ) }
                 updateStorageMessage("")
             }, remove)
@@ -134,7 +134,7 @@ class UserProfileViewModel @Inject constructor(
     data class UserProfileUiState(
         val name: String? = null,
         val info: String? = null,
-        val picId: String = "",
+        val recomposePic: String = "",
         val uploadingPicture: Boolean = false,
         val errorCode: Int = 0,
         val storageMessage: String = ""
