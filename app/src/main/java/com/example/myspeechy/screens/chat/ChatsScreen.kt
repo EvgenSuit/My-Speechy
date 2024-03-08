@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -21,6 +22,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,10 +31,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Add
@@ -154,6 +158,7 @@ fun ChatComposable(navController: NavHostController,
     val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
+        viewModel.sortAllPubicChatsOnStartup()
     }
     Box {
         Column(
@@ -177,7 +182,7 @@ fun ChatComposable(navController: NavHostController,
             TabRow(selectedTabIndex = chatScreenPartSelected) {
                 listOf("Your chats", "All groups").forEachIndexed { index, s ->
                     Tab(
-                        text = {Text(s)},
+                        text = {Text(s, overflow = TextOverflow.Ellipsis)},
                         selected = index == chatScreenPartSelected,
                         onClick = { chatScreenPartSelected = index })
                 }
@@ -344,20 +349,25 @@ fun CreateOrChangePublicChatForm(
     Column(
         Modifier
             .fillMaxWidth()
-            .height(400.dp)
+            .height(IntrinsicSize.Max)
             .clip(RoundedCornerShape(20.dp))
-            .border(BorderStroke(2.dp, MaterialTheme.colorScheme.onSecondary),
-                shape = RoundedCornerShape(20.dp))
+            .border(
+                BorderStroke(2.dp, MaterialTheme.colorScheme.onSecondary),
+                shape = RoundedCornerShape(20.dp)
+            )
             .background(MaterialTheme.colorScheme.primary)
-            .padding(20.dp)) {
-        Box(contentAlignment = Alignment.Center) {
-                Text("${if (chat == null) "Create" else "Change"} a public chat", textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth())
-                IconButton(onClick = onClose, Modifier.align(Alignment.TopStart)) {
-                    Icon(Icons.Filled.Clear, contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary)
-                }
+            .padding(20.dp)
+            .verticalScroll(rememberScrollState())) {
+        Row(horizontalArrangement = Arrangement.SpaceEvenly) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Clear, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(30.dp))
+            }
+                Text("${if (chat == null) "Create a" else "Change the"} public chat", textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium)
+
         }
         Column(
             Modifier
@@ -365,10 +375,12 @@ fun CreateOrChangePublicChatForm(
                 .padding(top = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(15.dp),) {
-            CommonTextField(value = title, onChange = {title = it}, placeholders = placeholders)
+            CommonTextField(value = title, onChange = { title = it}, placeholders = placeholders)
             CommonTextField(value = description, onChange = {description = it}, last = true, placeholders = placeholders)
             OutlinedButton(onClick = {
-               onCreate(Pair(title, description))
+               if (title.isNotBlank() && description.isNotBlank()) {
+                   onCreate(Pair(title, description))
+               }
             },
                 Modifier
                     .padding(top = 15.dp)
@@ -393,7 +405,7 @@ fun UserChats(chats:  Map<String, Chat?>, chatScreenPartSelected: Int,
     val haptics = LocalHapticFeedback.current
     LazyColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(9.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 9.dp)
@@ -465,12 +477,15 @@ fun ChatLastMessageContent(currChat: Chat?) {
         verticalArrangement = Arrangement.Center) {
         Text(
             currChat?.title ?: "Deleted chat",
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Row(horizontalArrangement = Arrangement.SpaceBetween) {
             if (currChat != null && currChat.timestamp != 0L) {
                 Text(
                     SimpleDateFormat("hh:mm:ss").format(Date(currChat.timestamp)),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(0.5f)
                 )
             }

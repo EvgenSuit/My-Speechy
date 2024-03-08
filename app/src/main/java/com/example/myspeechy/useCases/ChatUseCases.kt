@@ -1,6 +1,5 @@
 package com.example.myspeechy.useCases
 
-import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.utils.chat.ChatDatastore
 import com.example.myspeechy.utils.chat.getOtherUserId
 import com.google.firebase.auth.ktx.auth
@@ -10,11 +9,6 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.ktx.storage
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
-import kotlin.io.path.notExists
 
 private val database = Firebase.database.reference
 private val userId = Firebase.auth.currentUser!!.uid
@@ -128,8 +122,4 @@ class CheckIfIsAdminUseCase {
 class GetProfileOrChatPictureUseCase(private val filesDir: String) {
     private fun getPicDir(otherUserId: String): String
             = "${filesDir}/profilePics/$otherUserId/lowQuality"
-    fun getPic(otherUserId: String): File {
-        val picDir = getPicDir(otherUserId)
-        return File(picDir, "$otherUserId.jpg")
-    }
 }

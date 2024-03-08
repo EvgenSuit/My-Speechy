@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImagePainter
@@ -85,16 +87,19 @@ fun PrivateChatScreen(navController: NavHostController,
         .fillMaxSize(),
         verticalArrangement = Arrangement.Center
     ) {
-            Row(modifier = Modifier.fillMaxWidth(),
+            Row(modifier = Modifier.fillMaxWidth()
+                .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                horizontalArrangement = Arrangement.SpaceEvenly) {
                 BackButton (navController::navigateUp)
+                Spacer(modifier = Modifier.weight(0.01f))
                 if (viewModel.picRef.exists()) {
                     Image(painter,
                         contentScale = ContentScale.Inside,
                         contentDescription = null,
                         modifier = Modifier
                             .size(chatPicSize)
+                            .weight(0.15f, fill = false)
                             .clip(CircleShape)
                             .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") })
                 } else {
@@ -104,12 +109,17 @@ fun PrivateChatScreen(navController: NavHostController,
                         modifier = Modifier
                             .size(chatPicSize)
                             .clip(CircleShape)
-                            .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") })
+                            .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") }
+                            .weight(0.15f, fill = false))
                 }
+                Spacer(modifier = Modifier.weight(0.05f))
                 Text(uiState.otherUsername,
                     color = MaterialTheme.colorScheme.onPrimary,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 50.dp))
+                    maxLines = 1,
+                    fontSize = 25.sp,
+                    modifier = Modifier.weight(0.45f)
+                )
             }
         MessagesColumn(viewModel.userId, true, listState, uiState.messages,
                     LocalContext.current.filesDir.path, Modifier.weight(1f),

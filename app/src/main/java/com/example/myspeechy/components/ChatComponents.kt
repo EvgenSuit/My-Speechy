@@ -1,5 +1,5 @@
 package com.example.myspeechy.components
-import android.util.Log
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -71,22 +71,21 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Message
-import com.skydoves.cloudy.Cloudy
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 
-
 @Composable
 fun BackButton(
-    onClick: () -> Unit) {
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier) {
     ElevatedButton(onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
-        )
-        ) {
+        ),
+        modifier = modifier) {
         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
     }
 }
@@ -334,10 +333,8 @@ fun CommonTextField(value: String,
             }
         ),
         onValueChange = {
-            if (it.isNotBlank()) {
-                if (last && it.length < descriptionMaxChar) onChange(it) //description
-                if (!last && it.length < usernameOrTitleMaxChar) onChange(it) //username or title
-            }
+            if (last && it.length < descriptionMaxChar) onChange(it) //description
+            if (!last && it.length < usernameOrTitleMaxChar) onChange(it) //username or title
         },
         placeholder = {Text(if (!last) placeholders.first else placeholders.second)},
         supportingText = {Text(if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar",
@@ -382,7 +379,7 @@ data class AlertDialogDataClass(val title: String = "",
                                 val onDismiss: () -> Unit = {})
 
 @Composable
-fun ChatTopRow(
+fun PublicChatTopRow(
     title: String,
     membersSize: Int?,
     onSideDrawerShow: () -> Unit,
@@ -391,18 +388,19 @@ fun ChatTopRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         BackButton(onNavigateUp)
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                title,
+        Spacer(modifier = Modifier.weight(0.1f))
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)) {
+            Text(title,
                 color = MaterialTheme.colorScheme.onPrimary,
                 overflow = TextOverflow.Ellipsis,
                 fontSize = 25.sp,
-                modifier = Modifier.padding(start = 50.dp)
-            )
+                maxLines = 1)
             if (membersSize != null) {
                 Row(horizontalArrangement = Arrangement.Center) {
                     Text(membersSize.toString())
@@ -410,8 +408,9 @@ fun ChatTopRow(
                 }
             }
         }
-        IconButton(onClick = onSideDrawerShow) {
-            Icon(Icons.Filled.Menu, contentDescription = null)
+        IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.3f)) {
+            Icon(Icons.Filled.Menu, contentDescription = null,
+                modifier = Modifier.size(50.dp))
         }
     }
 }

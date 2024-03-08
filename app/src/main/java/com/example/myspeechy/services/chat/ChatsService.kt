@@ -248,7 +248,7 @@ class ChatsServiceImpl(
             .setValue(userId).addOnSuccessListener {
                 database.child("public_chats")
                     .child(chatId)
-                    .setValue(Chat(title = title, type = "public"))
+                    .setValue(Chat(title = title, description = description, type = "public"))
                     .addOnSuccessListener { joinPublicChatUseCase(chatId) }
             }
     }
