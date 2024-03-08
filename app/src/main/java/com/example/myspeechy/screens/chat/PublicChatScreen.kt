@@ -27,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,12 +47,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.ChatPictureComposable
-import com.example.myspeechy.components.ChatTopRow
+import com.example.myspeechy.components.PublicChatTopRow
 import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.components.ReplyOrEditMessageInfo
@@ -70,7 +72,7 @@ fun PublicChatScreen(navController: NavHostController,
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    var showChangeChatInfoForm by remember { mutableStateOf(false) }
+    var showChangeChatInfoForm by remember(drawerState.isClosed) { mutableStateOf(false) }
     var textFieldState by remember {
         mutableStateOf(TextFieldValue())
     }
@@ -90,6 +92,7 @@ fun PublicChatScreen(navController: NavHostController,
             drawerState = drawerState,
             drawerContent = {
                 SideDrawer(
+                    admin = uiState.admin,
                     isAdmin = uiState.isAdmin,
                     chat = uiState.chat,
                     members = uiState.members, recomposeIds = uiState.picsRecomposeIds, picPaths = uiState.picPaths,
@@ -108,7 +111,7 @@ fun PublicChatScreen(navController: NavHostController,
             Column(modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.onPrimaryContainer)) {
-                ChatTopRow(
+                PublicChatTopRow(
                     title = uiState.chat.title,
                     membersSize = if (uiState.chat.timestamp.toInt() != 0) uiState.members.size else null,
                     onSideDrawerShow = { coroutineScope.launch {
@@ -152,9 +155,16 @@ fun PublicChatScreen(navController: NavHostController,
                         textFieldState = TextFieldValue()
                     }
                 }
-                if (!uiState.joined) {
+                if (uiState.chatLoaded && uiState.chat.title.isEmpty()) {
+                    Text("Deleted chat", textAlign = TextAlign.Center,
+                        fontSize = 25.sp,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(10.dp))
+                } else if (uiState.chatLoaded && !uiState.joined) {
                     JoinButton(viewModel::joinChat, Modifier)
-                } else {
+                }
+                else if (uiState.chatLoaded) {
                     BottomRow(textFieldState,
                         focusRequester = focusRequester,
                         modifier = Modifier.height(IntrinsicSize.Min),
@@ -203,6 +213,7 @@ fun PublicChatScreen(navController: NavHostController,
 
 @Composable
 fun SideDrawer(
+    admin: String?,
     isAdmin: Boolean,
     chat: Chat,
     members: Map<String, String>,
@@ -218,8 +229,10 @@ fun SideDrawer(
             .background(MaterialTheme.colorScheme.primary)
             .padding(top = 15.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        ChatInfoColumn(isAdmin, chat, onChangeChatInfo)
-        MembersColumn(members = members, recomposeIds = recomposeIds, picPaths = picPaths, onNavigate = onNavigate)
+        if (chat.title.isNotEmpty()) {
+            ChatInfoColumn(isAdmin, chat, onChangeChatInfo)
+        }
+        MembersColumn(admin = admin, members = members, recomposeIds = recomposeIds, picPaths = picPaths, onNavigate = onNavigate)
     }
 }
 
@@ -227,26 +240,29 @@ fun SideDrawer(
 fun ChatInfoColumn(
     isAdmin: Boolean,
     chat: Chat,
-                   onChangeChatInfo: () -> Unit) {
-    Column(Modifier.fillMaxWidth()
-        .clip(RoundedCornerShape(20.dp))
-        .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(0.7f)),
+    onChangeChatInfo: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(0.7f))
+            .clickable { if (isAdmin) onChangeChatInfo() }
+            .padding(15.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(chat.title)
-            if (isAdmin) {
-                IconButton(onClick = onChangeChatInfo) {
-                    Icon(Icons.Filled.Edit, contentDescription = null)
-                }
-            }
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(chat.title, textAlign = TextAlign.Center, fontSize = 25.sp)
+            Icon(Icons.Filled.Edit, contentDescription = null)
         }
-        Text(chat.description)
+        Text(chat.description, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-fun MembersColumn(members: Map<String, String>,
+fun MembersColumn(
+    admin: String?,
+    members: Map<String, String>,
     recomposeIds: Map<String, String>,
                   picPaths: Map<String, String>,
                   onNavigate: (String) -> Unit) {
@@ -257,21 +273,26 @@ fun MembersColumn(members: Map<String, String>,
         mutableStateOf(members.keys.toList())
     }
     LazyColumn(
-
         verticalArrangement = Arrangement.spacedBy(5.dp)) {
         items(members.size) {i ->
             ElevatedCard(Modifier.clickable { onNavigate(keys[i]) }) {
                 Row(
                     Modifier
                         .background(MaterialTheme.colorScheme.primaryContainer)
-                        .fillMaxWidth()) {
-                    val picPath = picPaths[keys[i]]
-                    if (picPath != null) {
-                        key(recomposeIds[keys[i]]) {
-                            ChatPictureComposable(picRef = File(picPath))
+                        .fillMaxWidth()
+                        .padding(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val userId = keys[i]
+                    val picPath = picPaths[userId]
+                    key(recomposeIds[userId]) {
+                            ChatPictureComposable(picRef = File(picPath ?: ""))
+                        }
+                    Column {
+                        Text(values[i], fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (userId == admin) {
+                            Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
                         }
                     }
-                    Text(values[i])
                 }
             }
         }

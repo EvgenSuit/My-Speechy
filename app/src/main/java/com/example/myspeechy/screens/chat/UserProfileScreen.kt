@@ -1,6 +1,7 @@
 package com.example.myspeechy.screens.chat
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,7 +65,6 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
-    var retryHash by remember(uiState.recomposePic) { mutableStateOf(0) }
     val placeholders = Pair("Username", "Description")
     var name by remember(uiState.name) {
         mutableStateOf(uiState.name)
@@ -107,9 +107,7 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                     val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
                         .data(viewModel.normalQualityPicRef.path)
                         .size(coil.size.Size.ORIGINAL)
-                        .setParameter("retry_hash", retryHash)
                         .build())
-                    if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
                     if (viewModel.normalQualityPicRef.exists()) {
                         Image(painter,
                             contentScale = ContentScale.FillBounds,
@@ -122,17 +120,16 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                                 }
                                 .size(picSize))
                     }
-                    this@Column.AnimatedVisibility(!uiState.uploadingPicture
-                            && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error)),
-                        enter = slideInHorizontally(),
-                        exit = shrinkHorizontally()
+                    if(!uiState.uploadingPicture
+                        && uiState.recomposePic.isNotEmpty()
+                            && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error ))
                     ) {
                         Image(painter = painterResource(R.drawable.user),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(picSize)
                                 .clickable {
-                                    if (!uiState.uploadingPicture && launcher != null) launcher.launch(
+                                    if (launcher != null) launcher.launch(
                                         arrayOf("image/png", "image/jpeg")
                                     )
                                 })

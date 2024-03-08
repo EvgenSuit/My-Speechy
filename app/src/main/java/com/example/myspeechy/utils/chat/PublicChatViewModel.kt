@@ -25,7 +25,6 @@ class PublicChatViewModel @Inject constructor(
     private val chatServiceImpl: PublicChatServiceImpl,
     private val filesDirPath: String,
     @Named("ChatDataStore") private val chatDataStore: ChatDatastore,
-    private val getProfileOrChatPictureUseCase: GetProfileOrChatPictureUseCase,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     val chatId: String = checkNotNull(savedStateHandle["chatId"])
@@ -47,8 +46,8 @@ class PublicChatViewModel @Inject constructor(
         }
     }
     fun startOrStopListening(removeListeners: Boolean) {
-        listenForCurrentChat(removeListeners)
         listenForAdmin(removeListeners)
+        listenForCurrentChat(removeListeners)
         listenForChatMembers(removeListeners)
         listenForMessages(removeListeners)
     }
@@ -128,13 +127,14 @@ class PublicChatViewModel @Inject constructor(
     private fun listenForCurrentChat(remove: Boolean) {
             chatServiceImpl.chatListener(chatId, {}, { chat ->
                 _uiState.update {
-                    it.copy(chat = chat.getValue<Chat>() ?: Chat())
+                    it.copy(chat = chat.getValue<Chat>() ?: Chat(), chatLoaded = true)
                 }
             }, remove)
     }
     private fun listenForAdmin(remove: Boolean) {
         chatServiceImpl.listenForAdmin(chatId, {}, {snapshot ->
-             _uiState.update { it.copy(isAdmin = (snapshot.exists() && snapshot.value == userId)) }
+            val value = snapshot.getValue<String>()
+             _uiState.update { it.copy(isAdmin = (value == userId), admin = value) }
         }, remove)
     }
 
@@ -185,10 +185,12 @@ class PublicChatViewModel @Inject constructor(
     data class PublicChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
+        val chatLoaded: Boolean = false,
         val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,
         val joined: Boolean = false,
         val isAdmin: Boolean = false,
+        val admin: String? = "",
         val storageErrorMessage: String = "",
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
         val picsRecomposeIds: Map<String, String> = mapOf()

@@ -67,9 +67,10 @@ class UserProfileViewModel @Inject constructor(
                     File(normalQualityPicDir).deleteRecursively()
                 }
             }, {
-                _uiState.update { it.copy(uploadingPicture = false, recomposePic = UUID.randomUUID().toString()
+                _uiState.update { it.copy(
+                    storageMessage = "",
+                    uploadingPicture = false, recomposePic = UUID.randomUUID().toString()
                 ) }
-                updateStorageMessage("")
             }, remove)
     }
 
@@ -113,7 +114,7 @@ class UserProfileViewModel @Inject constructor(
                     updateStorageMessage(it)
                     _uiState.update { it.copy(uploadingPicture = false) }
                 }) {
-                _uiState.update { it.copy(uploadingPicture = false) }
+                _uiState.update { it.copy(uploadingPicture = false, storageMessage = "") }
             }
     }
     fun removeUserPicture() {

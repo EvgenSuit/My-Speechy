@@ -6,6 +6,6 @@
     <dimen name="padding_auth_fields">24dp</dimen>
     <dimen name="padding_auth_button_row">38dp</dimen>
     <dimen name="auth_fields_radius">10dp</dimen>
-    <dimen name="chat_pic_size">50dp</dimen>
+    <dimen name="chat_pic_size">60dp</dimen>
     <dimen name="userProfilePictureSize">400dp</dimen>
 </resources>

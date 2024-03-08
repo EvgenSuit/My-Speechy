@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
@@ -50,8 +51,7 @@ class ChatsViewModel @Inject constructor(
                 updateOrSortAllPublicChats(chat.keys.first(), chat.values.first())
             },
             onRemoved = {chatId ->
-                        _uiState.update { it.copy(allPublicChats =
-                        it.allPublicChats.filterKeys { k -> k != chatId}) }
+                updateOrSortAllPublicChats(chatId)
             },
             onCancelled = {},
             remove
@@ -188,6 +188,11 @@ class ChatsViewModel @Inject constructor(
     fun createPublicChat(title: String, description: String) {
         chatsService.createPublicChat(title, description)
     }
+    fun sortAllPubicChatsOnStartup() {
+        _uiState.value.allPublicChats.forEach {(id, chat) ->
+            //updateOrSortAllPublicChats(id, chat)
+        }
+    }
     private fun updateOrSortChats(id: String, chat: Chat?) {
         val newChatMap = _uiState.value.chats.toMutableMap().apply { this[id] = chat}
         /* Sort by chat id (to account for a case where timestamps of multiple chats
@@ -195,10 +200,11 @@ class ChatsViewModel @Inject constructor(
         _uiState.update { it.copy(chats = newChatMap
             .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })) }
     }
-    private fun updateOrSortAllPublicChats(id: String, chat: Chat?) {
+    private fun updateOrSortAllPublicChats(id: String, chat: Chat? = null) {
         val newChatMap = _uiState.value.allPublicChats.toMutableMap().apply { this[id] = chat}
         _uiState.update { it.copy(allPublicChats = newChatMap
-            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })) }
+            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })
+            ) }
     }
     fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDirPath, otherUserId)
     private fun updateStorageErrorMessage(e: String) {
