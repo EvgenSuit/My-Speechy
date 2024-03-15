@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "291702741636-5no8m3468q8ltrsp2jh3g61nikf8tctv.apps.googleusercontent.com",
+          "client_id": "291702741636-2ie8goq2iqpu4531v2inui9nn38d7ejv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.myspeechy",
-            "certificate_hash": "5d586aac5a51d16ce75a6441c1d25eee65b556a9"
+            "certificate_hash": "de8b8b1935ce4a8c99dafa1ad625ee414652cf0f"
           }
         },
         {

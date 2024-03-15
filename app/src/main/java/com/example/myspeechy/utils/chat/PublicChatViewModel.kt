@@ -1,75 +1,103 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.services.chat.PublicChatServiceImpl
-import com.example.myspeechy.useCases.GetProfileOrChatPictureUseCase
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Named
 
 @HiltViewModel
 class PublicChatViewModel @Inject constructor(
     private val chatServiceImpl: PublicChatServiceImpl,
     private val filesDirPath: String,
-    @Named("ChatDataStore") private val chatDataStore: ChatDatastore,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     val chatId: String = checkNotNull(savedStateHandle["chatId"])
     private val _uiState = MutableStateFlow(PublicChatUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatServiceImpl.userId
-    init {
-        //immediately check if user has joined the chat
-        runBlocking {
-            val joined = chatDataStore.checkState(chatId)
-            if (joined != null) {
-                _uiState.update { it.copy(joined = joined) }
-            }
-        }
-        viewModelScope.launch {
-            chatDataStore.collectState(chatId) {joined ->
-                _uiState.update { it.copy(joined = joined) }
-            }
-        }
-    }
+
     fun startOrStopListening(removeListeners: Boolean) {
+        checkIfIsMemberOfChat(removeListeners)
         listenForAdmin(removeListeners)
         listenForCurrentChat(removeListeners)
+        checkIfChatIsEmpty(removeListeners)
         listenForChatMembers(removeListeners)
-        listenForMessages(removeListeners)
+        if (removeListeners) {
+            listenForMessages(remove = true)
+        }
     }
-    private fun listenForMessages(remove: Boolean) {
-        chatServiceImpl.messagesListener(chatId,
-            onAdded = {m ->
-                val id = m.keys.first()
-                val savedMessage = _uiState.value.messages[id]
-                if (savedMessage != null) {
-                    _uiState.update { it.copy(it.messages + mapOf(id to m.values.first().copy(senderUsername = savedMessage.senderUsername))) }
-                } else {
-                    _uiState.update { it.copy(it.messages + m)}
-                }
-            },
-            onChanged = {m ->
-                _uiState.update { it.copy(messages = it.messages.toMutableMap().apply { this[m.keys.first()] = m.values.first()})}
-            },
-            onRemoved = {m ->
-                _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
-            },
-            onCancelled = {},
-            remove)
+    private fun checkIfChatIsEmpty(remove: Boolean) {
+        chatServiceImpl.checkIfChatIsEmpty(chatId, remove) {isEmpty ->
+            _uiState.update { it.copy(messagesState = if (isEmpty) MessagesState.EMPTY else MessagesState.IDLE) }
+        }
+    }
+    private fun checkIfIsMemberOfChat(remove: Boolean) {
+        chatServiceImpl.checkIfIsMemberOfChat(chatId, remove) {isMember ->
+            _uiState.update { it.copy(joined = isMember) }
+        }
+    }
+
+    fun handleDynamicMessageLoading(lastVisibleItemIndex: Int?) {
+        val topMessageIndex = uiState.value.topMessageBatchIndex
+        if (lastVisibleItemIndex != null && lastVisibleItemIndex >= topMessageIndex-1 || topMessageIndex == 0) {
+            if (lastVisibleItemIndex != null) {
+                listenForMessages(remove = true)
+            }
+            listenForMessages(10, false)
+        }
+    }
+    private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
+        if (!remove) {
+            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex) }
+        }
+        if (_uiState.value.messagesState != MessagesState.EMPTY) {
+            _uiState.update { it.copy(messagesState = MessagesState.LOADING) }
+            chatServiceImpl.messagesListener(
+                chatId, _uiState.value.topMessageBatchIndex,
+                onAdded = { m ->
+                    val id = m.keys.first()
+                    val savedMessage = _uiState.value.messages[id]
+                    if (savedMessage != null) {
+                        _uiState.update {
+                            it.copy(
+                                it.messages + mapOf(
+                                    id to m.values.first()
+                                        .copy(senderUsername = savedMessage.senderUsername)
+                                )
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                (it.messages + m).toSortedMap(compareBy { k -> (it.messages + m)[k]?.timestamp })
+                            )
+                        }
+                    }
+                    _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
+                },
+                onChanged = { m ->
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages.toMutableMap()
+                                .apply { this[m.keys.first()] = m.values.first() })
+                    }
+                },
+                onRemoved = { m ->
+                    _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
+                },
+                onCancelled = {},
+                remove
+            )
+        }
     }
     private fun listenForChatMembers(remove: Boolean) {
         if (remove) {
@@ -83,20 +111,10 @@ class PublicChatViewModel @Inject constructor(
                     listenForUsername(userId, remove)
                     listenForProfilePic(userId, remove)
                 }
-                if ((_uiState.value.members + m).containsKey(userId) && !uiState.value.joined) {
-                    viewModelScope.launch {
-                        chatDataStore.addToChatList(chatId)
-                    }
-                }
             },
             onChanged = { },
             onRemoved = {m ->
                 _uiState.update { it.copy(members = it.members.filterKeys { key -> key != m.keys.first() }) }
-                if (!_uiState.value.members.containsKey(userId)) {
-                    viewModelScope.launch {
-                        chatDataStore.removeFromChatList(chatId)
-                    }
-                }
                 m.keys.forEach {userId ->
                     listenForUsername(userId, true)
                     listenForProfilePic(userId, true)
@@ -138,15 +156,17 @@ class PublicChatViewModel @Inject constructor(
         }, remove)
     }
 
-        fun sendMessage(text: String, replyTo: String) {
+    fun sendMessage(text: String, replyTo: String) {
             val chat = _uiState.value.chat
             val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.members.entries.first { it.key == userId }.value, text, replyTo)
             chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
-        }
+    }
     fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
-        chatServiceImpl.updateLastMessage(chatId,
-            _uiState.value.chat.copy(lastMessage = message.values.first().text))
+        if (_uiState.value.messages.entries.last().key == message.keys.first()) {
+            chatServiceImpl.updateLastMessage(chatId,
+                _uiState.value.chat.copy(lastMessage = message.values.first().text))
+        }
     }
     fun deleteMessage(message: Map<String, Message>) {
         val messages = _uiState.value.messages
@@ -162,11 +182,7 @@ class PublicChatViewModel @Inject constructor(
                 )
             )
         } else if (entries.size <= 1) {
-            chatServiceImpl.updateLastMessage(chatId, Chat(_uiState.value.chat.title)) {
-                viewModelScope.launch {
-                    chatServiceImpl.leaveChat(chatId)
-                }
-            }
+            chatServiceImpl.updateLastMessage(chatId, _uiState.value.chat.copy(lastMessage = "" ))
         }
     }
 
@@ -181,10 +197,10 @@ class PublicChatViewModel @Inject constructor(
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }
     }
 
-
     data class PublicChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
+        val topMessageBatchIndex: Int = 0,
         val chatLoaded: Boolean = false,
         val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,
@@ -192,7 +208,13 @@ class PublicChatViewModel @Inject constructor(
         val isAdmin: Boolean = false,
         val admin: String? = "",
         val storageErrorMessage: String = "",
+        val messagesState: MessagesState = MessagesState.IDLE,
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
         val picsRecomposeIds: Map<String, String> = mapOf()
     )
+}
+enum class MessagesState {
+    IDLE,
+    LOADING,
+    EMPTY,
 }

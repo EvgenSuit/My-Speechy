@@ -25,6 +25,9 @@ import com.google.firebase.storage.taskState
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.Flow
 import kotlin.io.path.notExists
@@ -86,6 +89,7 @@ interface ChatService {
 
     fun messagesListener(
         id: String,
+        topIndex: Int,
         onAdded: (Map<String, Message>) -> Unit,
         onChanged: (Map<String, Message>) -> Unit,
         onRemoved: (Map<String, Message>) -> Unit,
@@ -126,7 +130,7 @@ interface ChatService {
     }
 
     fun sendMessage(chatId: String, senderUsername: String, text: String, replyTo: String): Long {
-        val timestamp = System.currentTimeMillis()
+        val timestamp = OffsetDateTime.now(ZoneOffset.UTC).toZonedDateTime().toInstant().toEpochMilli()
         messagesRef.child(chatId)
                     .child(UUID.randomUUID().toString())
                     .setValue(Message(userId, senderUsername, text, timestamp,false, replyTo))
@@ -142,6 +146,7 @@ interface ChatService {
             .child(message.keys.first())
             .removeValue()
     }
+
 
     fun getPicDir(filesDir: String, otherUserId: String): String
             = "${filesDir}/profilePics/$otherUserId/lowQuality"
@@ -180,6 +185,8 @@ class PublicChatServiceImpl(
     private var membershipListener: ChildEventListener? = null
     private var usersProfilePicListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var adminListener: ValueEventListener? = null
+    private var messagesStateListener: ValueEventListener? = null
+    private var isMemberOfChatListener: ValueEventListener? = null
 
     private fun chatMembersChildListener(
         onAdded: (Map<String, Boolean>) -> Unit,
@@ -202,6 +209,24 @@ class PublicChatServiceImpl(
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
         }
     }
+     fun checkIfIsMemberOfChat(chatId: String, remove: Boolean, isMember: (Boolean) -> Unit) {
+         val ref = membersRef.child(chatId).child(userId)
+        if (remove && isMemberOfChatListener != null) {
+            ref.removeEventListener(isMemberOfChatListener!!)
+        } else {
+            isMemberOfChatListener = chatEventListener({}, {isMember(it.exists())})
+            ref.addValueEventListener(isMemberOfChatListener!!)
+        }
+    }
+    fun checkIfChatIsEmpty(chatId: String, remove: Boolean, isEmpty: (Boolean) -> Unit) {
+        val ref = messagesRef.child(chatId)
+        if (remove && messagesStateListener != null) {
+            ref.removeEventListener(messagesStateListener!!)
+        } else {
+            messagesStateListener = chatEventListener({}, {isEmpty(!it.exists())})
+            ref.addValueEventListener(messagesStateListener!!)
+        }
+    }
     override fun chatListener(
         id: String,
         onCancelled: (Int) -> Unit,
@@ -219,6 +244,7 @@ class PublicChatServiceImpl(
 
     override fun messagesListener(
         id: String,
+        topIndex: Int,
         onAdded: (Map<String, Message>) -> Unit,
         onChanged: (Map<String, Message>) -> Unit,
         onRemoved: (Map<String, Message>) -> Unit,
@@ -226,7 +252,8 @@ class PublicChatServiceImpl(
         remove: Boolean) {
         val ref = messagesRef.child(id)
             .orderByChild("timestamp")
-            //.limitToLast(5)
+            .limitToLast(topIndex)
+
         if (remove && messagesListener != null) {
             ref.removeEventListener(messagesListener!!)
         } else {
@@ -300,9 +327,8 @@ class PublicChatServiceImpl(
     }
 
     fun updateLastMessage(chatId: String, chat: Chat, onSuccess: () -> Unit = {}) {
-        val publicChat = chat.copy(type = "public")
         chatsRef.child(chatId)
-            .setValue(publicChat)
+            .setValue(chat)
             .addOnSuccessListener { onSuccess() }
     }
     fun changePublicChat(chatId: String, chat: Chat) {
@@ -312,7 +338,7 @@ class PublicChatServiceImpl(
     }
 
     override fun joinChat(chatId: String) {
-        joinPublicChatUseCase(chatId)
+        joinPublicChatUseCase(chatId) {}
     }
 
     override suspend fun leaveChat(chatId: String) {
@@ -346,6 +372,7 @@ class PrivateChatServiceImpl(
     }
     override fun messagesListener(
         id: String,
+        topIndex: Int,
         onAdded: (Map<String, Message>) -> Unit,
         onChanged: (Map<String, Message>) -> Unit,
         onRemoved: (Map<String, Message>) -> Unit,

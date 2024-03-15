@@ -2,6 +2,7 @@ package com.example.myspeechy.screens.chat
 
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,9 +15,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,7 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -40,10 +47,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
@@ -51,29 +62,46 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
+import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CommonTextField
+import com.example.myspeechy.utils.chat.PictureState
 import com.example.myspeechy.utils.chat.UserProfileViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+import com.skydoves.cloudy.Cloudy
+import es.dmoral.toasty.Toasty
+import kotlinx.coroutines.launch
 
 @Composable
-fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
-                      onOkClick: () -> Unit) {
+fun UserProfileScreen(
+    onOkClick: () -> Unit,
+    onLogout: () -> Unit,
+    viewModel: UserProfileViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     val placeholders = Pair("Username", "Description")
-    var name by remember(uiState.name) {
-        mutableStateOf(uiState.name)
+    var name by remember(uiState.user?.name) {
+        mutableStateOf(uiState.user?.name)
     }
-    var info by remember(uiState.info) {
-        mutableStateOf(uiState.info)
+    var info by remember(uiState.user?.info) {
+        mutableStateOf(uiState.user?.info)
     }
     LaunchedEffect(Unit) {
-        viewModel.startOrStopListening(false)
+        viewModel.startOrStopListening(false, onLogout)
+    }
+    LaunchedEffect(uiState.userManagementError) {
+        if (uiState.userManagementError.isNotEmpty()) {
+            Toasty.error(context, uiState.userManagementError, Toast.LENGTH_SHORT, true).show()
+        }
     }
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
     if (isCurrentUser)
@@ -95,7 +123,8 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .background(MaterialTheme.colorScheme.onPrimaryContainer)
-                .padding(10.dp),
+                .padding(10.dp)
+                .blur(if (uiState.logginOut || uiState.deletingAccount) 5.dp else 0.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -114,43 +143,26 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                             contentDescription = null,
                             modifier = Modifier
                                 .clickable {
-                                    if (!uiState.uploadingPicture && launcher != null) launcher.launch(
+                                    if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
                                         arrayOf("image/png", "image/jpeg")
                                     )
                                 }
                                 .size(picSize))
                     }
-                    if(!uiState.uploadingPicture
-                        && uiState.recomposePic.isNotEmpty()
-                            && (uiState.storageMessage.isNotEmpty() || (painter.state is AsyncImagePainter.State.Error ))
+                    if(uiState.pictureState != PictureState.UPLOADING && (uiState.pictureState != PictureState.SUCCESS || painter.state is AsyncImagePainter.State.Error)
                     ) {
                         Image(painter = painterResource(R.drawable.user),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(picSize)
                                 .clickable {
-                                    if (launcher != null) launcher.launch(
+                                    launcher?.launch(
                                         arrayOf("image/png", "image/jpeg")
                                     )
                                 })
                     }
                 }
             }
-            AnimatedVisibility(
-                !uiState.uploadingPicture &&
-                        uiState.storageMessage.isEmpty() && isCurrentUser,
-                enter = slideInHorizontally()) {
-                ElevatedButton(onClick = viewModel::removeUserPicture,
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 10.dp
-                    ),
-                    modifier = Modifier.width(200.dp)) {
-                    Icon(imageVector = Icons.Filled.Delete,
-                        tint = MaterialTheme.colorScheme.error,
-                        contentDescription = null)
-                }
-            }
-
             Column(
                 Modifier
                     .width(300.dp)
@@ -173,11 +185,11 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                 }
             }
 
-            AnimatedVisibility(uiState.uploadingPicture) {
+            AnimatedVisibility(uiState.pictureState == PictureState.UPLOADING) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
             Spacer(Modifier.weight(1f))
-            if(isCurrentUser && (name != uiState.name || info != uiState.info)) {
+            if(isCurrentUser && (name != uiState.user?.name || info != uiState.user?.info)) {
                 ElevatedButton(onClick = {
                     if (name != null && info != null)
                         viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
@@ -186,15 +198,55 @@ fun UserProfileScreen(viewModel: UserProfileViewModel = hiltViewModel(),
                     Text("Save")
                 }
             }
-        }
-        DisposableEffect(Unit) {
-            onDispose {
-                viewModel.startOrStopListening(true)
+            if (isCurrentUser) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 25.dp)) {
+                    AnimatedVisibility(
+                        uiState.pictureState != PictureState.UPLOADING &&
+                                uiState.pictureState != PictureState.IDLE && uiState.storageMessage.isEmpty(),
+                        enter = slideInHorizontally(), modifier = Modifier.padding(bottom = 0.dp)) {
+                        ProfileActionButton(icon = Icons.Filled.Face, text = "Delete profile picture", viewModel::removeUserPicture)
+                    }
+                    ProfileActionButton(icon = Icons.AutoMirrored.Filled.ExitToApp, text = "Log out", viewModel::logout)
+                    ProfileActionButton(icon = Icons.Filled.Delete, text = "Delete account") {
+                        viewModel.deleteAccount()
+                    }
+                }
             }
+            if (uiState.chatAlertDialogDataClass.title.isNotEmpty()) {
+                ChatAlertDialog(alertDialogDataClass = uiState.chatAlertDialogDataClass)
+            }
+        }
+        AnimatedVisibility(uiState.logginOut) {
+            AccountStatusProgress("Logging out...")
+        }
+        AnimatedVisibility(uiState.deletingAccount) {
+            AccountStatusProgress("Deleting account...")
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.startOrStopListening(true, onLogout)
         }
     }
 }
 
+@Composable
+fun AccountStatusProgress(text: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .height(250.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(10.dp)
+                ) {
+                    Text(text, color = MaterialTheme.colorScheme.onBackground)
+                    LinearProgressIndicator()
+                }
+    }
+}
 
 @Composable
 fun UserInfoTable(value: String) {
@@ -206,5 +258,17 @@ fun UserInfoTable(value: String) {
         Text(value, color = MaterialTheme.colorScheme.onPrimary,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(20.dp))
+    }
+}
+
+@Composable
+fun ProfileActionButton(icon: ImageVector, text: String, onClick: () -> Unit) {
+    ElevatedButton(onClick = onClick, Modifier.size(250.dp, 50.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()) {
+            Text(text, color = MaterialTheme.colorScheme.error)
+            Icon(icon, contentDescription = null)
+        }
     }
 }

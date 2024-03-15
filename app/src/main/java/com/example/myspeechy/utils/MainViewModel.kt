@@ -7,6 +7,8 @@ import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.services.lesson.MainLessonServiceImpl
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +30,7 @@ class MainViewModel @Inject constructor(
        viewModelScope.launch {
            val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
                .values.toList().flatten()
-           lessonServiceImpl.trackRemoteProgress({ listenErrorToast.show() }) {data ->
+           lessonServiceImpl.trackRemoteProgress({ if (Firebase.auth.currentUser != null) listenErrorToast.show() }) { data ->
                //If error listening, the lesson list doesn't get changed
                var newLessonList = lessonList.map { lesson ->if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
                viewModelScope.launch {

@@ -1,11 +1,13 @@
 package com.example.myspeechy.screens
 
 import android.app.Activity.RESULT_OK
+import android.util.Log
 import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,10 +29,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +64,8 @@ import com.example.myspeechy.components.advancedShadow
 import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
+import com.example.myspeechy.utils.auth.AuthExceptionState
+import com.example.myspeechy.utils.auth.AuthState
 import com.example.myspeechy.utils.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
@@ -82,36 +88,28 @@ fun AuthScreen(
             add(SvgDecoder.Factory())
         }.build()
     val painter = rememberAsyncImagePainter(R.raw.auth_page_background, imageLoader)
-    Box{
+    Box(contentAlignment = Alignment.Center,
+        modifier = Modifier.background(Color.White)){
                 Image(
                     painter = painter,
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier.fillMaxSize(),
                     contentDescription = null
                 )
-                Column(modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .align(Alignment.Center)) {
-                    if (painter.state is AsyncImagePainter.State.Loading) {
-                        Box(
-                            modifier = Modifier
-                                .background(Color.White)
-                                .fillMaxSize()
-                        ) {
-                            CircularProgressIndicator(
-                                color = Color.Black,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
-                    }
-                    if (painter.state is AsyncImagePainter.State.Success) {
+        if (painter.state is AsyncImagePainter.State.Loading) {
+            CircularProgressIndicator(
+                color = Color.Black,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+        if (painter.state is AsyncImagePainter.State.Success) {
                         MainBox(
                             onNavigateToMain = onNavigateToMain,
                             imageLoader = imageLoader)
-                    }
-                }
-                }
-            }
+        }
+    }
+}
+
 
 @Composable
 fun MainBox(onNavigateToMain: () -> Unit,
@@ -120,9 +118,9 @@ fun MainBox(onNavigateToMain: () -> Unit,
     val viewModel: AuthViewModel = hiltViewModel()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val coroutine = rememberCoroutineScope()
     val exceptionState by viewModel.exceptionState.collectAsState()
     val uiState = viewModel.uiState
+    val coroutine = rememberCoroutineScope()
     var enabled by rememberSaveable {
         mutableStateOf(false)
     }
@@ -153,48 +151,76 @@ fun MainBox(onNavigateToMain: () -> Unit,
                     .padding(top = 15.dp))
            Column(modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
                AuthTextField(value = uiState.email,
+                   exceptionMessage = exceptionState.authInputExceptionMessage,
                    label = "Email",
+                   onExceptionMessageChange = viewModel::updateAuthInputExceptionMessage,
                    onValueChange = {viewModel.onEmailChanged(it)})
                AuthTextField(value = uiState.password,
+                   exceptionMessage = exceptionState.authInputExceptionMessage,
                    label = "Password",
+                   onExceptionMessageChange = viewModel::updateAuthInputExceptionMessage,
                    onValueChange = {viewModel.onPasswordChanged(it)})
-               if (exceptionState.exceptionMessage.isNotEmpty()) {
-                    ErrorMessage(exceptionState.exceptionMessage)
+               if (exceptionState.authInputExceptionMessage.isNotEmpty()) {
+                    ErrorMessage(exceptionState.authInputExceptionMessage)
                }
-               Row(horizontalArrangement = Arrangement.SpaceBetween,
-                   modifier = Modifier
-                       .padding(top = dimensionResource(id = R.dimen.padding_auth_button_row))
-                       .fillMaxWidth()
-               ) {
-                   AuthButton(label = "Log In", enabled) {
-                              coroutine.launch {
-                                  viewModel.logIn()
-                                  delay(1000)
-                                  withContext(Dispatchers.Main) {
-                                      if (enabled) {
-                                          focusManager.clearFocus()
-                                          onNavigateToMain()
-                                      }
-                                  }
-                              }
-                   }
-                   AuthButton(label = "Sign Up", enabled) {
-                       coroutine.launch {
-                           viewModel.signUp()
-                           delay(1000)
-                           withContext(Dispatchers.Main) {
-                               if (enabled) {
-                                   focusManager.clearFocus()
-                                   Toasty.success(context, "Signed Up", Toast.LENGTH_LONG, true)
+               AnimatedVisibility(exceptionState.authState != AuthState.IN_PROGRESS) {
+                   AuthButtons(
+                       enabled = enabled,
+                       onLogIn = {
+                           coroutine.launch {
+                               viewModel.logIn()
+                               withContext(Dispatchers.Main) {
+                                   if (exceptionState.authState == AuthState.SUCCESS) {
+                                       focusManager.clearFocus()
+                                       onNavigateToMain()
+                                       Toasty.success(context, "Logged In", Toast.LENGTH_SHORT, true).show()
+                                   } else if (exceptionState.authState == AuthState.FAILURE) {
+                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_LONG, true).show()
+                                   }
                                }
                            }
-                       }
-                   }
+                       },
+                       onSignUp = {
+                           coroutine.launch {
+                               viewModel.signUp()
+                               withContext(Dispatchers.Main) {
+                                   if (exceptionState.authState == AuthState.SUCCESS) {
+                                       focusManager.clearFocus()
+                                       onNavigateToMain()
+                                       Toasty.success(context, "Signed Up", Toast.LENGTH_SHORT, true).show()
+                                   } else if (exceptionState.authState == AuthState.FAILURE) {
+                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_LONG, true).show()
+                                   }
+                               }
+                           }
+                       })
+               }
+               AnimatedVisibility(exceptionState.authState == AuthState.IN_PROGRESS) {
+                   LinearProgressIndicator(modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_auth_button_row)))
                }
                GoogleAuthButton(viewModel, imageLoader) {
                    onNavigateToMain()
                }
            }
+        }
+    }
+}
+
+@Composable
+fun AuthButtons(
+    enabled: Boolean,
+    onLogIn: () -> Unit,
+    onSignUp: () -> Unit, ) {
+    Row(horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .padding(top = dimensionResource(id = R.dimen.padding_auth_button_row))
+            .fillMaxWidth()
+    ) {
+        AuthButton(label = "Log In", enabled) {
+            onLogIn()
+        }
+        AuthButton(label = "Sign Up", enabled) {
+            onSignUp()
         }
     }
 }
@@ -220,11 +246,10 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
     )
     Button(onClick = {
         coroutine.launch {
-            val signInIntentSender = viewModel.googleSignIn()
-            if (signInIntentSender == null) {
-                Toasty.error(context, "Error signing in with google, make sure to" +
-                        " add your account to the current device", Toast.LENGTH_LONG, true)
-            } else {
+            val signInIntentSender = viewModel.googleSignIn {
+                Toasty.error(context, it, Toast.LENGTH_LONG, true).show()
+            }
+            if (signInIntentSender != null) {
                 launcher.launch(
                     IntentSenderRequest.Builder(
                         intentSender = signInIntentSender
@@ -263,10 +288,10 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
 }
 
 @Composable
-fun AuthTextField(value:String, label: String, onValueChange: (String) -> Unit) {
-    var exceptionMessage by rememberSaveable() {
-        mutableStateOf("")
-    }
+fun AuthTextField(value:String, label: String,
+                  exceptionMessage: String,
+                  onValueChange: (String) -> Unit,
+                  onExceptionMessageChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
      Column {
          OutlinedTextField(value = value,
@@ -285,13 +310,13 @@ fun AuthTextField(value:String, label: String, onValueChange: (String) -> Unit) 
              onValueChange = {
                  onValueChange(it)
                  if (label == "Email" && !it.isValidEmail()) {
-                     exceptionMessage = "Wrong email format"
+                     onExceptionMessageChange("Wrong email format")
                  }
                  else if (label == "Password" && !it.meetsPasswordRequirements()) {
-                     exceptionMessage = "Wrong password format"
+                     onExceptionMessageChange("Wrong password format")
                  }
                  else {
-                     exceptionMessage = ""
+                     onExceptionMessageChange("")
                  }
              },
              singleLine = true,
@@ -318,9 +343,7 @@ fun AuthTextField(value:String, label: String, onValueChange: (String) -> Unit) 
                  )
                  .height(60.dp)
          )
-         if (exceptionMessage.isNotEmpty()) {
-             ErrorMessage(exceptionMessage)
-         }
+
      }
 }
 

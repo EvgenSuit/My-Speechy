@@ -1,6 +1,7 @@
 package com.example.myspeechy
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -155,7 +156,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                             animationSpec = tween(700),
                             towards = AnimatedContentTransitionScope
                                 .SlideDirection.End)}) {
-                        ChatsScreen()
+                        ChatsScreen {navController.navigate("auth") { popUpTo(0) }}
                     }
                     composable("auth") {
                         AuthScreen(onNavigateToMain = {

@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -115,7 +117,8 @@ fun MessagesColumn(
         reverseLayout = true,
         verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.Bottom)) {
         if (messages.isNotEmpty()) {
-            itemsIndexed(messages.toList().reversed()) { index, (messageId, message) ->
+            items(messages.toList().reversed(), key = {it.first}) { (messageId, message) ->
+                val index = messages.keys.indexOf(messageId)
                 val chatId = listOf(message.sender, userId).sortedWith(
                 compareBy(String.CASE_INSENSITIVE_ORDER) {it})
                 .joinToString("_")
@@ -140,7 +143,7 @@ fun MessagesColumn(
                                 .build())
                             if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
                             Image(painter,
-                                contentScale = ContentScale.Inside,
+                                contentScale = ContentScale.Crop,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(picSize)
@@ -202,7 +205,7 @@ fun MessagesColumn(
                                         modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
                                     Row{
                                         Text(
-                                            SimpleDateFormat("hh:mm:ss").format(Date(message.timestamp)),
+                                            SimpleDateFormat("MM.dd.hh:mm").format(Date(message.timestamp)),
                                             overflow = TextOverflow.Ellipsis)
                                         Spacer(Modifier.weight(1f))
                                         if (message.edited) {
@@ -249,10 +252,10 @@ fun BottomRow(textFieldValue: TextFieldValue,
               focusRequester: FocusRequester,
               onFieldValueChange: (TextFieldValue) -> Unit,
               onSendButtonClick: () -> Unit) {
-    Row(modifier = modifier.fillMaxSize(),
+    Row(modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Bottom) {
         OutlinedTextField(
-            value = textFieldValue, onValueChange = { if (it.text.length < 500) onFieldValueChange(it) },
+            value = textFieldValue, onValueChange = { if (it.text.length <= 500) onFieldValueChange(it) },
             shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onPrimary,
@@ -262,10 +265,10 @@ fun BottomRow(textFieldValue: TextFieldValue,
             ),
             modifier = Modifier
                 .weight(1f)
-                .fillMaxSize()
+                .fillMaxWidth()
                 .focusRequester(focusRequester))
         IconButton(
-            onClick = { if (textFieldValue.text.isNotEmpty() && !textFieldValue.text.all { it == ' ' }) onSendButtonClick() },
+            onClick = { if (textFieldValue.text.isNotEmpty() && textFieldValue.text.isNotBlank()) onSendButtonClick() },
             modifier = Modifier
                 .weight(0.25f)
         ) {
@@ -333,8 +336,8 @@ fun CommonTextField(value: String,
             }
         ),
         onValueChange = {
-            if (last && it.length < descriptionMaxChar) onChange(it) //description
-            if (!last && it.length < usernameOrTitleMaxChar) onChange(it) //username or title
+            if (last && it.length <= descriptionMaxChar) onChange(it) //description
+            if (!last && it.length <= usernameOrTitleMaxChar) onChange(it) //username or title
         },
         placeholder = {Text(if (!last) placeholders.first else placeholders.second)},
         supportingText = {Text(if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar",

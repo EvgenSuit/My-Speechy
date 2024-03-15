@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">My Speechy</string>
     <string name="web_client_id">291702741636-u2rri5h6vv7ou87j5u9a2ael99027lr6.apps.googleusercontent.com</string>
+    <string name="o_auth_client_id">694233979409-u34cn0d97qm4qdj16krvfthv9l462jpe.apps.googleusercontent.com</string>
     <string name="continue_with_google">Continue with Google</string>
     <string name="mark_as_complete">"Mark as complete"</string>
     <string name="meditation_notification_name">Meditation</string>
