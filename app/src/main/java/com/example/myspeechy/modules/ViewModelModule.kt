@@ -7,6 +7,7 @@ import com.example.myspeechy.data.lesson.LessonDb
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.meditation.MeditationStatsDb
 import com.example.myspeechy.data.meditation.MeditationStatsRepository
+import com.example.myspeechy.services.AuthService
 import com.example.myspeechy.services.MeditationNotificationServiceImpl
 import com.example.myspeechy.services.chat.ChatsServiceImpl
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
@@ -23,7 +24,9 @@ import com.example.myspeechy.useCases.GetProfileOrChatPictureUseCase
 import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
-import com.example.myspeechy.utils.chat.ChatDatastore
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -81,30 +84,27 @@ object ViewModelModule {
         return MeditationStatsServiceImpl()
     }
     @Provides
-    fun provideChatsServiceImpl(@ApplicationContext context: Context): ChatsServiceImpl {
-        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(provideChatDataStore(context)),
+    fun provideChatsServiceImpl(): ChatsServiceImpl {
+        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(),
             JoinPublicChatUseCase(), CheckIfIsAdminUseCase(),
             DeletePublicChatUseCase()
         )
     }
     @Provides
-    fun providePublicChatServiceImpl(@ApplicationContext context: Context): PublicChatServiceImpl {
-        return PublicChatServiceImpl(LeavePublicChatUseCase(provideChatDataStore(context)),
+    fun providePublicChatServiceImpl(): PublicChatServiceImpl {
+        return PublicChatServiceImpl(LeavePublicChatUseCase(),
             JoinPublicChatUseCase()
         )
     }
     @Provides
     fun providePrivateChatServiceImpl(): PrivateChatServiceImpl = PrivateChatServiceImpl(LeavePrivateChatUseCase())
     @Provides
-    fun provideUserProfileServiceImpl(): UserProfileServiceImpl = UserProfileServiceImpl()
+    fun provideUserProfileServiceImpl(): UserProfileServiceImpl = UserProfileServiceImpl(AuthService(Firebase.auth, Firebase.database.reference.child("users")))
     @Provides
     fun provideFilesDirPath(@ApplicationContext context: Context): String = context.cacheDir.path
     @Provides
     fun provideGetProfileOrChatPictureUseCase(@ApplicationContext context: Context): GetProfileOrChatPictureUseCase =
         GetProfileOrChatPictureUseCase(context.cacheDir.path)
-    @Provides
-    @Named("ChatDataStore")
-    fun provideChatDataStore(@ApplicationContext context: Context): ChatDatastore = ChatDatastore(context)
     @Provides
     @Named("ProfilePictureSizeError")
     fun provideProfilePictureSizeError(@ApplicationContext context: Context): Toast =

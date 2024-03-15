@@ -1,6 +1,7 @@
 package com.example.myspeechy.services.lesson
 
 import android.content.res.AssetManager
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
@@ -25,18 +26,6 @@ interface LessonService {
             lesson.isComplete == 1,
             lesson.isAvailable == 1,
             lesson.containsImages == 1
-        )
-    }
-    fun convertToLesson(lessonItem: LessonItem): Lesson {
-        return Lesson(
-            lessonItem.id,
-            lessonItem.unit,
-            lessonServiceHelpers.categoryMapperReverse(lessonItem.category),
-            lessonItem.title,
-            lessonItem.text,
-            if (lessonItem.isComplete) 1 else 0,
-            if (lessonItem.isAvailable) 1 else 0,
-            if (lessonItem.containsImages) 1 else 0
         )
     }
     fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String> {
@@ -92,7 +81,11 @@ class MainLessonServiceImpl: LessonService {
         val docRef = Firebase.firestore.collection(userId).document("lesson")
             .collection("items")
         docRef.addSnapshotListener{docs, e ->
-            if (e != null || docs == null) {
+            if (docs == null) {
+                onDataReceived(listOf())
+                return@addSnapshotListener
+            }
+            if (e != null) {
                 onListenError()
                 onDataReceived(listOf())
                 return@addSnapshotListener

@@ -3,7 +3,9 @@ package com.example.myspeechy.services.chat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.core.net.toUri
+import com.example.myspeechy.services.AuthService
 import com.example.myspeechy.utils.chat.getOtherUserId
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -25,13 +27,17 @@ enum class PictureStorageError {
 
 private val database = Firebase.database.reference
 private val storage = Firebase.storage.reference
-class UserProfileServiceImpl {
+class UserProfileServiceImpl(private val authService: AuthService) {
     private val usersRef = database.child("users")
     private val picsRef = storage.child("profilePics")
     val userId = Firebase.auth.currentUser!!.uid
+    private var userListener: ValueEventListener? = null
     private var picListener: ValueEventListener? = null
-    private var infoListener: ValueEventListener? = null
-    private var nameListener: ValueEventListener? = null
+    private val firebaseAuth = FirebaseAuth.getInstance()
+    fun listenForAuthState(onLogout: (Boolean) -> Unit) {
+        firebaseAuth.addAuthStateListener { onLogout(it.currentUser == null) }
+    }
+
     private fun listener(
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit): ValueEventListener {
@@ -44,31 +50,17 @@ class UserProfileServiceImpl {
             }
         }
     }
-    fun usernameListener(
+    fun userListener(
         id: String,
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean) {
         val ref = usersRef.child(id)
-            .child("name")
-        if (remove && nameListener != null) {
-            ref.removeEventListener(nameListener!!)
+        if (remove && userListener != null) {
+            ref.removeEventListener(userListener!!)
         } else {
-            nameListener = listener(onCancelled, onDataReceived)
-            ref.addValueEventListener(nameListener!!)
-        }
-    }
-    fun userInfoListener(id: String,
-                         onCancelled: (Int) -> Unit,
-                         onDataReceived: (DataSnapshot) -> Unit,
-                         remove: Boolean) {
-        val ref = usersRef.child(id)
-            .child("info")
-        if (remove && infoListener != null) {
-            ref.removeEventListener(infoListener!!)
-        } else {
-            infoListener = listener(onCancelled, onDataReceived)
-            ref.addValueEventListener(infoListener!!)
+            userListener = listener(onCancelled, onDataReceived)
+            ref.addValueEventListener(userListener!!)
         }
     }
     fun createPicDir(dir: String) {
@@ -181,5 +173,12 @@ class UserProfileServiceImpl {
             .child("info")
             .setValue(newInfo)
             .addOnSuccessListener { onSuccess() }
+    }
+
+    fun logout() {
+        authService.logOut()
+    }
+    suspend fun deleteUser() {
+        authService.deleteUser()
     }
 }

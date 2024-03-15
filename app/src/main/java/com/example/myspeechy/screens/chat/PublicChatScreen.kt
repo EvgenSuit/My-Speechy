@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -8,22 +9,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +62,7 @@ import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.components.ReplyOrEditMessageInfo
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.utils.chat.MessagesState
 import com.example.myspeechy.utils.chat.PublicChatViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -71,6 +73,18 @@ fun PublicChatScreen(navController: NavHostController,
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val lastVisibleItemIndex by remember(listState) { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    LaunchedEffect(lastVisibleItemIndex) {
+        viewModel.handleDynamicMessageLoading(lastVisibleItemIndex)
+    }
+    LaunchedEffect(uiState.messages.entries.lastOrNull()) {
+        //if the last message was sent by the user, animate to the bottom
+        if (uiState.messages.isNotEmpty() && uiState.messages.entries.last().value.sender == viewModel.userId) {
+            coroutineScope.launch {
+                listState.animateScrollToItem(0)
+            }
+        }
+    }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showChangeChatInfoForm by remember(drawerState.isClosed) { mutableStateOf(false) }
     var textFieldState by remember {
@@ -105,7 +119,6 @@ fun PublicChatScreen(navController: NavHostController,
                                     .joinToString("_")
                                 navController.navigate("chats/private/${chatId}")
                             } }
-
                     })
             }) {
             Column(modifier = Modifier
@@ -119,28 +132,37 @@ fun PublicChatScreen(navController: NavHostController,
                     } },
                     onNavigateUp = navController::navigateUp
                 )
-                MessagesColumn(viewModel.userId, uiState.joined, listState, uiState.messages,
-                    LocalContext.current.cacheDir.path, Modifier.weight(1f),
-                    onEdit = {
-                        focusManager.clearFocus(true)
-                        messageToEdit = it
-                        replyMessage = mapOf()
-                        val message = it.values.first()
-                        textFieldState = TextFieldValue(
-                            message.text,
-                            selection = TextRange(message.text.length)
-                        )
-                        focusRequester.requestFocus()
-                    },
-                    onDelete = { viewModel.deleteMessage(it) },
-                    onReply = {
-                        focusManager.clearFocus(true)
-                        replyMessage = it
-                        messageToEdit = mapOf()
-                        textFieldState = TextFieldValue()
-                        focusRequester.requestFocus()
-                    }) { chatId ->
-                    navController.navigate("chats/private/$chatId")
+                if (uiState.messagesState == MessagesState.LOADING) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                }
+                if (uiState.messagesState != MessagesState.EMPTY) {
+                    MessagesColumn(viewModel.userId, uiState.joined, listState, uiState.messages,
+                        LocalContext.current.cacheDir.path, Modifier.weight(1f),
+                        onEdit = {
+                            focusManager.clearFocus(true)
+                            messageToEdit = it
+                            replyMessage = mapOf()
+                            val message = it.values.first()
+                            textFieldState = TextFieldValue(
+                                message.text,
+                                selection = TextRange(message.text.length)
+                            )
+                            focusRequester.requestFocus()
+                        },
+                        onDelete = { viewModel.deleteMessage(it) },
+                        onReply = {
+                            focusManager.clearFocus(true)
+                            replyMessage = it
+                            messageToEdit = mapOf()
+                            textFieldState = TextFieldValue()
+                            focusRequester.requestFocus()
+                        }) { chatId ->
+                        navController.navigate("chats/private/$chatId")
+                    }
+                } else {
+                    Text("No messages here yet",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f).align(Alignment.CenterHorizontally))
                 }
                 if (replyMessage.isNotEmpty()) {
                     ReplyOrEditMessageInfo(replyMessage.values.first()) {
@@ -167,7 +189,7 @@ fun PublicChatScreen(navController: NavHostController,
                 else if (uiState.chatLoaded) {
                     BottomRow(textFieldState,
                         focusRequester = focusRequester,
-                        modifier = Modifier.height(IntrinsicSize.Min),
+                        modifier = Modifier.heightIn(max = 200.dp),
                         onFieldValueChange = { textFieldState = it }) {
                         if (messageToEdit.isEmpty()) {
                             viewModel.sendMessage(
@@ -181,13 +203,10 @@ fun PublicChatScreen(navController: NavHostController,
                                         .copy(text = textFieldState.text)
                                 )
                             )
-                            messageToEdit = mapOf()
                         }
                         textFieldState = TextFieldValue()
                         replyMessage = mapOf()
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(0)
-                        }
+                        messageToEdit = mapOf()
                     }
                 }
             }
@@ -206,6 +225,7 @@ fun PublicChatScreen(navController: NavHostController,
     }
     DisposableEffect(Unit) {
         onDispose {
+            focusManager.clearFocus(true)
             viewModel.startOrStopListening(true)
         }
     }

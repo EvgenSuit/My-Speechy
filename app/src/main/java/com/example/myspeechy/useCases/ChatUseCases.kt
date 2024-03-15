@@ -1,6 +1,5 @@
 package com.example.myspeechy.useCases
 
-import com.example.myspeechy.utils.chat.ChatDatastore
 import com.example.myspeechy.utils.chat.getOtherUserId
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
@@ -45,8 +44,8 @@ class LeavePrivateChatUseCase {
     }
 }
 
-class LeavePublicChatUseCase(private val chatDatastore: ChatDatastore) {
-    suspend operator fun invoke(chatId: String) {
+class LeavePublicChatUseCase {
+    operator fun invoke(chatId: String) {
         database.child("members")
             .child(chatId)
             .child(userId)
@@ -56,12 +55,11 @@ class LeavePublicChatUseCase(private val chatDatastore: ChatDatastore) {
             .child("public_chats")
             .child(chatId)
             .removeValue()
-        chatDatastore.removeFromChatList(chatId)
     }
 }
 
 class JoinPublicChatUseCase {
-    operator fun invoke(chatId: String) {
+    operator fun invoke(chatId: String, onSuccess: () -> Unit) {
         database.child("members")
             .child(chatId)
             .child(userId).setValue(true)
@@ -70,6 +68,7 @@ class JoinPublicChatUseCase {
             .child("public_chats")
             .child(chatId)
             .setValue(true)
+            .addOnSuccessListener { onSuccess() }
     }
 }
 class DeletePublicChatUseCase {

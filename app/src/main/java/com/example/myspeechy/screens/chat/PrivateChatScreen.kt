@@ -95,7 +95,7 @@ fun PrivateChatScreen(navController: NavHostController,
                 Spacer(modifier = Modifier.weight(0.01f))
                 if (viewModel.picRef.exists()) {
                     Image(painter,
-                        contentScale = ContentScale.Inside,
+                        contentScale = ContentScale.Crop,
                         contentDescription = null,
                         modifier = Modifier
                             .size(chatPicSize)

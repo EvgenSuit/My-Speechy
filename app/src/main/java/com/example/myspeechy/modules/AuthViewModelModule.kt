@@ -6,6 +6,7 @@ import com.example.myspeechy.services.GoogleAuthService
 import com.example.myspeechy.utils.auth.AuthViewModel
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import dagger.Module
 import dagger.Provides
@@ -27,7 +28,7 @@ object AuthViewModelModule {
     @ViewModelScoped
     @Provides
     fun provideAuthService(): AuthService {
-        return AuthService(Firebase.auth)
+        return AuthService(Firebase.auth, Firebase.database.reference.child("users"))
     }
 
     @ViewModelScoped

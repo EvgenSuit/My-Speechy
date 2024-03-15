@@ -16,7 +16,11 @@ interface MeditationStatsService {
         val docRef = Firebase.firestore.collection(userId).document("meditation")
             .collection("items")
         docRef.addSnapshotListener{docs, e ->
-            if (e != null || docs == null || docs.isEmpty || docs.documents.isEmpty()) {
+            if (docs == null || docs.isEmpty || docs.documents.isEmpty()) {
+                onDataReceived(mapOf())
+                return@addSnapshotListener
+            }
+            if (e != null) {
                 onListenError()
                 onDataReceived(mapOf())
                 return@addSnapshotListener

@@ -1,6 +1,5 @@
 package com.example.myspeechy.utils.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
@@ -16,13 +15,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Named
 
 @HiltViewModel
 class ChatsViewModel @Inject constructor(
     private val chatsService: ChatsServiceImpl,
     private val privateChatServiceImpl: PrivateChatServiceImpl,
-    @Named("ChatDataStore") private val chatDataStore: ChatDatastore,
     private val filesDirPath: String
 ): ViewModel() {
     private val _uiState = MutableStateFlow(ChatsUiState())
@@ -68,15 +65,9 @@ class ChatsViewModel @Inject constructor(
         chatsService.publicChatsStateListener(
             onAdded = {chatId ->
                 listenForPublicChat(chatId, remove)
-                viewModelScope.launch {
-                    chatDataStore.addToChatList(userId)
-                }
             },
             onChanged = {},
             onRemoved = {chatId ->
-                viewModelScope.launch {
-                    chatDataStore.removeFromChatList(userId)
-                }
                 listenForPublicChat(chatId, true)
                 _uiState.update { it.copy(chats = it.chats.filterKeys { key -> key != chatId }) }
             },
@@ -138,21 +129,23 @@ class ChatsViewModel @Inject constructor(
                 picsId = UUID.randomUUID().toString()) }
         }, remove)
     }
-    fun onNavigateToSearchedChat() {
-        _uiState.update { it.copy(searchedChat = mapOf()) }
+    fun clearSearchedChats() {
+        _uiState.update { it.copy(searchedChats = mapOf()) }
     }
     fun searchForChat(title: String) {
         chatsService.searchChatByTitle(title, {}) {chat ->
             if (chat.value != null) {
                 val chatMap = chat.getValue<Map<String, Chat>>()
-                val key = chatMap!!.keys.first()
-                _uiState.update {
-                    it.copy(searchedChat = mapOf(
-                        key to (chatMap[key] ?: Chat())))
+                chatMap?.forEach { (k, v) ->
+                    _uiState.update {
+                        it.copy(searchedChats = it.searchedChats + mapOf(
+                            k to v))
+                    }
                 }
+
             } else {
                 _uiState.update {
-                    it.copy(searchedChat = mapOf())
+                    it.copy(searchedChats = mapOf())
                 }
             }
         }
@@ -188,11 +181,6 @@ class ChatsViewModel @Inject constructor(
     fun createPublicChat(title: String, description: String) {
         chatsService.createPublicChat(title, description)
     }
-    fun sortAllPubicChatsOnStartup() {
-        _uiState.value.allPublicChats.forEach {(id, chat) ->
-            //updateOrSortAllPublicChats(id, chat)
-        }
-    }
     private fun updateOrSortChats(id: String, chat: Chat?) {
         val newChatMap = _uiState.value.chats.toMutableMap().apply { this[id] = chat}
         /* Sort by chat id (to account for a case where timestamps of multiple chats
@@ -204,6 +192,7 @@ class ChatsViewModel @Inject constructor(
         val newChatMap = _uiState.value.allPublicChats.toMutableMap().apply { this[id] = chat}
         _uiState.update { it.copy(allPublicChats = newChatMap
             .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })
+            .filterValues { v -> v != null && v.title.isNotEmpty() }
             ) }
     }
     fun getChatPic(otherUserId: String): File = privateChatServiceImpl.getPic(filesDirPath, otherUserId)
@@ -212,7 +201,7 @@ class ChatsViewModel @Inject constructor(
     }
 
     data class ChatsUiState(
-        val searchedChat: Map<String, Chat> = mapOf(),
+        val searchedChats: Map<String, Chat> = mapOf(),
         val chats: Map<String, Chat?> = mapOf(),
         val allPublicChats: Map<String, Chat?> = mapOf(),
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map

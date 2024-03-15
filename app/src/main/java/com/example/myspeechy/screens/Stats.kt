@@ -68,13 +68,16 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
             )) {
         Text("Meditation time in minutes",
             style = MaterialTheme.typography.titleLarge)
-        AnimatedVisibility(moveColors,
+        AnimatedVisibility(moveColors && uiState.statsMap.isNotEmpty(),
             enter = fadeIn(tween(1000))
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 30.dp)) {
                 MeditationStatsChart(uiState.statsMap)
             }
+        }
+        if (uiState.statsMap.isEmpty()) {
+            Text("No stats here yet")
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.example.myspeechy.services.chat
 
-import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
@@ -11,7 +10,6 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
@@ -19,11 +17,21 @@ import com.google.firebase.ktx.Firebase
 import java.util.UUID
 
 private val database = Firebase.database.reference
-interface ChatsService {
-    val userId: String
-        get() = Firebase.auth.currentUser!!.uid
-    val userRef: DatabaseReference
-        get() = database.child("users").child(userId)
+class ChatsServiceImpl(
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
+    private val leavePublicChatUseCase: LeavePublicChatUseCase,
+    private val joinPublicChatUseCase: JoinPublicChatUseCase,
+    private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
+    private val deletePublicChatUseCase: DeletePublicChatUseCase
+) {
+    private var publicChatsStateListener: ChildEventListener? = null
+    private var allPublicChatsListener: ChildEventListener? = null
+    private var privateChatsStateListener: ChildEventListener? = null
+    private var publicChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
+    private var privateChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
+
+    val userId = Firebase.auth.currentUser!!.uid
+    private val userRef = database.child("users").child(userId)
     fun listener(
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit): ValueEventListener {
@@ -87,50 +95,8 @@ interface ChatsService {
             .equalTo(title)
             .addValueEventListener(listener(onCancelled, onDataReceived))
     }
-    fun publicChatsStateListener(onAdded: (String) -> Unit,
-                                 onChanged: (String) -> Unit,
-                                 onRemoved: (String) -> Unit,
-                                 onCancelled: (Int) -> Unit,
-                                 remove: Boolean)
-    fun privateChatsStateListener(onAdded: (String) -> Unit,
-                                  onChanged: (String) -> Unit,
-                                  onRemoved: (String) -> Unit,
-                                  onCancelled: (Int) -> Unit,
-                                  remove: Boolean)
-    fun publicChatListener(id: String,
-                           onDataReceived: (DataSnapshot) -> Unit,
-                           onCancelled: (Int) -> Unit,
-                           remove: Boolean)
-    fun privateChatListener(id: String,
-                            onDataReceived: (DataSnapshot) -> Unit,
-                            onCancelled: (Int) -> Unit,
-                            remove: Boolean)
-    fun privateChatTitleListener(id: String,
-                                 onDataReceived: (DataSnapshot) -> Unit,
-                                 onCancelled: (Int) -> Unit,
-                                 remove: Boolean)
-    fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit)
-    fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit)
-    fun createPublicChat(title: String, description: String)
-    fun deletePublicChat(chatId: String, onDeleted: () -> Unit)
-    suspend fun leavePrivateChat(chatId: String)
-    suspend fun leavePublicChat(chatId: String)
-}
-class ChatsServiceImpl(
-    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
-    private val leavePublicChatUseCase: LeavePublicChatUseCase,
-    private val joinPublicChatUseCase: JoinPublicChatUseCase,
-    private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
-    private val deletePublicChatUseCase: DeletePublicChatUseCase
-): ChatsService {
-    private var publicChatsStateListener: ChildEventListener? = null
-    private var allPublicChatsListener: ChildEventListener? = null
-    private var privateChatsStateListener: ChildEventListener? = null
-    private var publicChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
-    private var privateChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
-    private var usersUsernameListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
 
-    override fun publicChatsStateListener(
+    fun publicChatsStateListener(
         onAdded: (String) -> Unit,
         onChanged: (String) -> Unit,
         onRemoved: (String) -> Unit,
@@ -146,7 +112,7 @@ class ChatsServiceImpl(
     }
 
 
-    override fun privateChatsStateListener(
+    fun privateChatsStateListener(
         onAdded: (String) -> Unit,
         onChanged: (String) -> Unit,
         onRemoved: (String) -> Unit,
@@ -176,7 +142,7 @@ class ChatsServiceImpl(
             ref.addChildEventListener(allPublicChatsListener!!)
         }
     }
-    override fun publicChatListener(
+    fun publicChatListener(
         id: String,
         onDataReceived: (DataSnapshot) -> Unit,
         onCancelled: (Int) -> Unit,
@@ -193,7 +159,7 @@ class ChatsServiceImpl(
         }
     }
 
-    override fun privateChatListener(
+    fun privateChatListener(
         id: String,
         onDataReceived: (DataSnapshot) -> Unit,
         onCancelled: (Int) -> Unit,
@@ -211,23 +177,7 @@ class ChatsServiceImpl(
         }
     }
 
-    override fun privateChatTitleListener(
-        id: String,
-        onDataReceived: (DataSnapshot) -> Unit,
-        onCancelled: (Int) -> Unit,
-        remove: Boolean
-    ) {
-        val ref = database.child("users").child(id)
-            .child("name")
-        if (remove && usersUsernameListeners[id] != null) {
-            ref.removeEventListener(usersUsernameListeners[id]!!)
-        } else {
-            usersUsernameListeners[id] = listener(onCancelled, onDataReceived)
-            ref.addValueEventListener(usersUsernameListeners[id]!!)
-        }
-    }
-
-    override fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit) {
+    fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit) {
             database.child("users")
                 .child(userId)
                 .child(if (type == "private") "private_chats" else "public_chats")
@@ -241,30 +191,31 @@ class ChatsServiceImpl(
                 })
     }
 
-    override fun createPublicChat(title: String, description: String) {
+    fun createPublicChat(title: String, description: String) {
         val chatId = UUID.randomUUID().toString()
         database.child("admins")
             .child(chatId)
             .setValue(userId).addOnSuccessListener {
-                database.child("public_chats")
-                    .child(chatId)
-                    .setValue(Chat(title = title, description = description, type = "public"))
-                    .addOnSuccessListener { joinPublicChatUseCase(chatId) }
+                joinPublicChatUseCase(chatId) {
+                    database.child("public_chats")
+                        .child(chatId)
+                        .setValue(Chat(title = title, description = description, type = "public"))
+                }
             }
     }
 
-    override fun deletePublicChat(chatId: String, onDeleted: () -> Unit) {
+    fun deletePublicChat(chatId: String, onDeleted: () -> Unit) {
         deletePublicChatUseCase(chatId) {onDeleted()}
     }
-    override fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
+    fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
         checkIfIsAdminUseCase(chatId) {onReceived(it)}
     }
 
-    override suspend fun leavePrivateChat(chatId: String) {
+    suspend fun leavePrivateChat(chatId: String) {
         leavePrivateChatUseCase(chatId)
     }
 
-    override suspend fun leavePublicChat(chatId: String) {
+     suspend fun leavePublicChat(chatId: String) {
         leavePublicChatUseCase(chatId)
     }
 }

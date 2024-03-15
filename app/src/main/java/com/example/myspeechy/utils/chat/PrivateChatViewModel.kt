@@ -33,7 +33,7 @@ class PrivateChatViewModel @Inject constructor(
 
     fun startOrStopListening(removeListeners: Boolean) {
         listenForCurrentChat(removeListeners)
-        listenForMessages(removeListeners)
+        listenForMessages(remove = removeListeners)
         listenForProfilePic(removeListeners)
         listenIfIsMemberOfChat(removeListeners)
         listOf(userId, otherUserId).forEach {
@@ -78,8 +78,8 @@ class PrivateChatViewModel @Inject constructor(
             _uiState.update { it.copy(storageErrorMessage = "", picId = UUID.randomUUID().toString()) }
         }, remove)
     }
-    private fun listenForMessages(remove: Boolean) {
-        chatServiceImpl.messagesListener(chatId,
+    private fun listenForMessages(topIndex: Int = 20, remove: Boolean) {
+        chatServiceImpl.messagesListener(chatId, topIndex,
             onAdded = {m ->
                 val id = m.keys.first()
                 val savedMessage = _uiState.value.messages[id]
@@ -117,8 +117,8 @@ class PrivateChatViewModel @Inject constructor(
             chatServiceImpl.joinChat(chatId)
             /*Call listeners again because if there was an error,
             the previous ones were cancelled*/
-            listenForMessages(true)
-            listenForMessages(false)
+            listenForMessages(remove = true)
+            listenForMessages(remove = false)
         }
         val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text, replyTo)
         chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,

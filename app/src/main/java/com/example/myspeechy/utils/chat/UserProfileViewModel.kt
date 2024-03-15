@@ -1,8 +1,12 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.components.AlertDialogDataClass
+import com.example.myspeechy.data.chat.User
 import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.services.chat.UserProfileServiceImpl
 import com.google.firebase.database.getValue
@@ -10,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -31,26 +36,20 @@ class UserProfileViewModel @Inject constructor(
     val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
     private val lowQualityPicRef = File(lowQualityPicDir, "$userId.jpg")
 
-    fun startOrStopListening(removeListeners: Boolean) {
-        listenForUsername(removeListeners)
-        listenForUserInfo(removeListeners)
+    fun startOrStopListening(removeListeners: Boolean, onLogout: () -> Unit) {
+        listenForUser(removeListeners)
         listenForUserPicture(removeListeners)
+        listenForAuthState(onLogout)
+    }
+    private fun listenForAuthState(onLogout: () -> Unit) {
+        userProfileServiceImpl.listenForAuthState { if (it) onLogout() }
+    }
+    private fun listenForUser(remove: Boolean) {
+        userProfileServiceImpl.userListener(userId, {updateErrorCode(it)}, {user ->
+             _uiState.update { it.copy(user = user.getValue<User>()) }
+        }, remove)
     }
 
-    private fun listenForUsername(remove: Boolean) {
-        userProfileServiceImpl.usernameListener(userId, {updateErrorCode(it)}, {newName ->
-            _uiState.update {
-                it.copy(name = newName.getValue<String>())
-            }
-        }, remove)
-    }
-    private fun listenForUserInfo(remove: Boolean) {
-        userProfileServiceImpl.userInfoListener(userId, {updateErrorCode(it)}, {newInfo ->
-            _uiState.update {
-                it.copy(info = newInfo.getValue<String>())
-            }
-        }, remove)
-    }
     //Listen for only normal quality image
     private fun listenForUserPicture(remove: Boolean) {
         userProfileServiceImpl.userPictureListener(userId,
@@ -69,7 +68,8 @@ class UserProfileViewModel @Inject constructor(
             }, {
                 _uiState.update { it.copy(
                     storageMessage = "",
-                    uploadingPicture = false, recomposePic = UUID.randomUUID().toString()
+                    recomposePic = UUID.randomUUID().toString(),
+                    pictureState = PictureState.SUCCESS
                 ) }
             }, remove)
     }
@@ -84,7 +84,9 @@ class UserProfileViewModel @Inject constructor(
             }
             uploadUserPicture(lowQuality)
         }, {
-            storageSizeError.show()
+            if (!_uiState.value.logginOut) {
+                storageSizeError.show()
+            }
         })
     }
 
@@ -93,8 +95,8 @@ class UserProfileViewModel @Inject constructor(
         userProfileServiceImpl.createPicDir(normalQualityPicDir)
     }
     fun changeUserInfo(newName: String, newInfo: String, onSuccess: () -> Unit) {
-        val nameIsSame = _uiState.value.name == newName
-        val infoIsSame = _uiState.value.info == newInfo
+        val nameIsSame = _uiState.value.user?.name == newName
+        val infoIsSame = _uiState.value.user?.info == newInfo
         if (!nameIsSame) {
             userProfileServiceImpl.changeUsername(newName) {
                 if (!infoIsSame) {
@@ -108,13 +110,13 @@ class UserProfileViewModel @Inject constructor(
         else onSuccess()
     }
     private fun uploadUserPicture(lowQuality: Boolean) {
-            _uiState.update { it.copy(uploadingPicture = true) }
+            _uiState.update { it.copy(pictureState = PictureState.UPLOADING) }
             userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef,
                 lowQuality, {
                     updateStorageMessage(it)
-                    _uiState.update { it.copy(uploadingPicture = false) }
+                    _uiState.update { it.copy(pictureState = PictureState.ERROR) }
                 }) {
-                _uiState.update { it.copy(uploadingPicture = false, storageMessage = "") }
+                _uiState.update { it.copy(pictureState = PictureState.SUCCESS, storageMessage = "") }
             }
     }
     fun removeUserPicture() {
@@ -126,19 +128,51 @@ class UserProfileViewModel @Inject constructor(
             })
         }
     }
+    fun logout() {
+        _uiState.update { it.copy(logginOut = true, deletingAccount = false) }
+        userProfileServiceImpl.logout()
+    }
+    fun deleteAccount() {
+        _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(
+            title = "Are you sure?",
+            text = "Account will be deleted along with all your progress and conversations",
+            onConfirm = {
+                viewModelScope.launch {
+                    try {
+                        _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = true, userManagementError = "") }
+                        userProfileServiceImpl.deleteUser()
+                        logout()
+                    } catch (e: Exception) {
+                        _uiState.update { it.copy(userManagementError = "Couldn't delete account", deletingAccount = false) }
+                    }
+                }
+            },
+            onDismiss = {_uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass()) }}))
+        }
+    }
     private fun updateErrorCode(e: Int) {
         _uiState.update { it.copy(errorCode = e) }
     }
     private fun updateStorageMessage(e: String) {
-        _uiState.update { it.copy(storageMessage = e.formatStorageErrorMessage()) }
+        _uiState.update { it.copy(storageMessage = e.formatStorageErrorMessage(),
+            pictureState = PictureState.ERROR) }
     }
 
     data class UserProfileUiState(
-        val name: String? = null,
-        val info: String? = null,
+        val user: User? = User(),
+        val logginOut: Boolean = false,
+        val deletingAccount: Boolean = false,
         val recomposePic: String = "",
-        val uploadingPicture: Boolean = false,
         val errorCode: Int = 0,
-        val storageMessage: String = ""
+        val chatAlertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
+        val userManagementError: String = "",
+        val storageMessage: String = "",
+        val pictureState: PictureState = PictureState.IDLE
     )
+}
+enum class PictureState {
+    IDLE,
+    UPLOADING,
+    SUCCESS,
+    ERROR,
 }

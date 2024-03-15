@@ -8,4 +8,6 @@
     <dimen name="auth_fields_radius">10dp</dimen>
     <dimen name="chat_pic_size">60dp</dimen>
     <dimen name="userProfilePictureSize">400dp</dimen>
+    <dimen name="chats_padding">3dp</dimen>
+    <dimen name="chat_search_text_field_height">70dp</dimen>
 </resources>

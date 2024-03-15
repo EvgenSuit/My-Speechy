@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [MeditationStats::class], version = 5)
+@Database(entities = [MeditationStats::class], version = 5, exportSchema = true)
 abstract class MeditationStatsDb: RoomDatabase() {
     abstract fun meditationStatsDao(): MeditationStatsDao
 
