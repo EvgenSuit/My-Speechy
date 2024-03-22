@@ -1,5 +1,8 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
@@ -30,10 +33,8 @@ class PublicChatViewModel @Inject constructor(
         listenForAdmin(removeListeners)
         listenForCurrentChat(removeListeners)
         checkIfChatIsEmpty(removeListeners)
-        listenForChatMembers(removeListeners)
-        if (removeListeners) {
-            listenForMessages(remove = true)
-        }
+        if (removeListeners) listenForChatMembers(remove = true)
+        if (removeListeners) listenForMessages(remove = true)
     }
     private fun checkIfChatIsEmpty(remove: Boolean) {
         chatServiceImpl.checkIfChatIsEmpty(chatId, remove) {isEmpty ->
@@ -46,14 +47,14 @@ class PublicChatViewModel @Inject constructor(
         }
     }
 
-    fun handleDynamicMessageLoading(lastVisibleItemIndex: Int?) {
-        val topMessageIndex = uiState.value.topMessageBatchIndex
-        if (lastVisibleItemIndex != null && lastVisibleItemIndex >= topMessageIndex-1 || topMessageIndex == 0) {
-            if (lastVisibleItemIndex != null) {
-                listenForMessages(remove = true)
-            }
-            listenForMessages(10, false)
-        }
+    fun handleDynamicMessageLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
+        chatServiceImpl.handleDynamicMessageLoading(
+            loadOnResume = loadOnResume,
+            topMessageIndex = _uiState.value.topMessageBatchIndex,
+            lastVisibleItemIndex = lastVisibleItemIndex,
+            onRemove = {listenForMessages(remove = true)},
+            onLoad = {topIndex ->
+                listenForMessages(topIndex, false)})
     }
     private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
         if (!remove) {
@@ -99,12 +100,22 @@ class PublicChatViewModel @Inject constructor(
             )
         }
     }
-    private fun listenForChatMembers(remove: Boolean) {
+    fun handleDynamicMembersLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
+        chatServiceImpl.handleDynamicMembersLoading(loadOnResume,
+            lastMemberIndex = _uiState.value.lastMemberBatchIndex,
+            lastVisibleItemIndex,
+            onRemove = {listenForChatMembers(remove = true)},
+            onLoad = {lastIndex -> listenForChatMembers(lastIndex, false)})
+    }
+    private fun listenForChatMembers(lastIndex: Int = 0, remove: Boolean) {
         if (remove) {
             _uiState.value.members.forEach {
                 chatServiceImpl.usernameListener(it.key, {}, {}, true ) }
+        } else {
+            _uiState.update { it.copy(lastMemberBatchIndex = it.lastMemberBatchIndex + lastIndex) }
         }
         chatServiceImpl.chatMembersListener(chatId,
+            _uiState.value.lastMemberBatchIndex,
             onAdded = {m ->
                 _uiState.update { it.copy(members = it.members + mapOf(m.keys.first() to "")) }
                 m.keys.forEach { userId ->
@@ -135,11 +146,12 @@ class PublicChatViewModel @Inject constructor(
     private fun listenForUsername(id: String, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {}, {username ->
             val name = username.getValue<String>()
-            if (name != null) {
-                _uiState.update { it.copy(members = it.members.mapValues { (k, v) -> if (k == id) name else v},
-                    messages = it.messages.mapValues { (_, v) ->
-                        if (v.sender == id) v.copy(senderUsername = name) else v }) }
-            }
+            _uiState.update { it.copy(members = if (name != null)
+                it.members.mapValues { (k, v) -> if (k == id) name else v} else
+                    it.members.filterKeys { k -> k != id },
+
+                messages = it.messages.mapValues { (_, v) ->
+                    if (v.sender == id) v.copy(senderUsername = name) else v }) }
         }, remove)
     }
     private fun listenForCurrentChat(remove: Boolean) {
@@ -155,20 +167,19 @@ class PublicChatViewModel @Inject constructor(
              _uiState.update { it.copy(isAdmin = (value == userId), admin = value) }
         }, remove)
     }
-
-    fun sendMessage(text: String, replyTo: String) {
-            val chat = _uiState.value.chat
-            val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.members.entries.first { it.key == userId }.value, text, replyTo)
-            chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
+    suspend fun sendMessage(text: String) {
+        val chat = _uiState.value.chat
+        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.members.entries.first { it.key == userId }.value, text)
+        chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
     }
-    fun editMessage(message: Map<String, Message>) {
+    suspend fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
         if (_uiState.value.messages.entries.last().key == message.keys.first()) {
             chatServiceImpl.updateLastMessage(chatId,
                 _uiState.value.chat.copy(lastMessage = message.values.first().text))
         }
     }
-    fun deleteMessage(message: Map<String, Message>) {
+     suspend fun deleteMessage(message: Map<String, Message>) {
         val messages = _uiState.value.messages
         val entries = messages.entries
         chatServiceImpl.deleteMessage(chatId, message)
@@ -189,6 +200,11 @@ class PublicChatViewModel @Inject constructor(
     fun changeChat(title: String, description: String) {
         chatServiceImpl.changePublicChat(chatId, _uiState.value.chat.copy(title = title, description = description))
     }
+    suspend fun scrollToBottom(listState: LazyListState, firstVisibleItem: LazyListItemInfo?) {
+        if (firstVisibleItem != null) {
+            chatServiceImpl.scrollToBottom(uiState.value.messages, listState, firstVisibleItem)
+        }
+    }
 
     fun joinChat() {
         chatServiceImpl.joinChat(chatId)
@@ -201,6 +217,7 @@ class PublicChatViewModel @Inject constructor(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
         val topMessageBatchIndex: Int = 0,
+        val lastMemberBatchIndex: Int = 0,
         val chatLoaded: Boolean = false,
         val members: Map<String, String> = mapOf(), //UserId to username map
         val errorCode: Int = 0,

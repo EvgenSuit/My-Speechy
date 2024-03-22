@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,10 +88,12 @@ fun UserProfileScreen(
     onLogout: () -> Unit,
     viewModel: UserProfileViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     val placeholders = Pair("Username", "Description")
+    val focusManager = LocalFocusManager.current
     var name by remember(uiState.user?.name) {
         mutableStateOf(uiState.user?.name)
     }
@@ -112,8 +117,8 @@ fun UserProfileScreen(
             val imgBytes = img?.readBytes()
             img?.close()
             if (imgBytes != null) {
-                viewModel.writePicture(imgBytes, false, 50)
-                viewModel.writePicture(imgBytes.copyOf(), true, 20)
+                viewModel.writePicture(imgBytes, false, 40)
+                viewModel.writePicture(imgBytes.copyOf(), true, 15)
             }
         }
     }
@@ -131,38 +136,42 @@ fun UserProfileScreen(
             ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
             }
-            key(uiState.recomposePic) {
-                Box(Modifier.padding(top = 20.dp)) {
-                    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-                        .data(viewModel.normalQualityPicRef.path)
-                        .size(coil.size.Size.ORIGINAL)
-                        .build())
-                    if (viewModel.normalQualityPicRef.exists()) {
-                        Image(painter,
-                            contentScale = ContentScale.FillBounds,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .clickable {
-                                    if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
-                                        arrayOf("image/png", "image/jpeg")
-                                    )
-                                }
-                                .size(picSize))
-                    }
-                    if(uiState.pictureState != PictureState.UPLOADING && (uiState.pictureState != PictureState.SUCCESS || painter.state is AsyncImagePainter.State.Error)
-                    ) {
-                        Image(painter = painterResource(R.drawable.user),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(picSize)
-                                .clickable {
-                                    launcher?.launch(
-                                        arrayOf("image/png", "image/jpeg")
-                                    )
-                                })
+            Box(Modifier.padding(top = 20.dp).size(picSize).clip(CircleShape)) {
+                    key(uiState.recomposePic) {
+                        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+                            .data(viewModel.normalQualityPicRef.path)
+                            .size(coil.size.Size.ORIGINAL)
+                            .build())
+                        if (viewModel.normalQualityPicRef.exists() &&
+                            uiState.pictureState != PictureState.DOWNLOADING) {
+                            Image(painter,
+                                contentScale = ContentScale.FillBounds,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .clickable {
+                                        if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
+                                            arrayOf("image/png", "image/jpeg")
+                                        )
+                                    }
+                                    .clip(CircleShape)
+                                    .fillMaxSize())
+                        }
+                        if((uiState.pictureState == PictureState.ERROR || painter.state is AsyncImagePainter.State.Error)) {
+                            Image(painter = painterResource(R.drawable.user),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .clickable {
+                                        launcher?.launch(
+                                            arrayOf("image/png", "image/jpeg")
+                                        )
+                                    }.fillMaxSize())
+                        }
+                        if (
+                            (uiState.pictureState == PictureState.DOWNLOADING || painter.state is AsyncImagePainter.State.Loading)) {
+                            CircularProgressIndicator(Modifier.align(Alignment.Center).size(50.dp))
+                        }
                     }
                 }
-            }
             Column(
                 Modifier
                     .width(300.dp)
@@ -171,16 +180,16 @@ fun UserProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AnimatedVisibility(name != null) {
                     if (isCurrentUser) {
-                        CommonTextField(value = name!!, onChange = {name = it}, placeholders = placeholders)
+                        CommonTextField(value = name ?: "", onChange = {name = it}, placeholders = placeholders)
                     } else {
-                        UserInfoTable(value = name!!)
+                        UserInfoTable(value = name ?: "")
                     }
                 }
                 AnimatedVisibility(info != null) {
                     if (isCurrentUser) {
-                        CommonTextField(value = info!!, onChange = {info = it}, true, placeholders = placeholders)
+                        CommonTextField(value = info ?: "", onChange = {info = it}, last = true, placeholders = placeholders)
                     }else {
-                        UserInfoTable(value = info!!)
+                        UserInfoTable(value = info ?: "")
                     }
                 }
             }
@@ -192,8 +201,10 @@ fun UserProfileScreen(
             if(isCurrentUser && (name != uiState.user?.name || info != uiState.user?.info)) {
                 ElevatedButton(onClick = {
                     if (name != null && info != null)
-                        viewModel.changeUserInfo(name!!, info!!){ onOkClick() }
-                    else onOkClick()
+                        coroutineScope.launch {
+                            viewModel.changeUserInfo(name!!, info!!)
+                            focusManager.clearFocus(true)
+                        }
                 }, modifier = Modifier.size(200.dp, 50.dp)) {
                     Text("Save")
                 }

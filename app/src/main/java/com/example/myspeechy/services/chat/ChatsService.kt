@@ -14,6 +14,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 private val database = Firebase.database.reference
@@ -191,23 +192,21 @@ class ChatsServiceImpl(
                 })
     }
 
-    fun createPublicChat(title: String, description: String) {
+    suspend fun createPublicChat(title: String, description: String) {
         val chatId = UUID.randomUUID().toString()
         database.child("admins")
             .child(chatId)
-            .setValue(userId).addOnSuccessListener {
-                joinPublicChatUseCase(chatId) {
-                    database.child("public_chats")
-                        .child(chatId)
-                        .setValue(Chat(title = title, description = description, type = "public"))
-                }
-            }
+            .setValue(userId).await()
+        joinPublicChatUseCase(chatId)
+        database.child("public_chats")
+            .child(chatId)
+            .setValue(Chat(title = title, description = description, type = "public")).await()
     }
 
-    fun deletePublicChat(chatId: String, onDeleted: () -> Unit) {
-        deletePublicChatUseCase(chatId) {onDeleted()}
+    suspend fun deletePublicChat(chatId: String) {
+        deletePublicChatUseCase(chatId)
     }
-    fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
+    suspend fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
         checkIfIsAdminUseCase(chatId) {onReceived(it)}
     }
 
@@ -215,7 +214,7 @@ class ChatsServiceImpl(
         leavePrivateChatUseCase(chatId)
     }
 
-     suspend fun leavePublicChat(chatId: String) {
+    suspend fun leavePublicChat(chatId: String) {
         leavePublicChatUseCase(chatId)
     }
 }

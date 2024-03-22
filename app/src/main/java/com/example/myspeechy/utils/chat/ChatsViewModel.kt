@@ -161,12 +161,12 @@ class ChatsViewModel @Inject constructor(
                         _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass(
                                 title = "Are you sure?",
                                 text = "If you leave the chat it will be deleted since you're an admin",
-                                onConfirm = {chatsService.deletePublicChat(chatId) {
-                                    viewModelScope.launch {
+                                onConfirm = {viewModelScope.launch {
+                                        chatsService.deletePublicChat(chatId)
                                         chatsService.leavePublicChat(chatId)
                                         _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
-                                    }
-                                }},
+                                        }
+                                },
                                 onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
                             )) }
                     } else {
@@ -179,14 +179,16 @@ class ChatsViewModel @Inject constructor(
         }
     }
     fun createPublicChat(title: String, description: String) {
-        chatsService.createPublicChat(title, description)
+        viewModelScope.launch { chatsService.createPublicChat(title, description) }
     }
     private fun updateOrSortChats(id: String, chat: Chat?) {
         val newChatMap = _uiState.value.chats.toMutableMap().apply { this[id] = chat}
         /* Sort by chat id (to account for a case where timestamps of multiple chats
          are identical) and timestamp */
         _uiState.update { it.copy(chats = newChatMap
-            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })) }
+            .toSortedMap(compareByDescending<String?> { k -> newChatMap[k]?.timestamp}.thenByDescending { k -> k })
+            .filterValues { v -> v != null && v.title.isNotEmpty() }) }
+
     }
     private fun updateOrSortAllPublicChats(id: String, chat: Chat? = null) {
         val newChatMap = _uiState.value.allPublicChats.toMutableMap().apply { this[id] = chat}

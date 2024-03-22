@@ -3,7 +3,7 @@ package com.example.myspeechy.services.chat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.core.net.toUri
-import com.example.myspeechy.services.AuthService
+import com.example.myspeechy.services.auth.AuthService
 import com.example.myspeechy.utils.chat.getOtherUserId
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
@@ -14,6 +14,7 @@ import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
@@ -150,35 +151,37 @@ class UserProfileServiceImpl(private val authService: AuthService) {
                     }.addOnFailureListener { onError(it.message ?: "") }
             }
     }
-    fun changeUsername(newName: String, onSuccess: () -> Unit) {
+    suspend fun changeUsername(newName: String) {
         usersRef.child(userId)
             .child("name")
-            .setValue(newName)
-        usersRef.child(userId)
+            .setValue(newName).await()
+        val privateChats = usersRef.child(userId)
             .child("private_chats")
-            .get().addOnSuccessListener { chatIds ->
-                (chatIds.getValue<Map<String, Boolean>>())?.keys?.forEach{chatId ->
-                    val otherUserId = chatId.getOtherUserId(userId)
-                    database.child("private_chats")
-                        .child(otherUserId)
-                        .child(chatId)
-                        .child("title")
-                        .setValue(newName)
-                        .addOnSuccessListener { onSuccess() }
-                }
-            }
+            .get().await()
+        val keys = (privateChats.getValue<Map<String, Boolean>>())?.keys
+        if (keys?.isNotEmpty() == true) return
+        keys?.forEach{chatId ->
+            val otherUserId = chatId.getOtherUserId(userId)
+            database.child("private_chats")
+                .child(otherUserId)
+                .child(chatId)
+                .child("title")
+                .setValue(newName).await()
+        }
     }
-    fun changeUserInfo(newInfo: String, onSuccess: () -> Unit) {
+    suspend fun changeUserInfo(newInfo: String) {
         usersRef.child(userId)
             .child("info")
             .setValue(newInfo)
-            .addOnSuccessListener { onSuccess() }
+            .await()
     }
 
     fun logout() {
         authService.logOut()
     }
     suspend fun deleteUser() {
+        authService.removeProfilePics(userId)
+        authService.deleteFirestoreData(userId)
         authService.deleteUser()
     }
 }

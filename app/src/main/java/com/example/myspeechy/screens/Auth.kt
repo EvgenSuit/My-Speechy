@@ -1,8 +1,5 @@
 package com.example.myspeechy.screens
 
-import android.app.Activity.RESULT_OK
-import android.util.Log
-import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -34,13 +31,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,21 +57,12 @@ import com.example.myspeechy.components.advancedShadow
 import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
-import com.example.myspeechy.utils.auth.AuthExceptionState
 import com.example.myspeechy.utils.auth.AuthState
 import com.example.myspeechy.utils.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private fun String.isValidEmail() = !isNullOrEmpty() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
-private fun String.isLongEnough() = length >= 8
-private fun String.hasEnoughDigits() = count(Char::isDigit) > 0
-private fun String.isMixedCase() = any(Char::isLowerCase) && any(Char::isUpperCase)
-private val passwordRequirements = listOf(String::isLongEnough, String::hasEnoughDigits, String::isMixedCase)
-private fun String.meetsPasswordRequirements() = passwordRequirements.all { check -> check(this) }
 
 @Composable
 fun AuthScreen(
@@ -89,13 +73,14 @@ fun AuthScreen(
         }.build()
     val painter = rememberAsyncImagePainter(R.raw.auth_page_background, imageLoader)
     Box(contentAlignment = Alignment.Center,
-        modifier = Modifier.background(Color.White)){
-                Image(
-                    painter = painter,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize(),
-                    contentDescription = null
-                )
+        modifier = Modifier
+            .background(Color.White)){
+            Image(
+                painter = painter,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier.fillMaxSize(),
+                contentDescription = null
+            )
         if (painter.state is AsyncImagePainter.State.Loading) {
             CircularProgressIndicator(
                 color = Color.Black,
@@ -103,9 +88,9 @@ fun AuthScreen(
             )
         }
         if (painter.state is AsyncImagePainter.State.Success) {
-                        MainBox(
-                            onNavigateToMain = onNavigateToMain,
-                            imageLoader = imageLoader)
+            MainBox(
+                onNavigateToMain = onNavigateToMain,
+                imageLoader = imageLoader)
         }
     }
 }
@@ -119,13 +104,8 @@ fun MainBox(onNavigateToMain: () -> Unit,
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val exceptionState by viewModel.exceptionState.collectAsState()
-    val uiState = viewModel.uiState
+    val uiState by viewModel.uiState.collectAsState()
     val coroutine = rememberCoroutineScope()
-    var enabled by rememberSaveable {
-        mutableStateOf(false)
-    }
-    enabled = exceptionState.exceptionMessage.isEmpty()
-            && uiState.email.isValidEmail() && uiState.password.meetsPasswordRequirements()
     val padding = dimensionResource(id = R.dimen.padding_auth_fields)
     Box(modifier = modifier
         .border(
@@ -136,7 +116,8 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .clip(RoundedCornerShape(30.dp))
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
-        .width(dimensionResource(id = R.dimen.auth_components_width)))
+        .width(dimensionResource(id = R.dimen.auth_components_width))
+        .verticalScroll(rememberScrollState()))
     {
         Column (
             modifier = Modifier
@@ -151,21 +132,23 @@ fun MainBox(onNavigateToMain: () -> Unit,
                     .padding(top = 15.dp))
            Column(modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
                AuthTextField(value = uiState.email,
-                   exceptionMessage = exceptionState.authInputExceptionMessage,
+                   exceptionMessage = exceptionState.emailErrorMessage ?: "",
                    label = "Email",
-                   onExceptionMessageChange = viewModel::updateAuthInputExceptionMessage,
                    onValueChange = {viewModel.onEmailChanged(it)})
+               if (!exceptionState.emailErrorMessage.isNullOrEmpty()) {
+                   ErrorMessage(exceptionState.emailErrorMessage!!)
+               }
                AuthTextField(value = uiState.password,
-                   exceptionMessage = exceptionState.authInputExceptionMessage,
+                   exceptionMessage = exceptionState.passwordErrorMessage ?: "",
                    label = "Password",
-                   onExceptionMessageChange = viewModel::updateAuthInputExceptionMessage,
                    onValueChange = {viewModel.onPasswordChanged(it)})
-               if (exceptionState.authInputExceptionMessage.isNotEmpty()) {
-                    ErrorMessage(exceptionState.authInputExceptionMessage)
+               if (!exceptionState.passwordErrorMessage.isNullOrEmpty()) {
+                   ErrorMessage(exceptionState.passwordErrorMessage!!)
                }
                AnimatedVisibility(exceptionState.authState != AuthState.IN_PROGRESS) {
                    AuthButtons(
-                       enabled = enabled,
+                       enabled = exceptionState.emailErrorMessage?.isEmpty() == true &&
+                       exceptionState.passwordErrorMessage?.isEmpty() == true,
                        onLogIn = {
                            coroutine.launch {
                                viewModel.logIn()
@@ -175,7 +158,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
                                        onNavigateToMain()
                                        Toasty.success(context, "Logged In", Toast.LENGTH_SHORT, true).show()
                                    } else if (exceptionState.authState == AuthState.FAILURE) {
-                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_LONG, true).show()
+                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
                                    }
                                }
                            }
@@ -189,7 +172,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
                                        onNavigateToMain()
                                        Toasty.success(context, "Signed Up", Toast.LENGTH_SHORT, true).show()
                                    } else if (exceptionState.authState == AuthState.FAILURE) {
-                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_LONG, true).show()
+                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
                                    }
                                }
                            }
@@ -235,26 +218,30 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
         onResult = { result ->
-            if (result.resultCode == RESULT_OK) {
-                coroutine.launch {
+            coroutine.launch {
+                try {
                     viewModel.googleSignInWithIntent(
                         result.data ?: return@launch)
                     onClick()
+                } catch (e: Exception) {
+                    Toasty.error(context, e.message!!, Toast.LENGTH_SHORT, true).show()
                 }
             }
         }
     )
     Button(onClick = {
         coroutine.launch {
-            val signInIntentSender = viewModel.googleSignIn {
-                Toasty.error(context, it, Toast.LENGTH_LONG, true).show()
-            }
-            if (signInIntentSender != null) {
-                launcher.launch(
-                    IntentSenderRequest.Builder(
-                        intentSender = signInIntentSender
-                    ).build()
-                )
+            try {
+                val signInIntentSender = viewModel.googleSignIn()
+                if (signInIntentSender != null) {
+                    launcher.launch(
+                        IntentSenderRequest.Builder(
+                            intentSender = signInIntentSender
+                        ).build()
+                    )
+                }
+            } catch (e: Exception) {
+                Toasty.error(context, e.message!!, Toast.LENGTH_SHORT, true).show()
             }
         }},
         shape = RoundedCornerShape(10.dp),
@@ -290,8 +277,7 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
 @Composable
 fun AuthTextField(value:String, label: String,
                   exceptionMessage: String,
-                  onValueChange: (String) -> Unit,
-                  onExceptionMessageChange: (String) -> Unit) {
+                  onValueChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
      Column {
          OutlinedTextField(value = value,
@@ -308,16 +294,7 @@ fun AuthTextField(value:String, label: String,
                  }
              ),
              onValueChange = {
-                 onValueChange(it)
-                 if (label == "Email" && !it.isValidEmail()) {
-                     onExceptionMessageChange("Wrong email format")
-                 }
-                 else if (label == "Password" && !it.meetsPasswordRequirements()) {
-                     onExceptionMessageChange("Wrong password format")
-                 }
-                 else {
-                     onExceptionMessageChange("")
-                 }
+                 if (it.isNotBlank() || value.isNotBlank()) onValueChange(it)
              },
              singleLine = true,
              isError = exceptionMessage.isNotEmpty(),

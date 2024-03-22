@@ -1,6 +1,8 @@
 package com.example.myspeechy.utils.chat
 
 import android.util.Log
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +10,9 @@ import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
+import com.google.accompanist.permissions.PermissionState
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,12 +38,27 @@ class PrivateChatViewModel @Inject constructor(
 
     fun startOrStopListening(removeListeners: Boolean) {
         listenForCurrentChat(removeListeners)
-        listenForMessages(remove = removeListeners)
         listenForProfilePic(removeListeners)
+        checkIfChatIsEmpty(removeListeners)
         listenIfIsMemberOfChat(removeListeners)
         listOf(userId, otherUserId).forEach {
             listenForUsername(it, removeListeners)
         }
+        if (removeListeners) listenForMessages(remove = true)
+    }
+    private fun checkIfChatIsEmpty(remove: Boolean) {
+        chatServiceImpl.checkIfChatIsEmpty(chatId, remove) {isEmpty ->
+            _uiState.update { it.copy(messagesState = if (isEmpty) MessagesState.EMPTY else MessagesState.IDLE) }
+        }
+    }
+    fun handleDynamicMessageLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
+        chatServiceImpl.handleDynamicMessageLoading(
+            loadOnResume = loadOnResume,
+            topMessageIndex = uiState.value.topMessageBatchIndex,
+            lastVisibleItemIndex = lastVisibleItemIndex,
+            onRemove = {listenForMessages(remove = true)},
+            onLoad = {topIndex ->
+                listenForMessages(topIndex, false)})
     }
     private fun listenIfIsMemberOfChat(remove: Boolean) {
         chatServiceImpl.listenIfIsMemberOfChat(chatId, {isMemberOfChat ->
@@ -48,18 +68,12 @@ class PrivateChatViewModel @Inject constructor(
 
     private fun listenForUsername(id: String, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {}, {username ->
-            val name = username.getValue<String>() ?: ""
-            val messages = _uiState.value.messages.toMutableMap()
-            messages.forEach {
-                if (it.value.sender == id) {
-                    it.value.senderUsername = name
-                }
+            val name = username.getValue<String>()
+            _uiState.update {
+                it.copy(messages = it.messages.mapValues { (_, v) -> if (v.sender == id) v.copy(senderUsername = name) else v })
             }
             _uiState.update {
-                it.copy(messages = messages.toMap())
-            }
-            _uiState.update {
-                if (id == userId) it.copy(currUsername = name) else it.copy(otherUsername = name)
+                if (id == userId) it.copy(currUsername = name!!) else it.copy(otherUsername = name)
             }
         }, remove)
     }
@@ -78,28 +92,46 @@ class PrivateChatViewModel @Inject constructor(
             _uiState.update { it.copy(storageErrorMessage = "", picId = UUID.randomUUID().toString()) }
         }, remove)
     }
-    private fun listenForMessages(topIndex: Int = 20, remove: Boolean) {
-        chatServiceImpl.messagesListener(chatId, topIndex,
-            onAdded = {m ->
-                val id = m.keys.first()
-                val savedMessage = _uiState.value.messages[id]
-                if (savedMessage != null) {
-                    _uiState.update { it.copy(it.messages + mapOf(id to m.values.first().copy(senderUsername = savedMessage.senderUsername))) }
-                } else {
-                    _uiState.update { it.copy(it.messages + m)}
-                }
-            },
-            onChanged = {m ->
-                _uiState.update { it.copy(messages = it.messages.toMutableMap().apply { this[m.keys.first()] = m.values.first()})}
-            },
-            onRemoved = {m ->
-                        _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
-            },
-            onCancelled = {updateErrorCode(it)
-                          if (it == -3) {
-                              _uiState.update { it.copy(messages = mapOf()) }
-                          } },
-            remove)
+    private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
+        if (!remove) {
+            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex) }
+        }
+        if (_uiState.value.messagesState != MessagesState.EMPTY) {
+            _uiState.update { it.copy(messagesState = MessagesState.LOADING) }
+            chatServiceImpl.messagesListener(
+                chatId, topIndex,
+                onAdded = { m ->
+                    val id = m.keys.first()
+                    val savedMessage = _uiState.value.messages[id]
+                    if (savedMessage != null) {
+                        _uiState.update {
+                            it.copy(
+                                it.messages + mapOf(
+                                    id to m.values.first()
+                                        .copy(senderUsername = savedMessage.senderUsername)
+                                )
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(it.messages + m) }
+                    }
+                },
+                onChanged = { m ->
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages.toMutableMap()
+                                .apply { this[m.keys.first()] = m.values.first() })
+                    }
+                },
+                onRemoved = { m ->
+                    _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
+                },
+                onCancelled = {
+                    updateErrorCode(it)
+                },
+                remove
+            )
+        }
     }
     private fun listenForCurrentChat(remove: Boolean) {
         chatServiceImpl.chatListener(chatId, {updateErrorCode(it)}, {chat ->
@@ -111,27 +143,26 @@ class PrivateChatViewModel @Inject constructor(
             }
         }, remove)
     }
-    fun sendMessage(text: String, replyTo: String) {
-        //If messages are empty, the user has not jet joined the chat
+    suspend fun sendMessage(text: String) {
         if (!_uiState.value.isMemberOfChat) {
             chatServiceImpl.joinChat(chatId)
-            /*Call listeners again because if there was an error,
-            the previous ones were cancelled*/
-            listenForMessages(remove = true)
-            listenForMessages(remove = false)
         }
-        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text, replyTo)
+        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
         chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
             _uiState.value.otherUsername,
-            Chat(lastMessage = text, timestamp =  timestamp))
+            _uiState.value.chat.copy(lastMessage = text, timestamp = timestamp))
     }
-    fun editMessage(message: Map<String, Message>) {
+    suspend fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
-        chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
-            _uiState.value.otherUsername,
-            _uiState.value.chat.copy(lastMessage = message.values.first().text))
+        if (_uiState.value.messages.entries.last().key == message.keys.first()) {
+            chatServiceImpl.updateLastMessage(
+                chatId, _uiState.value.currUsername,
+                _uiState.value.otherUsername,
+                _uiState.value.chat.copy(lastMessage = message.values.first().text)
+            )
+        }
     }
-    fun deleteMessage(message: Map<String, Message>) {
+     fun deleteMessage(message: Map<String, Message>) {
         val messages = _uiState.value.messages
         val entries = messages.entries
         chatServiceImpl.deleteMessage(chatId, message)
@@ -148,6 +179,11 @@ class PrivateChatViewModel @Inject constructor(
             }
         }
     }
+    suspend fun scrollToBottom(listState: LazyListState, firstVisibleItem: LazyListItemInfo?) {
+        if (firstVisibleItem != null) {
+            chatServiceImpl.scrollToBottom(uiState.value.messages, listState, firstVisibleItem)
+        }
+    }
     private fun updateStorageErrorMessage(e: String) {
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }
     }
@@ -159,11 +195,12 @@ class PrivateChatViewModel @Inject constructor(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
         val isMemberOfChat: Boolean = false,
+        val topMessageBatchIndex: Int = 0,
         val picId: String = "",
         val currUsername: String = "",
-        val otherUsername: String = "",
+        val otherUsername: String? = "",
         val storageErrorMessage: String = "",
+        val messagesState: MessagesState = MessagesState.IDLE,
         val errorCode: Int = 0,
-        val removeListeners: Boolean = false
     )
 }
