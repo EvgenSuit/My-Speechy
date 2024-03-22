@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "291702741636-cuatd1qua2he91ahr5bhvf4tdp18538p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myspeechy",
+            "certificate_hash": "9cdc1c3a35f71c086cb82aa5d1dee09bda421877"
+          }
+        },
+        {
           "client_id": "291702741636-u2rri5h6vv7ou87j5u9a2ael99027lr6.apps.googleusercontent.com",
           "client_type": 3
         }

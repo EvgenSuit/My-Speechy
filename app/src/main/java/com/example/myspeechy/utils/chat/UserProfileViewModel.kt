@@ -52,6 +52,7 @@ class UserProfileViewModel @Inject constructor(
 
     //Listen for only normal quality image
     private fun listenForUserPicture(remove: Boolean) {
+        _uiState.update { it.copy(pictureState = PictureState.DOWNLOADING) }
         userProfileServiceImpl.userPictureListener(userId,
             normalQualityPicRef,
             dir = normalQualityPicDir,
@@ -94,20 +95,15 @@ class UserProfileViewModel @Inject constructor(
         userProfileServiceImpl.createPicDir(lowQualityPicDir)
         userProfileServiceImpl.createPicDir(normalQualityPicDir)
     }
-    fun changeUserInfo(newName: String, newInfo: String, onSuccess: () -> Unit) {
+    suspend fun changeUserInfo(newName: String, newInfo: String) {
         val nameIsSame = _uiState.value.user?.name == newName
         val infoIsSame = _uiState.value.user?.info == newInfo
         if (!nameIsSame) {
-            userProfileServiceImpl.changeUsername(newName) {
-                if (!infoIsSame) {
-                    userProfileServiceImpl.changeUserInfo(newInfo, onSuccess)
-                } else {onSuccess()}
-            }
+            userProfileServiceImpl.changeUsername(newName)
         }
-        else if (!infoIsSame) {
-            userProfileServiceImpl.changeUserInfo(newInfo, onSuccess)
+        if (!infoIsSame) {
+            userProfileServiceImpl.changeUserInfo(newInfo)
         }
-        else onSuccess()
     }
     private fun uploadUserPicture(lowQuality: Boolean) {
             _uiState.update { it.copy(pictureState = PictureState.UPLOADING) }
@@ -116,7 +112,7 @@ class UserProfileViewModel @Inject constructor(
                     updateStorageMessage(it)
                     _uiState.update { it.copy(pictureState = PictureState.ERROR) }
                 }) {
-                _uiState.update { it.copy(pictureState = PictureState.SUCCESS, storageMessage = "") }
+                _uiState.update { it.copy(pictureState = PictureState.SUCCESS, storageMessage = "" ) }
             }
     }
     fun removeUserPicture() {
@@ -172,6 +168,7 @@ class UserProfileViewModel @Inject constructor(
 }
 enum class PictureState {
     IDLE,
+    DOWNLOADING,
     UPLOADING,
     SUCCESS,
     ERROR,

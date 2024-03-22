@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.myspeechy"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
@@ -27,6 +28,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <meta-data
+            android:name="DEBUG_GOOGLE_OAUTH_API_KEY"
+            android:value="${DEBUG_GOOGLE_OAUTH_API_KEY}" />
+        <meta-data android:name="RELEASE_GOOGLE_OAUTH_API_KEY"
+            android:value="${RELEASE_GOOGLE_OAUTH_API_KEY}" />
     </application>
 
 </manifest>

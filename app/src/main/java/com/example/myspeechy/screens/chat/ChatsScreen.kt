@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -18,13 +17,16 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,7 +47,6 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -75,6 +76,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -104,12 +106,12 @@ import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CommonTextField
+import com.example.myspeechy.components.CreateOrChangePublicChatForm
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.dataStore
 import com.example.myspeechy.screens
 import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.utils.chat.ChatsViewModel
-import com.skydoves.cloudy.Cloudy
 import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
@@ -159,22 +161,31 @@ fun ChatComposable(navController: NavHostController,
                    viewModel: ChatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
-    var isFormExpanded by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
+    var isFormExpanded by remember(isSearchFieldFocused) { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    val showSearchedChats by remember(uiState.searchedChats)
-    { mutableStateOf(uiState.searchedChats.isNotEmpty()) }
+    val showSearchedChats by remember(uiState.searchedChats) { mutableStateOf(uiState.searchedChats.isNotEmpty()) }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
-    Box {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer)
-                ) {
-                    Row(Modifier.fillMaxWidth(),
+    Box(Modifier.pointerInput(Unit) {
+        detectTapGestures { isFormExpanded = false }
+    }) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.onPrimaryContainer)
+                .blur(if (isFormExpanded) 5.dp else 0.dp)) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { isFormExpanded = true },
                         verticalAlignment = Alignment.CenterVertically) {
-                        ChatSearch(onSearch = viewModel::searchForChat, onEmptyTitle = viewModel::clearSearchedChats)
+                        ChatSearch(Modifier.clickable { isFormExpanded = false },
+                            onSearch = viewModel::searchForChat,
+                            interactionSource = interactionSource,
+                            onEmptyTitle = viewModel::clearSearchedChats)
                         IconButton(onClick = { navController.navigate("userProfile/${viewModel.userId}") },
                             Modifier.fillMaxWidth()) {
                             Icon(
@@ -191,7 +202,8 @@ fun ChatComposable(navController: NavHostController,
                             Tab(
                                 text = {Text(s, overflow = TextOverflow.Ellipsis)},
                                 selected = index == chatScreenPartSelected,
-                                onClick = { chatScreenPartSelected = index })
+                                onClick = { chatScreenPartSelected = index
+                                isFormExpanded = false})
                         }
                     }
                     AnimatedContent(targetState = chatScreenPartSelected, label = "") { targetState ->
@@ -241,11 +253,14 @@ fun ChatComposable(navController: NavHostController,
                         if (targetExpanded) {
                             CreateOrChangePublicChatForm(
                                 onClose = {isFormExpanded = false}) { (title, description) ->
-                                viewModel.createPublicChat(title, description)
                                 isFormExpanded = false
+                                viewModel.createPublicChat(title, description)
                             }
                         } else {
-                            FloatingActionButton(onClick = { isFormExpanded = true }) {
+                            FloatingActionButton(onClick = {
+                                focusManager.clearFocus(true)
+                                isFormExpanded = true
+                            }) {
                                 Icon(Icons.Filled.Add, contentDescription = null)
                             }
                         }
@@ -258,19 +273,20 @@ fun ChatComposable(navController: NavHostController,
                 navController.navigate("chats/public/${searchedChatId}")
             }
         }
-            }
-
-        DisposableEffect(Unit) {
-            onDispose {
-                viewModel.startOrStopListening(true)
-            }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.startOrStopListening(true)
         }
+    }
 }
 
 @Composable
-fun ChatSearch(onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
+fun ChatSearch(
+    modifier: Modifier = Modifier,
+    interactionSource: MutableInteractionSource,
+    onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
+        val focusManager = LocalFocusManager.current
     var chatSearchTitle by remember { mutableStateOf("") }
     LaunchedEffect(chatSearchTitle) {
         if (chatSearchTitle.isNotEmpty() && chatSearchTitle.isNotBlank()) {
@@ -299,8 +315,9 @@ fun ChatSearch(onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
         },
         onValueChange = {
             chatSearchTitle = it
-        }, modifier = Modifier
-            .focusRequester(focusRequester)
+        },
+        interactionSource = interactionSource,
+        modifier = modifier
             .fillMaxWidth(0.85f)
             .height(dimensionResource(id = R.dimen.chat_search_text_field_height))
     )
@@ -327,65 +344,6 @@ fun SearchedChats(
     }
 }
 
-/**
- * @param onCreate Pair of title and description
- */
-@Composable
-fun CreateOrChangePublicChatForm(
-    chat: Chat? = null,
-    onClose: () -> Unit,
-    onCreate: (Pair<String, String>) -> Unit) {
-    val placeholders = Pair("Title", "Description")
-    var title by remember { mutableStateOf(chat?.title ?: "") }
-    var description by remember { mutableStateOf(chat?.description ?: "") }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Max)
-            .clip(RoundedCornerShape(20.dp))
-            .border(
-                BorderStroke(2.dp, MaterialTheme.colorScheme.onSecondary),
-                shape = RoundedCornerShape(20.dp)
-            )
-            .background(MaterialTheme.colorScheme.primary)
-            .padding(20.dp)
-            .verticalScroll(rememberScrollState())) {
-        Row(horizontalArrangement = Arrangement.SpaceEvenly) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Clear, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(30.dp))
-            }
-                Text("${if (chat == null) "Create a" else "Change the"} public chat", textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium)
-
-        }
-        Column(
-            Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(15.dp),) {
-            CommonTextField(value = title, onChange = { title = it}, placeholders = placeholders)
-            CommonTextField(value = description, onChange = {description = it}, last = true, placeholders = placeholders)
-            OutlinedButton(onClick = {
-               if (title.isNotBlank() && description.isNotBlank()) {
-                   onCreate(Pair(title, description))
-               }
-            },
-                Modifier
-                    .padding(top = 15.dp)
-                    .size(200.dp, 50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.inversePrimary
-                )) {
-                Text(if (chat == null) "Create" else "Change", fontSize = 20.sp)
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

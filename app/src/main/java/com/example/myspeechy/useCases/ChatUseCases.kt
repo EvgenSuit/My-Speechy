@@ -8,11 +8,15 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 private val database = Firebase.database.reference
 private val userId = Firebase.auth.currentUser!!.uid
 class LeavePrivateChatUseCase {
-    operator fun invoke(chatId: String) {
+    suspend operator fun invoke(chatId: String) {
         val otherUserId = chatId.getOtherUserId(userId)
         database.child("users")
             .child(otherUserId)
@@ -20,7 +24,7 @@ class LeavePrivateChatUseCase {
             .child(chatId)
             .addListenerForSingleValueEvent(object : ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    //remove messages if the other user has deleted the chat for themselves
+                    //remove messages if the other user has already deleted the chat for themselves
                     if (!snapshot.exists()) {
                         database.child("messages")
                             .child(chatId)
@@ -36,30 +40,30 @@ class LeavePrivateChatUseCase {
             .child(userId)
             .child("private_chats")
             .child(chatId)
-            .removeValue()
+            .removeValue().await()
         database.child("private_chats")
                 .child(userId)
                 .child(chatId)
-                .removeValue()
+                .removeValue().await()
     }
 }
 
 class LeavePublicChatUseCase {
-    operator fun invoke(chatId: String) {
+    suspend operator fun invoke(chatId: String) {
         database.child("members")
             .child(chatId)
             .child(userId)
-            .removeValue()
+            .removeValue().await()
         database.child("users")
             .child(userId)
             .child("public_chats")
             .child(chatId)
-            .removeValue()
+            .removeValue().await()
     }
 }
 
 class JoinPublicChatUseCase {
-    operator fun invoke(chatId: String, onSuccess: () -> Unit) {
+    operator fun invoke(chatId: String) {
         database.child("members")
             .child(chatId)
             .child(userId).setValue(true)
@@ -68,57 +72,43 @@ class JoinPublicChatUseCase {
             .child("public_chats")
             .child(chatId)
             .setValue(true)
-            .addOnSuccessListener { onSuccess() }
     }
 }
 class DeletePublicChatUseCase {
-    operator fun invoke(chatId: String, onDeleted: () -> Unit) {
-        removeChat(chatId) {
-            removeMessages(chatId) {
-                removeMembers(chatId) {
-                    revokeAdminPermissions(chatId) { onDeleted() }
-                }
-            }
-        }
+    suspend operator fun invoke(chatId: String) {
+        removeChat(chatId)
+        removeMessages(chatId)
+        removeMembers(chatId)
+        revokeAdminPermissions(chatId)
     }
-    private fun revokeAdminPermissions(chatId: String, onRevoked: () -> Unit) {
+    private suspend fun revokeAdminPermissions(chatId: String) {
         database.child("admins")
             .child(chatId)
-            .removeValue().addOnSuccessListener { onRevoked() }
+            .removeValue().await()
     }
-    private fun removeMembers(chatId: String, onRemoved: () -> Unit) {
+    private suspend fun removeMembers(chatId: String) {
         database.child("members")
             .child(chatId)
-            .removeValue().addOnSuccessListener { onRemoved() }
+            .removeValue().await()
     }
-    private fun removeMessages(chatId: String, onRemoved: () -> Unit) {
+    private suspend fun removeMessages(chatId: String) {
         database.child("messages")
             .child(chatId)
-            .removeValue().addOnSuccessListener { onRemoved() }
+            .removeValue().await()
     }
-    private fun removeChat(chatId: String, onRemoved: () -> Unit) {
+    private suspend fun removeChat(chatId: String) {
         database.child("public_chats")
             .child(chatId)
             .removeValue()
-            .addOnSuccessListener { onRemoved() }
+            .await()
     }
 }
 class CheckIfIsAdminUseCase {
-    operator fun invoke(chatId: String, onReceived: (Boolean) -> Unit) {
-        database.child("admins")
+    suspend operator fun invoke(chatId: String, onReceived: (Boolean) -> Unit) {
+        val admin = database.child("admins")
             .child(chatId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val isAdmin = snapshot.getValue<String>() == userId
-                    onReceived(isAdmin)
-                }
-                override fun onCancelled(error: DatabaseError) {
-                }
-            })
+            .get().await()
+        onReceived(admin.getValue<String>() == userId)
     }
 }
 
-class GetProfileOrChatPictureUseCase(private val filesDir: String) {
-    private fun getPicDir(otherUserId: String): String
-            = "${filesDir}/profilePics/$otherUserId/lowQuality"
-}
