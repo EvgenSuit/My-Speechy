@@ -12,6 +12,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.Locale
 
 private val database = Firebase.database.reference
 private val userId = Firebase.auth.currentUser!!.uid
@@ -109,6 +114,19 @@ class CheckIfIsAdminUseCase {
             .child(chatId)
             .get().await()
         onReceived(admin.getValue<String>() == userId)
+    }
+}
+
+class FormatDateUseCase {
+    operator fun invoke(timestamp: Long): String {
+
+        var targetDateFormat = ""
+        val currentDate = LocalDateTime.now()
+        val messageDateFormatted = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+        if (currentDate.year != messageDateFormatted.year) targetDateFormat += "yyyy."
+        if (currentDate.dayOfMonth != messageDateFormatted.dayOfMonth) targetDateFormat += "MMM dd "
+        targetDateFormat += "HH:mm"
+        return SimpleDateFormat(targetDateFormat, Locale.getDefault()).format(timestamp)
     }
 }
 

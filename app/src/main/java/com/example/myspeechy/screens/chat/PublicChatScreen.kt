@@ -9,21 +9,26 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
@@ -56,16 +61,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
+import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.ChatPictureComposable
 import com.example.myspeechy.components.CreateOrChangePublicChatForm
-import com.example.myspeechy.components.PublicChatTopRow
+import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
-import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
-import com.example.myspeechy.utils.chat.MessagesState
+import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.utils.chat.PublicChatViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -79,7 +84,7 @@ fun PublicChatScreen(navController: NavHostController,
     val membersListState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
-    val firstVisibleMessage = remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
+    val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val lastVisibleMessageIndex by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     val lastVisibleMemberIndex by remember { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
@@ -87,7 +92,6 @@ fun PublicChatScreen(navController: NavHostController,
         viewModel.startOrStopListening(false)
         //listen for the same messages and members as before if the app was previously in the background
         viewModel.handleDynamicMessageLoading(isAppInBackground, lastVisibleMessageIndex)
-        viewModel.handleDynamicMembersLoading(isAppInBackground, lastVisibleMemberIndex)
         isAppInBackground = false
     }
 
@@ -101,18 +105,11 @@ fun PublicChatScreen(navController: NavHostController,
             viewModel.handleDynamicMessageLoading(false, lastVisibleMessageIndex)
         }
     }
-    LaunchedEffect(lastVisibleMemberIndex) {
-        if (!isAppInBackground) {
-            viewModel.handleDynamicMembersLoading(false, lastVisibleMemberIndex)
-        }
-    }
     LaunchedEffect(uiState.messages.entries.lastOrNull()) {
-        //if the last message was sent by the user, or if a new message was just sent and the
+        //if a new message was just sent and the
         //user was at the bottom of the chat, animate to the bottom
         if (!isAppInBackground) {
-            coroutineScope.launch {
-                viewModel.scrollToBottom(listState, firstVisibleMessage.value)
-            }
+            viewModel.scrollToBottom(listState, firstVisibleMessage)
         }
     }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -148,7 +145,7 @@ fun PublicChatScreen(navController: NavHostController,
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.onPrimaryContainer)) {
                 PublicChatTopRow(
-                    title = uiState.chat.title,
+                    title = if (uiState.chat.title.isEmpty() && uiState.chatLoaded) "Deleted chat" else uiState.chat.title,
                     membersSize = if (uiState.chat.timestamp.toInt() != 0) uiState.members.size else null,
                     onSideDrawerShow = { coroutineScope.launch {
                         drawerState.apply { if (isClosed) open() else close() }
@@ -161,6 +158,7 @@ fun PublicChatScreen(navController: NavHostController,
                 if (uiState.messagesState != MessagesState.EMPTY) {
                     MessagesColumn(viewModel.userId, uiState.joined, listState, uiState.messages,
                         LocalContext.current.cacheDir.path, Modifier.weight(1f),
+                        onFormatDate = viewModel::formatMessageDate,
                         onEdit = {
                             focusManager.clearFocus(true)
                             messageToEdit = it
@@ -189,13 +187,7 @@ fun PublicChatScreen(navController: NavHostController,
                         textFieldState = TextFieldValue()
                     }
                 }
-                if (uiState.chatLoaded && uiState.chat.title.isEmpty()) {
-                    Text("Deleted chat", textAlign = TextAlign.Center,
-                        fontSize = 25.sp,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(10.dp))
-                } else if (uiState.chatLoaded && !uiState.joined) {
+                if (uiState.chatLoaded && !uiState.joined) {
                     JoinButton(viewModel::joinChat, Modifier)
                 }
                 else if (uiState.chatLoaded) {
@@ -256,7 +248,7 @@ fun SideDrawer(
 ) {
     Column(
         Modifier
-            .fillMaxWidth(0.6f)
+            .fillMaxWidth(0.7f)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.primary)
             .padding(top = 15.dp),
@@ -310,22 +302,26 @@ fun MembersColumn(
     LazyColumn(
         state = listState) {
         items(members.size) {i ->
-            ElevatedCard(Modifier.clickable {
-                if (usernames[i] != "Deleted user") onNavigate(userIds[i])
-            }.padding(2.dp)) {
+            ElevatedCard(
+                Modifier
+                    .clickable {
+                        if (usernames[i] != "Deleted user") onNavigate(userIds[i])
+                    }
+                    .padding(2.dp)) {
                 Row(
                     Modifier
                         .background(MaterialTheme.colorScheme.primaryContainer)
                         .fillMaxWidth()
                         .padding(5.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    horizontalArrangement = Arrangement.Start) {
                     val userId = userIds[i]
                     val picPath = picPaths[userId]
                     key(recomposeIds[userId]) {
-                            ChatPictureComposable(picRef = File(picPath ?: ""))
-                        }
-                    Column {
+                        ChatPictureComposable(picRef = File(picPath ?: ""))
+                    }
+                    Column(Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(usernames[i], fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (userId == admin) {
                             Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
@@ -333,6 +329,42 @@ fun MembersColumn(
                     }
                 }
             }
+        }
+    }
+}
+@Composable
+fun PublicChatTopRow(
+    title: String,
+    membersSize: Int?,
+    onSideDrawerShow: () -> Unit,
+    onNavigateUp: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        BackButton(onNavigateUp, Modifier.weight(0.01f))
+        Spacer(modifier = Modifier.weight(0.01f))
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)) {
+            Text(title,
+                color = MaterialTheme.colorScheme.onPrimary,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1)
+            if (membersSize != null) {
+                Row(horizontalArrangement = Arrangement.Center) {
+                    Text(membersSize.toString())
+                    Icon(Icons.Filled.Person, contentDescription = null)
+                }
+            }
+        }
+        IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.2f)) {
+            Icon(Icons.Filled.Menu, contentDescription = null,
+                modifier = Modifier.size(50.dp))
         }
     }
 }

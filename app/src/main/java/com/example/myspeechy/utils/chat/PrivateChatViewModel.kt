@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
 import com.google.accompanist.permissions.PermissionState
@@ -54,7 +55,7 @@ class PrivateChatViewModel @Inject constructor(
     fun handleDynamicMessageLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
         chatServiceImpl.handleDynamicMessageLoading(
             loadOnResume = loadOnResume,
-            topMessageIndex = uiState.value.topMessageBatchIndex,
+            topMessageIndex = _uiState.value.topMessageBatchIndex,
             lastVisibleItemIndex = lastVisibleItemIndex,
             onRemove = {listenForMessages(remove = true)},
             onLoad = {topIndex ->
@@ -115,6 +116,7 @@ class PrivateChatViewModel @Inject constructor(
                     } else {
                         _uiState.update { it.copy(it.messages + m) }
                     }
+                    _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
                 },
                 onChanged = { m ->
                     _uiState.update {
@@ -144,7 +146,7 @@ class PrivateChatViewModel @Inject constructor(
         }, remove)
     }
     suspend fun sendMessage(text: String) {
-        if (!_uiState.value.isMemberOfChat) {
+        if (_uiState.value.isMemberOfChat == true) {
             chatServiceImpl.joinChat(chatId)
         }
         val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
@@ -162,27 +164,31 @@ class PrivateChatViewModel @Inject constructor(
             )
         }
     }
-     fun deleteMessage(message: Map<String, Message>) {
-        val messages = _uiState.value.messages
-        val entries = messages.entries
+     suspend fun deleteMessage(message: Map<String, Message>) {
         chatServiceImpl.deleteMessage(chatId, message)
-        if (entries.last().value == message.values.first() && entries.size > 1) {
+         val messages = _uiState.value.messages
+         val entries = messages.entries
+        if (entries.isNotEmpty() && entries.last().value == message.values.first()) {
             val prevMessage = messages.values.toList()[messages.values.toList().indexOf(message.values.first())-1]
             val chat = _uiState.value.chat
             chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
                 _uiState.value.otherUsername,
                 chat.copy(prevMessage.sender, lastMessage = prevMessage.text,
                timestamp = prevMessage.timestamp))
-        } else if (entries.size <= 1) {
-            viewModelScope.launch {
-                chatServiceImpl.leaveChat(chatId)
-            }
+        } else if (_uiState.value.messages.isEmpty()) {
+            chatServiceImpl.updateLastMessage(chatId,_uiState.value.currUsername,
+                _uiState.value.otherUsername,
+                _uiState.value.chat.copy(lastMessage = ""))
+            chatServiceImpl.leaveChat(chatId)
         }
     }
     suspend fun scrollToBottom(listState: LazyListState, firstVisibleItem: LazyListItemInfo?) {
         if (firstVisibleItem != null) {
             chatServiceImpl.scrollToBottom(uiState.value.messages, listState, firstVisibleItem)
         }
+    }
+    fun formatMessageDate(timestamp: Long): String {
+        return chatServiceImpl.formatDate(timestamp)
     }
     private fun updateStorageErrorMessage(e: String) {
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }
@@ -194,7 +200,7 @@ class PrivateChatViewModel @Inject constructor(
     data class PrivateChatUiState(
         val messages: Map<String, Message> = mapOf(),
         val chat: Chat = Chat(),
-        val isMemberOfChat: Boolean = false,
+        val isMemberOfChat: Boolean? = null,
         val topMessageBatchIndex: Int = 0,
         val picId: String = "",
         val currUsername: String = "",

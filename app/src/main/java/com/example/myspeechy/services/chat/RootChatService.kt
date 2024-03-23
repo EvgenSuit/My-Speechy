@@ -15,8 +15,13 @@ import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Locale
 import java.util.UUID
 
 interface RootChatService {
@@ -120,10 +125,10 @@ interface RootChatService {
             .child(message.keys.first())
             .setValue(message.values.first().copy(edited = true)).await()
     }
-    fun deleteMessage(chatId: String, message: Map<String, Message>) {
+    suspend fun deleteMessage(chatId: String, message: Map<String, Message>) {
         messagesRef.child(chatId)
             .child(message.keys.first())
-            .removeValue()
+            .removeValue().await()
     }
 
 
@@ -145,9 +150,8 @@ interface RootChatService {
         val itemBottom = itemTop + firstVisibleItem.size
         val isCompletelyVisible = itemTop >= 0 && itemBottom <= viewportHeight
         if (messages.isNotEmpty() &&
-            (messages.entries.last().value.sender == userId ||
-                    (firstVisibleItem.index == messages.entries.indexOf(messages.entries.first())+1 &&
-                            isCompletelyVisible))) {
+            (firstVisibleItem.index == messages.entries.indexOf(messages.entries.first())+1 &&
+                            isCompletelyVisible)) {
             listState.animateScrollToItem(0)
         }
     }

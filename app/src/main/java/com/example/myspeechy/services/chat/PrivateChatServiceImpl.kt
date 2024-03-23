@@ -2,6 +2,7 @@ package com.example.myspeechy.services.chat
 
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.useCases.FormatDateUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
@@ -21,7 +22,8 @@ class PrivateChatServiceImpl(
     auth: FirebaseAuth,
     storage: StorageReference,
     private val database: DatabaseReference,
-    private val leavePrivateChatUseCase: LeavePrivateChatUseCase
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
+    private val formatDateUseCase: FormatDateUseCase
 ): RootChatService {
     override val userId = auth.currentUser!!.uid
     override val messagesRef = database.child("messages")
@@ -83,7 +85,7 @@ class PrivateChatServiceImpl(
         }
     }
 
-    fun updateLastMessage(chatId: String, currentUsername: String? = null, otherUsername: String? = null, chat: Chat) {
+    suspend fun updateLastMessage(chatId: String, currentUsername: String? = null, otherUsername: String? = null, chat: Chat) {
         val userIds = chatId.split("_")
         val privateChat = chat.copy(lastMessage = if (chat.lastMessage.length > 40) chat.lastMessage.substring(0, 40)
         else chat.lastMessage)
@@ -91,12 +93,12 @@ class PrivateChatServiceImpl(
         if (currentUsername != null && (userIds[0] == userId || userIds[1] == userId)) {
             chatsRef.child(userIds[1])
                 .child(chatId)
-                .setValue(privateChat.copy(title = currentUsername))
+                .setValue(privateChat.copy(title = currentUsername)).await()
         }
         if (otherUsername != null && (userIds[0] != userId || userIds[1] != userId)) {
             chatsRef.child(userIds[0])
                 .child(chatId)
-                .setValue(privateChat.copy(title = otherUsername))
+                .setValue(privateChat.copy(title = otherUsername)).await()
         }
     }
 
@@ -185,4 +187,5 @@ class PrivateChatServiceImpl(
             ref.addValueEventListener(isMemberOfChatListener!!)
         }
     }
+    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }

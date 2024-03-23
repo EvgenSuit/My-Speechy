@@ -2,6 +2,7 @@ package com.example.myspeechy.services.chat
 
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.useCases.FormatDateUseCase
 import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.FirebaseAuth
@@ -19,7 +20,8 @@ class PublicChatServiceImpl(
     storage: StorageReference,
     private val database: DatabaseReference,
     private val leavePublicChatUseCase: LeavePublicChatUseCase,
-    private val joinPublicChatUseCase: JoinPublicChatUseCase
+    private val joinPublicChatUseCase: JoinPublicChatUseCase,
+    private val formatDateUseCase: FormatDateUseCase
 ): RootChatService {
     private val chatsRef = database.child("public_chats")
     private val membersRef = database.child("members")
@@ -103,7 +105,6 @@ class PublicChatServiceImpl(
         val ref = messagesRef.child(id)
             .orderByChild("timestamp")
             .limitToLast(topIndex)
-
         if (remove && messagesListener != null) {
             ref.removeEventListener(messagesListener!!)
         } else {
@@ -130,13 +131,12 @@ class PublicChatServiceImpl(
 
     fun chatMembersListener(
         id: String,
-        lastIndex: Int,
         onAdded: (Map<String, Boolean>) -> Unit,
         onChanged: (Map<String, Boolean>) -> Unit,
         onRemoved: (Map<String, Boolean>) -> Unit,
         onCancelled: (Int) -> Unit,
         remove: Boolean) {
-        val ref = membersRef.child(id).limitToLast(lastIndex)
+        val ref = membersRef.child(id)
         if (remove && membershipListener != null) {
             ref.removeEventListener(membershipListener!!)
         } else {
@@ -177,23 +177,23 @@ class PublicChatServiceImpl(
         }
     }
 
-    fun handleDynamicMembersLoading(
+    /*fun handleDynamicMembersLoading(
         loadOnResume: Boolean = false,
-        lastMemberIndex: Int,
+        maxMemberIndex: Int,
         lastVisibleItemIndex: Int?,
         onRemove: () -> Unit,
         onLoad: (Int) -> Unit
     ) {
-        if ((lastVisibleItemIndex != null && lastVisibleItemIndex >= lastMemberIndex-1 || lastMemberIndex == 0)
+        if ((lastVisibleItemIndex != null && lastVisibleItemIndex >= maxMemberIndex-1 || maxMemberIndex == 0)
             && !loadOnResume) {
             if (lastVisibleItemIndex != null) onRemove()
-            onLoad(10)
+            onLoad(1)
         }
         if (loadOnResume) {
             //load same members as before by not increasing lastMemberBatchIndex
             onLoad(0)
         }
-    }
+    }*/
 
     suspend fun updateLastMessage(chatId: String, chat: Chat) {
         chatsRef.child(chatId)
@@ -214,4 +214,5 @@ class PublicChatServiceImpl(
         leavePublicChatUseCase(chatId)
     }
 
+    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }
