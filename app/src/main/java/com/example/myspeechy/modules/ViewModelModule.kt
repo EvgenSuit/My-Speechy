@@ -20,6 +20,7 @@ import com.example.myspeechy.services.lesson.RegularLessonServiceImpl
 import com.example.myspeechy.services.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.FormatDateUseCase
 import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
@@ -85,9 +86,13 @@ object ViewModelModule {
     }
     @Provides
     fun provideChatsServiceImpl(): ChatsServiceImpl {
-        return ChatsServiceImpl(LeavePrivateChatUseCase(), LeavePublicChatUseCase(),
+        return ChatsServiceImpl(
+            Firebase.database.reference,
+            Firebase.auth,
+            LeavePrivateChatUseCase(), LeavePublicChatUseCase(),
             JoinPublicChatUseCase(), CheckIfIsAdminUseCase(),
-            DeletePublicChatUseCase()
+            DeletePublicChatUseCase(),
+            FormatDateUseCase()
         )
     }
     @Provides
@@ -97,7 +102,8 @@ object ViewModelModule {
             Firebase.storage.reference,
             Firebase.database.reference,
             LeavePublicChatUseCase(),
-            JoinPublicChatUseCase()
+            JoinPublicChatUseCase(),
+            FormatDateUseCase()
         )
     }
     @Provides
@@ -105,7 +111,8 @@ object ViewModelModule {
         Firebase.auth,
         Firebase.storage.reference,
         Firebase.database.reference,
-        LeavePrivateChatUseCase())
+        LeavePrivateChatUseCase(),
+        FormatDateUseCase())
     @Provides
     fun provideUserProfileServiceImpl(): UserProfileServiceImpl = UserProfileServiceImpl(AuthService(Firebase.auth, Firebase.database.reference.child("users")))
     @Provides

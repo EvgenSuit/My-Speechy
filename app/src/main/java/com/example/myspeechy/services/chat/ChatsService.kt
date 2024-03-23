@@ -3,27 +3,29 @@ package com.example.myspeechy.services.chat
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.FormatDateUseCase
 import com.example.myspeechy.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
-import com.google.firebase.auth.ktx.auth
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-private val database = Firebase.database.reference
 class ChatsServiceImpl(
+    private val database: DatabaseReference,
+    auth: FirebaseAuth,
     private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
     private val leavePublicChatUseCase: LeavePublicChatUseCase,
     private val joinPublicChatUseCase: JoinPublicChatUseCase,
     private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
-    private val deletePublicChatUseCase: DeletePublicChatUseCase
+    private val deletePublicChatUseCase: DeletePublicChatUseCase,
+    private val formatDateUseCase: FormatDateUseCase
 ) {
     private var publicChatsStateListener: ChildEventListener? = null
     private var allPublicChatsListener: ChildEventListener? = null
@@ -31,9 +33,9 @@ class ChatsServiceImpl(
     private var publicChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
     private var privateChatsListeners: MutableMap<String, ValueEventListener> = mutableMapOf()
 
-    val userId = Firebase.auth.currentUser!!.uid
+    val userId = auth.currentUser!!.uid
     private val userRef = database.child("users").child(userId)
-    fun listener(
+    private fun listener(
         onCancelled: (Int) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit): ValueEventListener {
         return object : ValueEventListener {
@@ -45,7 +47,7 @@ class ChatsServiceImpl(
             }
         }
     }
-    fun membershipStateChildListener(
+    private fun membershipStateChildListener(
         onAdded: (String) -> Unit,
         onChanged: (String) -> Unit,
         onRemoved: (String) -> Unit,
@@ -67,10 +69,10 @@ class ChatsServiceImpl(
         }
     }
 
-    fun allChatsChildListener(onAdded: (Map<String, Chat?>) -> Unit,
-                              onChanged: (Map<String, Chat?>) -> Unit,
-                              onRemoved: (String) -> Unit,
-                              onCancelled: (Int) -> Unit): ChildEventListener {
+    private fun allChatsChildListener(onAdded: (Map<String, Chat?>) -> Unit,
+                                      onChanged: (Map<String, Chat?>) -> Unit,
+                                      onRemoved: (String) -> Unit,
+                                      onCancelled: (Int) -> Unit): ChildEventListener {
         return object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 onAdded(mapOf(snapshot.key!! to snapshot.getValue<Chat>()))
@@ -87,14 +89,10 @@ class ChatsServiceImpl(
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
         }
     }
-
-    fun searchChatByTitle(title: String,
-                          onCancelled: (Int) -> Unit,
-                          onDataReceived: (DataSnapshot) -> Unit) {
-        database.child("public_chats")
+    suspend fun searchChatByTitle(title: String): Map<String, Chat>? {
+        return database.child("public_chats")
             .orderByChild("title")
-            .equalTo(title)
-            .addValueEventListener(listener(onCancelled, onDataReceived))
+            .equalTo(title).get().await().getValue<Map<String, Chat>>()
     }
 
     fun publicChatsStateListener(
@@ -112,7 +110,6 @@ class ChatsServiceImpl(
         }
     }
 
-
     fun privateChatsStateListener(
         onAdded: (String) -> Unit,
         onChanged: (String) -> Unit,
@@ -129,18 +126,36 @@ class ChatsServiceImpl(
     }
 
     fun allPublicChatsListener(
+        maxChatIndex: Int,
         onAdded: (Map<String, Chat?>) -> Unit,
         onChanged: (Map<String, Chat?>) -> Unit,
         onRemoved: (String) -> Unit,
         onCancelled: (Int) -> Unit,
         remove: Boolean
     ) {
-        val ref = database.child("public_chats")
+        val ref = database.child("public_chats").limitToFirst(maxChatIndex)
         if (remove && allPublicChatsListener != null) {
             ref.removeEventListener(allPublicChatsListener!!)
         } else {
             allPublicChatsListener = allChatsChildListener(onAdded, onChanged, onRemoved, onCancelled)
             ref.addChildEventListener(allPublicChatsListener!!)
+        }
+    }
+    fun handleDynamicAllChatsLoading(
+        loadOnResume: Boolean = false,
+        maxChatIndex: Int,
+        firstVisibleItemIndex: Int?,
+        onRemove: () -> Unit,
+        onLoad: (Int) -> Unit
+    ) {
+        if ((firstVisibleItemIndex != null && firstVisibleItemIndex >= maxChatIndex-1 || maxChatIndex == 0)
+            && !loadOnResume) {
+            if (firstVisibleItemIndex != null) onRemove()
+            onLoad(10)
+        }
+        if (loadOnResume) {
+            //load same chats as before by not increasing maxChatBatchIndex
+            onLoad(0)
         }
     }
     fun publicChatListener(
@@ -178,18 +193,11 @@ class ChatsServiceImpl(
         }
     }
 
-    fun checkIfHasChats(type: String, onSuccess: (Boolean) -> Unit) {
-            database.child("users")
+    suspend fun checkIfHasChats(type: String): Boolean {
+        return database.child("users")
                 .child(userId)
                 .child(if (type == "private") "private_chats" else "public_chats")
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        onSuccess(snapshot.exists())
-                    }
-                    override fun onCancelled(error: DatabaseError) {
-
-                    }
-                })
+                .get().await().exists()
     }
 
     suspend fun createPublicChat(title: String, description: String) {
@@ -217,4 +225,5 @@ class ChatsServiceImpl(
     suspend fun leavePublicChat(chatId: String) {
         leavePublicChatUseCase(chatId)
     }
+    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }

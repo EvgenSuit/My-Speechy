@@ -7,3 +7,9 @@ data class Message(
     val timestamp: Long = 0,
     val edited: Boolean = false
 )
+
+enum class MessagesState {
+    IDLE,
+    LOADING,
+    EMPTY,
+}

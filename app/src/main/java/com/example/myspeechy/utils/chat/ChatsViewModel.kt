@@ -1,5 +1,6 @@
 package com.example.myspeechy.utils.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
@@ -26,8 +27,9 @@ class ChatsViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     val userId = chatsService.userId
     fun startOrStopListening(removeListeners: Boolean) {
-        listOf("private", "public").forEach { type ->
-            chatsService.checkIfHasChats(type) {hasChats ->
+        viewModelScope.launch {
+            listOf("private", "public").forEach { type ->
+                val hasChats = chatsService.checkIfHasChats(type)
                 if (!hasChats) {
                     _uiState.update { it.copy(chats = it.chats.filterValues { v -> v?.type != type }) }
                 }
@@ -37,10 +39,22 @@ class ChatsViewModel @Inject constructor(
         listenForPublicChats(removeListeners)
         listenForPrivateChats(removeListeners)
         //listen for all public chats
-        listenForAllPublicChats(removeListeners)
+        if (removeListeners) listenForAllPublicChats(remove = true)
     }
-    private fun listenForAllPublicChats(remove: Boolean) {
+    fun handleDynamicAllChatsLoading(loadOnResume: Boolean = false,
+                                      firstVisibleChatIndex: Int?) {
+        chatsService.handleDynamicAllChatsLoading(loadOnResume,
+            _uiState.value.maxChatBatchIndex,
+            firstVisibleChatIndex,
+            onRemove = {listenForAllPublicChats(remove = true)},
+            onLoad = {listenForAllPublicChats(it, false)})
+    }
+    private fun listenForAllPublicChats(firstIndex: Int = 0, remove: Boolean) {
+        if (!remove) {
+            _uiState.update { it.copy(maxChatBatchIndex = it.maxChatBatchIndex + firstIndex) }
+        }
         chatsService.allPublicChatsListener(
+            _uiState.value.maxChatBatchIndex,
             onAdded = {chat ->
                 updateOrSortAllPublicChats(chat.keys.first(), chat.values.first())
             },
@@ -133,16 +147,15 @@ class ChatsViewModel @Inject constructor(
         _uiState.update { it.copy(searchedChats = mapOf()) }
     }
     fun searchForChat(title: String) {
-        chatsService.searchChatByTitle(title, {}) {chat ->
-            if (chat.value != null) {
-                val chatMap = chat.getValue<Map<String, Chat>>()
-                chatMap?.forEach { (k, v) ->
+        viewModelScope.launch {
+            val chat = chatsService.searchChatByTitle(title)
+            if (chat != null) {
+                chat.forEach { (k, v) ->
                     _uiState.update {
                         it.copy(searchedChats = it.searchedChats + mapOf(
                             k to v))
                     }
                 }
-
             } else {
                 _uiState.update {
                     it.copy(searchedChats = mapOf())
@@ -160,7 +173,7 @@ class ChatsViewModel @Inject constructor(
                     if (isAdmin) {
                         _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass(
                                 title = "Are you sure?",
-                                text = "If you leave the chat it will be deleted since you're an admin",
+                                text = "If you leave the chat it will be deleted since you're its admin",
                                 onConfirm = {viewModelScope.launch {
                                         chatsService.deletePublicChat(chatId)
                                         chatsService.leavePublicChat(chatId)
@@ -178,6 +191,7 @@ class ChatsViewModel @Inject constructor(
             }
         }
     }
+    fun formatDate(timestamp: Long): String = chatsService.formatDate(timestamp)
     fun createPublicChat(title: String, description: String) {
         viewModelScope.launch { chatsService.createPublicChat(title, description) }
     }
@@ -208,6 +222,7 @@ class ChatsViewModel @Inject constructor(
         val allPublicChats: Map<String, Chat?> = mapOf(),
         val picPaths: Map<String, String> = mapOf(), //user id to pic path map
         val picsId: String = "",
+        val maxChatBatchIndex: Int = 0,
         val alertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
         val storageErrorMessage: String = ""
     )

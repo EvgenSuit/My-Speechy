@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -74,12 +75,14 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -90,17 +93,22 @@ import com.example.myspeechy.data.chat.Message
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 @Composable
 fun BackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier) {
-    ElevatedButton(onClick = onClick,
+    /*ElevatedButton(onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ),
-        modifier = modifier) {
+        modifier = modifier.width(60.dp)) {
+        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null,
+            modifier = Modifier.fillMaxWidth())
+    }*/
+    IconButton(onClick = onClick) {
         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
     }
 }
@@ -113,11 +121,11 @@ fun MessagesColumn(
     messages: Map<String, Message>,
     filesDir: String,
     modifier: Modifier,
+    onFormatDate: (Long) -> String,
     onEdit: (Map<String, Message>) -> Unit,
     onDelete: (Map<String, Message>) -> Unit,
     onNavigate: (String) -> Unit) {
-    val picSize = dimensionResource(R.dimen.chat_pic_size)
-    val messagesSpacing = dimensionResource(R.dimen.messages_spacing)
+    val messagesSpacing = dimensionResource(R.dimen.messages_and_chats_spacing)
     var selectedMessageIndex by rememberSaveable { mutableStateOf(-1) }
     val reversedMessages by remember(messages) {
         mutableStateOf(messages.toList().reversed())
@@ -142,29 +150,8 @@ fun MessagesColumn(
                                 alignment = if (message.sender != userId)
                                     Alignment.Start else Alignment.End)) {
                             if (message.sender != userId) {
-                                val picPath = "${filesDir}/profilePics/${message.sender}/lowQuality/${message.sender}.jpg"
-                                if (File(picPath).exists()) {
-                                    var retryHash by remember { mutableStateOf(0) }
-                                    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-                                        .data(picPath)
-                                        .setParameter("retry_hash", retryHash)
-                                        .build())
-                                    if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
-                                    Image(painter,
-                                        contentScale = ContentScale.Crop,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(picSize)
-                                            .clip(CircleShape)
-                                            .clickable { onNavigate(chatId) })
-                                } else {
-                                    Image(painter = painterResource(R.drawable.user),
-                                        contentScale = ContentScale.Crop,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(picSize)
-                                            .clip(CircleShape)
-                                            .clickable { onNavigate(chatId) })
+                                ProfilePictureInChat(filesDir = filesDir, sender = message.sender) {
+                                    onNavigate(chatId)
                                 }
                             }
                             MessageContent(
@@ -174,6 +161,7 @@ fun MessagesColumn(
                                 selectedMessageIndex = selectedMessageIndex,
                                 message = message,
                                 joined = joined,
+                                onFormatDate = onFormatDate,
                                 onSelectedMessageIndexChange = {selectedMessageIndex = it}
                             ) { onNavigate(chatId) }
                         }
@@ -189,6 +177,37 @@ fun MessagesColumn(
     }
 }
 
+@Composable
+fun ProfilePictureInChat(filesDir: String,
+                         sender: String,
+                         onNavigate: () -> Unit) {
+    val picSize = dimensionResource(R.dimen.chat_pic_size)
+    val picPath = "${filesDir}/profilePics/${sender}/lowQuality/${sender}.jpg"
+    if (File(picPath).exists()) {
+        var retryHash by remember { mutableStateOf(0) }
+        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
+            .data(picPath)
+            .setParameter("retry_hash", retryHash)
+            .build())
+        if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
+        Image(painter,
+            contentScale = ContentScale.Crop,
+            contentDescription = null,
+            modifier = Modifier
+                .size(picSize)
+                .clip(CircleShape)
+                .clickable { onNavigate() })
+    } else {
+        Image(painter = painterResource(R.drawable.user),
+            contentScale = ContentScale.Crop,
+            contentDescription = null,
+            modifier = Modifier
+                .size(picSize)
+                .clip(CircleShape)
+                .clickable { onNavigate() })
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageContent(
@@ -198,6 +217,7 @@ fun MessageContent(
     selectedMessageIndex: Int,
     message: Message,
     joined: Boolean,
+    onFormatDate: (Long) -> String,
     onSelectedMessageIndexChange: (Int) -> Unit,
     onNavigate: (String) -> Unit) {
     Box(contentAlignment = if (message.sender == userId) Alignment.CenterEnd else Alignment.CenterEnd) {
@@ -227,6 +247,7 @@ fun MessageContent(
                         Text(senderUsername,
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             modifier = Modifier.clickable {
                                 if (message.sender != userId) {
@@ -243,7 +264,7 @@ fun MessageContent(
                     modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
                 Row{
                     Text(
-                        SimpleDateFormat("MM.dd.hh:mm").format(Date(message.timestamp)),
+                        onFormatDate(message.timestamp),
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.weight(1f))
                     if (message.edited) {
@@ -294,7 +315,6 @@ fun BottomRow(textFieldValue: TextFieldValue,
         verticalAlignment = Alignment.Bottom) {
         OutlinedTextField(
             value = textFieldValue, onValueChange = {
-                Log.d("TYPING", (it.text.length <= maxMessageLength).toString())
                 if (it.text.length <= maxMessageLength) onFieldValueChange(it) },
             shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(
@@ -466,7 +486,7 @@ fun CommonTextField(value: String,
 @Composable
 fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
         AlertDialog(
-            title = {Text(alertDialogDataClass.title, textAlign = TextAlign.Center)},
+            title = {Text(alertDialogDataClass.title)},
             text = {Text(alertDialogDataClass.text)},
             onDismissRequest = alertDialogDataClass.onDismiss,
             confirmButton = {
@@ -486,42 +506,6 @@ data class AlertDialogDataClass(val title: String = "",
                                 val onConfirm: () -> Unit = {},
                                 val onDismiss: () -> Unit = {})
 
-@Composable
-fun PublicChatTopRow(
-    title: String,
-    membersSize: Int?,
-    onSideDrawerShow: () -> Unit,
-    onNavigateUp: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        BackButton(onNavigateUp)
-        Spacer(modifier = Modifier.weight(0.1f))
-        Column(horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f)) {
-            Text(title,
-                color = MaterialTheme.colorScheme.onPrimary,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 25.sp,
-                maxLines = 1)
-            if (membersSize != null) {
-                Row(horizontalArrangement = Arrangement.Center) {
-                    Text(membersSize.toString())
-                    Icon(Icons.Filled.Person, contentDescription = null)
-                }
-            }
-        }
-        IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.3f)) {
-            Icon(Icons.Filled.Menu, contentDescription = null,
-                modifier = Modifier.size(50.dp))
-        }
-    }
-}
 
 @Composable
 fun ChatPictureComposable(picRef: File) {

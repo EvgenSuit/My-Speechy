@@ -1,5 +1,6 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -33,7 +34,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +96,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -166,8 +172,25 @@ fun ChatComposable(navController: NavHostController,
     var isFormExpanded by remember(isSearchFieldFocused) { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val showSearchedChats by remember(uiState.searchedChats) { mutableStateOf(uiState.searchedChats.isNotEmpty()) }
-    LaunchedEffect(Unit) {
+    val usersChatsListState = rememberLazyListState()
+    val allChatsListState = rememberLazyListState()
+    val firstVisibleChatFromAllChats by remember { derivedStateOf { allChatsListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    var isAppInBackground by rememberSaveable { mutableStateOf(false) }
+    LifecycleEventEffect(event = Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
+        viewModel.handleDynamicAllChatsLoading(isAppInBackground, firstVisibleChatFromAllChats)
+        isAppInBackground = false
+    }
+    LifecycleEventEffect(event = Lifecycle.Event.ON_PAUSE) {
+        isAppInBackground = true
+        viewModel.startOrStopListening(true)
+        focusManager.clearFocus(true)
+    }
+    LaunchedEffect(firstVisibleChatFromAllChats) {
+        if (!isAppInBackground) {
+            Log.d("FIRST VISIBLE INDEX", firstVisibleChatFromAllChats.toString())
+            viewModel.handleDynamicAllChatsLoading(false, firstVisibleChatFromAllChats)
+        }
     }
     Box(Modifier.pointerInput(Unit) {
         detectTapGestures { isFormExpanded = false }
@@ -208,9 +231,11 @@ fun ChatComposable(navController: NavHostController,
                     }
                     AnimatedContent(targetState = chatScreenPartSelected, label = "") { targetState ->
                         UserChats(
+                            listState = if (targetState == 0) usersChatsListState else allChatsListState,
                             chats = if (targetState == 0) uiState.chats else uiState.allPublicChats,
                             modifier = Modifier.blur(if (showSearchedChats) 10.dp else 0.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded),
                             chatScreenPartSelected = targetState,
+                            onFormatDate = viewModel::formatDate,
                             onGetChatPic = {chatId ->
                                 val otherUserId = chatId?.split("_")?.first { it != viewModel.userId }
                                 viewModel.getChatPic(otherUserId ?: "")
@@ -267,7 +292,8 @@ fun ChatComposable(navController: NavHostController,
                     }
                 }
         if (uiState.searchedChats.isNotEmpty()) {
-            SearchedChats(searchedChats = uiState.searchedChats) { searchedChatId ->
+            SearchedChats(searchedChats = uiState.searchedChats,
+                onFormatDate = viewModel::formatDate) { searchedChatId ->
                 viewModel.clearSearchedChats()
                 focusManager.clearFocus(true)
                 navController.navigate("chats/public/${searchedChatId}")
@@ -326,6 +352,7 @@ fun ChatSearch(
 @Composable
 fun SearchedChats(
     searchedChats: Map<String, Chat>,
+    onFormatDate: (Long) -> String,
     onGoToChat: (String) -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chats_padding)),
         modifier = Modifier
@@ -338,7 +365,7 @@ fun SearchedChats(
                     .fillMaxWidth()
                     .shadow(10.dp)
             ) {
-                ChatLastMessageContent(currChat = chat)
+                ChatLastMessageContent(currChat = chat, onFormatDate)
                 }
         }
     }
@@ -347,16 +374,21 @@ fun SearchedChats(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun UserChats(chats:  Map<String, Chat?>, chatScreenPartSelected: Int,
-              modifier: Modifier,
-      onGetChatPic: (String?) -> File,
-      onNavigateToChat: (Pair<String, String>) -> Unit,
-      onLeaveChat: (Pair<String, String>) -> Unit) {
+fun UserChats(
+    listState: LazyListState,
+    chats: Map<String, Chat?>,
+    chatScreenPartSelected: Int,
+    modifier: Modifier,
+    onFormatDate: (Long) -> String,
+    onGetChatPic: (String?) -> File,
+    onNavigateToChat: (Pair<String, String>) -> Unit,
+    onLeaveChat: (Pair<String, String>) -> Unit) {
     var selectedChatIndex by remember { mutableIntStateOf(-1) }
     val haptics = LocalHapticFeedback.current
     LazyColumn(
+        state = listState,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chats_padding)),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.messages_and_chats_spacing)),
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 9.dp)
@@ -390,7 +422,7 @@ fun UserChats(chats:  Map<String, Chat?>, chatScreenPartSelected: Int,
                                         }
                                     )
                             ) {
-                                ChatLastMessageContent(currChat = currChat)
+                                ChatLastMessageContent(currChat = currChat, onFormatDate)
                             }
                         }
                     if (selectedChatIndex == i) {
@@ -421,7 +453,8 @@ fun LeaveChatBox(
 }
 
 @Composable
-fun ChatLastMessageContent(currChat: Chat?) {
+fun ChatLastMessageContent(currChat: Chat?,
+                           onFormatDate: (Long) -> String,) {
     Column(modifier = Modifier
         .height(70.dp)
         .padding(10.dp),
@@ -431,13 +464,13 @@ fun ChatLastMessageContent(currChat: Chat?) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+        Row {
             if (currChat != null && currChat.timestamp != 0L) {
                 Text(
-                    SimpleDateFormat("hh:mm:ss").format(Date(currChat.timestamp)),
+                    onFormatDate(currChat.timestamp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(0.5f)
+                    modifier = Modifier.weight(1f)
                 )
             }
             if (currChat != null) {

@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,9 +53,10 @@ import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
-import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.components.EditMessageForm
+import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.utils.chat.PrivateChatViewModel
 import kotlinx.coroutines.launch
 
@@ -76,8 +77,8 @@ fun PrivateChatScreen(navController: NavHostController,
     val chatPicSize = dimensionResource(R.dimen.chat_pic_size)
     val listState = rememberLazyListState()
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
-    val lastVisibleItemIndex by remember(listState) { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
-    val firstVisibleItem by remember(listState) { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
+    val lastVisibleMessageIndex by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     var retryHash by remember { mutableStateOf(0) }
@@ -92,27 +93,24 @@ fun PrivateChatScreen(navController: NavHostController,
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
         //listen for the same messages as before if the app was previously in the background
-        viewModel.handleDynamicMessageLoading(isAppInBackground, lastVisibleItemIndex)
+        viewModel.handleDynamicMessageLoading(isAppInBackground, lastVisibleMessageIndex)
         isAppInBackground = false
     }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        isAppInBackground = true
         viewModel.startOrStopListening(true)
         focusManager.clearFocus(true)
-        isAppInBackground = true
     }
-    LaunchedEffect(lastVisibleItemIndex) {
+    LaunchedEffect(lastVisibleMessageIndex) {
         if (!isAppInBackground) {
-            viewModel.handleDynamicMessageLoading(false, lastVisibleItemIndex)
+            viewModel.handleDynamicMessageLoading(false, lastVisibleMessageIndex)
         }
     }
     LaunchedEffect(uiState.messages.entries.lastOrNull()) {
-        //if the last message was sent by the user, or if a new message was just sent and the
+        //if a new message was just sent and the
         //user is currently at the bottom of the chat, animate to the bottom
         if (!isAppInBackground) {
-            coroutineScope.launch {
-                listState.layoutInfo.viewportEndOffset
-                viewModel.scrollToBottom(listState, firstVisibleItem)
-            }
+            viewModel.scrollToBottom(listState, firstVisibleMessage)
         }
     }
     Column(modifier = Modifier
@@ -120,7 +118,8 @@ fun PrivateChatScreen(navController: NavHostController,
         .fillMaxSize(),
         verticalArrangement = Arrangement.Center
     ) {
-            Row(modifier = Modifier.fillMaxWidth()
+            Row(modifier = Modifier
+                .fillMaxWidth()
                 .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -150,24 +149,30 @@ fun PrivateChatScreen(navController: NavHostController,
                     color = MaterialTheme.colorScheme.onPrimary,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 1,
-                    fontSize = 25.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(0.45f)
                 )
             }
-        MessagesColumn(viewModel.userId, true, listState, uiState.messages,
-                    LocalContext.current.filesDir.path, Modifier.weight(1f),
-                    onEdit = {
-                        if (otherUserExists) {
-                            focusManager.clearFocus(true)
-                            messageToEdit = it
-                            val message = it.values.first()
-                            textFieldState = TextFieldValue(message.text,
-                                selection = TextRange(message.text.length))
-                            focusRequester.requestFocus()
-                        } },
-                    onDelete = { if(otherUserExists) viewModel.deleteMessage(it) }) {chatId ->
-                    navController.navigate("chats/private/$chatId")
-                }
+        if (uiState.messagesState == MessagesState.LOADING) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        }
+            MessagesColumn(viewModel.userId, true, listState, uiState.messages,
+                LocalContext.current.filesDir.path, Modifier.weight(1f),
+                onFormatDate = viewModel::formatMessageDate,
+                onEdit = {
+                    if (otherUserExists) {
+                        focusManager.clearFocus(true)
+                        messageToEdit = it
+                        val message = it.values.first()
+                        textFieldState = TextFieldValue(message.text,
+                            selection = TextRange(message.text.length))
+                        focusRequester.requestFocus()
+                    } },
+                onDelete = { coroutineScope.launch {
+                    if(otherUserExists) viewModel.deleteMessage(it)
+                } }) {chatId ->
+                navController.navigate("chats/private/$chatId")
+            }
 
             if (messageToEdit.isNotEmpty() && uiState.otherUsername != null) {
                 EditMessageForm(messageToEdit.values.first()) {
@@ -175,7 +180,7 @@ fun PrivateChatScreen(navController: NavHostController,
                     textFieldState = TextFieldValue()
                 }
             }
-            if (uiState.otherUsername != null) {
+            if (uiState.isMemberOfChat != null && uiState.otherUsername != null) {
                 BottomRow(textFieldState,
                     focusRequester = focusRequester,
                     modifier = Modifier.height(IntrinsicSize.Min),
@@ -186,6 +191,7 @@ fun PrivateChatScreen(navController: NavHostController,
                         if (messageToEdit.isEmpty()) {
                             textFieldState = TextFieldValue()
                             viewModel.sendMessage(text)
+                            listState.animateScrollToItem(0)
                         } else {
                             val messageToEditValue = messageToEdit.values.first()
                             val messageToEditKey = messageToEdit.keys.first()
