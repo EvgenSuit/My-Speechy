@@ -1,11 +1,16 @@
-package com.example.myspeechy.utils
+package com.example.myspeechy.presentation
 
 import android.widget.Toast
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.loggedOutDataStore
+import com.example.myspeechy.services.auth.AuthService
 import com.example.myspeechy.services.lesson.MainLessonServiceImpl
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -16,35 +21,53 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: MainLessonServiceImpl,
-    private val listenErrorToast: Toast
+    private val authService: AuthService,
+    private val listenErrorToast: Toast,
+    @Named("AuthDataStore")
+    private val authDataStore: DataStore<Preferences>
 ): ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
    init {
+       listenForAuthState()
        viewModelScope.launch {
-           val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
-               .values.toList().flatten()
-           lessonServiceImpl.trackRemoteProgress({ if (Firebase.auth.currentUser != null) listenErrorToast.show() }) { data ->
-               //If error listening, the lesson list doesn't get changed
-               var newLessonList = lessonList.map { lesson ->if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
-               viewModelScope.launch {
-                   newLessonList = handleAvailability(newLessonList)
-                   _uiState.update {
-                       UiState(newLessonList.map { lesson ->
-                           lessonServiceImpl.convertToLessonItem(lesson)
-                       })
-                   }
-               }
-           }
+           handleProgressLoading()
        }
    }
-
+    private fun listenForAuthState() {
+        authService.listenForAuthState {
+            viewModelScope.launch {
+                authDataStore.edit { loggedOut ->
+                    loggedOut[loggedOutDataStore] = true
+                }
+            }
+        }
+    }
+    private suspend fun handleProgressLoading() {
+        val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
+            .values.toList().flatten()
+        lessonServiceImpl.trackRemoteProgress({
+            if (Firebase.auth.currentUser != null) listenErrorToast.show()
+        }) { data ->
+            //If error listening, the lesson list doesn't get changed
+            var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
+            viewModelScope.launch {
+                newLessonList = handleAvailability(newLessonList)
+                _uiState.update {
+                    UiState(newLessonList.map { lesson ->
+                        lessonServiceImpl.convertToLessonItem(lesson)
+                    })
+                }
+            }
+        }
+    }
     private suspend fun handleAvailability(list: List<Lesson>): List<Lesson> {
         val lessonList = list.toMutableList()
         for (i in lessonList.indices) {

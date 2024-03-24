@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
-import com.example.myspeechy.utils.lesson.meditation.MeditationLessonItemViewModel
+import com.example.myspeechy.presentation.lesson.meditation.MeditationLessonItemViewModel
 import kotlin.time.Duration.Companion.seconds
 
     @Composable

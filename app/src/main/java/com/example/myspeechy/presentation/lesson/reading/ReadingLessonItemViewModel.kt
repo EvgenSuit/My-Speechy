@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils.lesson.reading
+package com.example.myspeechy.presentation.lesson.reading
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle

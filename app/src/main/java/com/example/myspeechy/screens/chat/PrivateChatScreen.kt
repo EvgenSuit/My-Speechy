@@ -42,7 +42,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -57,7 +56,7 @@ import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
-import com.example.myspeechy.utils.chat.PrivateChatViewModel
+import com.example.myspeechy.presentation.chat.PrivateChatViewModel
 import kotlinx.coroutines.launch
 
 @Composable

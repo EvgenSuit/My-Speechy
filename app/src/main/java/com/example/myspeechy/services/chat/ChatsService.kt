@@ -214,16 +214,16 @@ class ChatsServiceImpl(
     suspend fun deletePublicChat(chatId: String) {
         deletePublicChatUseCase(chatId)
     }
-    suspend fun checkIfIsAdmin(chatId: String, onReceived: (Boolean) -> Unit) {
-        checkIfIsAdminUseCase(chatId) {onReceived(it)}
+    suspend fun checkIfIsAdmin(chatId: String): Boolean {
+        return checkIfIsAdminUseCase(chatId)
     }
 
     suspend fun leavePrivateChat(chatId: String) {
         leavePrivateChatUseCase(chatId)
     }
 
-    suspend fun leavePublicChat(chatId: String) {
-        leavePublicChatUseCase(chatId)
+    suspend fun leavePublicChat(chatId: String, revokeMembership: Boolean) {
+        leavePublicChatUseCase(chatId, revokeMembership)
     }
     fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }

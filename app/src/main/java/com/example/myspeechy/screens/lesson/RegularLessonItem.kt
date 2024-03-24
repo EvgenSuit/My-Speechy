@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
-import com.example.myspeechy.utils.lesson.RegularLessonItemViewModel
+import com.example.myspeechy.presentation.lesson.RegularLessonItemViewModel
 
 @Composable
 fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),

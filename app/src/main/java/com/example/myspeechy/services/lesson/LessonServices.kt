@@ -1,12 +1,14 @@
 package com.example.myspeechy.services.lesson
 
 import android.content.res.AssetManager
-import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.helpers.LessonServiceHelpers
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
@@ -75,24 +77,32 @@ class RegularLessonServiceImpl: LessonService {
     }
 }
 
-class MainLessonServiceImpl: LessonService {
+class MainLessonServiceImpl(private val firestoreRef: FirebaseFirestore,
+    private val auth: FirebaseAuth): LessonService {
     override fun trackRemoteProgress(onListenError: () -> Unit,
         onDataReceived: (List<Int>) -> Unit) {
-        val docRef = Firebase.firestore.collection(userId).document("lesson")
-            .collection("items")
-        docRef.addSnapshotListener{docs, e ->
-            if (docs == null) {
-                onDataReceived(listOf())
-                return@addSnapshotListener
-            }
+        val docRef = firestoreRef.collection("users").document(userId).collection("lessons")
+            .document("items")
+        docRef.addSnapshotListener{snapshot, e ->
             if (e != null) {
+                if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    auth.currentUser?.delete()
+                    auth.signOut()
+                }
                 onListenError()
                 onDataReceived(listOf())
                 return@addSnapshotListener
             }
+            if (snapshot == null || !snapshot.exists()) {
+                auth.currentUser?.delete()
+                auth.signOut()
+                onDataReceived(listOf())
+                return@addSnapshotListener
+            }
             val data = mutableListOf<Int>()
-            for (doc in docs.documents) {
-                data.add(doc.id.toInt())
+            val keys = snapshot.data?.keys ?: return@addSnapshotListener
+            for (k in keys) {
+                data.add(k.toInt())
             }
             onDataReceived(data)
         }

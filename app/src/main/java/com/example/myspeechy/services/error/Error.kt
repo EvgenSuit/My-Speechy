@@ -12,7 +12,3 @@ enum class PasswordError: Error {
     NOT_ENOUGH_DIGITS,
     IS_NOT_MIXED_CASE
 }
-
-enum class MessageError: Error {
-
-}

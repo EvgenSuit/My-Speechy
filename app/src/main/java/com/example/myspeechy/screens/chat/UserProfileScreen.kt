@@ -1,13 +1,11 @@
 package com.example.myspeechy.screens.chat
 
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -55,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -65,27 +59,20 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CommonTextField
-import com.example.myspeechy.utils.chat.PictureState
-import com.example.myspeechy.utils.chat.UserProfileViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
-import com.skydoves.cloudy.Cloudy
+import com.example.myspeechy.presentation.chat.PictureState
+import com.example.myspeechy.presentation.chat.UserProfileViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.launch
 
 @Composable
 fun UserProfileScreen(
     onOkClick: () -> Unit,
-    onLogout: () -> Unit,
     viewModel: UserProfileViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -101,7 +88,7 @@ fun UserProfileScreen(
         mutableStateOf(uiState.user?.info)
     }
     LaunchedEffect(Unit) {
-        viewModel.startOrStopListening(false, onLogout)
+        viewModel.startOrStopListening(false)
     }
     LaunchedEffect(uiState.userManagementError) {
         if (uiState.userManagementError.isNotEmpty()) {
@@ -237,7 +224,7 @@ fun UserProfileScreen(
     }
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.startOrStopListening(true, onLogout)
+            viewModel.startOrStopListening(true)
         }
     }
 }

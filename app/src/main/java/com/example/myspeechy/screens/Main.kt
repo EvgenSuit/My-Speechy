@@ -50,13 +50,13 @@ import androidx.navigation.navArgument
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.data.lesson.LessonItem
-import com.example.myspeechy.dataStore
+import com.example.myspeechy.navBarDataStore
+import com.example.myspeechy.presentation.MainViewModel
 import com.example.myspeechy.screens
 import com.example.myspeechy.screens.lesson.MeditationLessonItem
 import com.example.myspeechy.screens.lesson.ReadingLessonItem
 import com.example.myspeechy.screens.lesson.RegularLessonItem
 import com.example.myspeechy.showNavBarDataStore
-import com.example.myspeechy.utils.MainViewModel
 
 @Composable
 fun MainScreen(navController: NavHostController = rememberNavController()) {
@@ -66,7 +66,7 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
         ?.route in screens.map { it.route }
     LaunchedEffect(showNavBar) {
-        context.dataStore.edit {navBar ->
+        context.navBarDataStore.edit { navBar ->
             navBar[showNavBarDataStore] = showNavBar
         }
     }

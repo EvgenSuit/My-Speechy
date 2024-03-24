@@ -1,16 +1,9 @@
 package com.example.myspeechy.useCases
 
-import com.example.myspeechy.utils.chat.getOtherUserId
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
+import android.util.Log
+import com.example.myspeechy.presentation.chat.getOtherUserId
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.getValue
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -18,29 +11,24 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Locale
 
-private val database = Firebase.database.reference
-private val userId = Firebase.auth.currentUser!!.uid
-class LeavePrivateChatUseCase {
+class LeavePrivateChatUseCase(
+    private val userId: String?,
+    private val database: DatabaseReference
+) {
     suspend operator fun invoke(chatId: String) {
+        if (userId == null) return
         val otherUserId = chatId.getOtherUserId(userId)
-        database.child("users")
+        val snapshot = database.child("users")
             .child(otherUserId)
             .child("private_chats")
             .child(chatId)
-            .addListenerForSingleValueEvent(object : ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    //remove messages if the other user has already deleted the chat for themselves
-                    if (!snapshot.exists()) {
-                        database.child("messages")
-                            .child(chatId)
-                            .removeValue()
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-
-                }
-            })
+            .get().await()
+        //remove messages if the other user has already left the chat
+        if (!snapshot.exists()) {
+            database.child("messages")
+                .child(chatId)
+                .removeValue().await()
+        }
         database.child("users")
             .child(userId)
             .child("private_chats")
@@ -53,12 +41,16 @@ class LeavePrivateChatUseCase {
     }
 }
 
-class LeavePublicChatUseCase {
-    suspend operator fun invoke(chatId: String) {
-        database.child("members")
-            .child(chatId)
-            .child(userId)
-            .removeValue().await()
+class LeavePublicChatUseCase(private val userId: String?,
+                             private val database: DatabaseReference) {
+    suspend operator fun invoke(chatId: String, revokeMembership: Boolean = true) {
+        if (userId == null) return
+        if (revokeMembership) {
+            database.child("members")
+                .child(chatId)
+                .child(userId)
+                .removeValue().await()
+        }
         database.child("users")
             .child(userId)
             .child("public_chats")
@@ -67,24 +59,32 @@ class LeavePublicChatUseCase {
     }
 }
 
-class JoinPublicChatUseCase {
-    operator fun invoke(chatId: String) {
+class JoinPublicChatUseCase(
+    private val userId: String?,
+    private val database: DatabaseReference) {
+    suspend operator fun invoke(chatId: String) {
+        if (userId == null) return
         database.child("members")
             .child(chatId)
-            .child(userId).setValue(true)
+            .child(userId).setValue(true).await()
         database.child("users")
             .child(userId)
             .child("public_chats")
             .child(chatId)
-            .setValue(true)
+            .setValue(true).await()
     }
 }
-class DeletePublicChatUseCase {
+class DeletePublicChatUseCase(private val database: DatabaseReference) {
     suspend operator fun invoke(chatId: String) {
+        Log.d("REMOVING", "CHAT")
         removeChat(chatId)
+        Log.d("REMOVED CHAT", "")
         removeMessages(chatId)
+        Log.d("REMOVED MESSAGES", "")
         removeMembers(chatId)
+        Log.d("REMOVED MEMBERS", "")
         revokeAdminPermissions(chatId)
+        Log.d("REMOVED ADMIN", "")
     }
     private suspend fun revokeAdminPermissions(chatId: String) {
         database.child("admins")
@@ -104,22 +104,22 @@ class DeletePublicChatUseCase {
     private suspend fun removeChat(chatId: String) {
         database.child("public_chats")
             .child(chatId)
-            .removeValue()
-            .await()
+            .removeValue().await()
     }
 }
-class CheckIfIsAdminUseCase {
-    suspend operator fun invoke(chatId: String, onReceived: (Boolean) -> Unit) {
+class CheckIfIsAdminUseCase(private val userId: String?,
+                            private val database: DatabaseReference) {
+    suspend operator fun invoke(chatId: String): Boolean {
         val admin = database.child("admins")
             .child(chatId)
             .get().await()
-        onReceived(admin.getValue<String>() == userId)
+        Log.d("REMOVING", "INSIDE OF CHECK")
+        return admin.getValue<String>() == userId
     }
 }
 
 class FormatDateUseCase {
     operator fun invoke(timestamp: Long): String {
-
         var targetDateFormat = ""
         val currentDate = LocalDateTime.now()
         val messageDateFormatted = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()

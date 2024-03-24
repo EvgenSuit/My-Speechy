@@ -206,7 +206,7 @@ class PublicChatServiceImpl(
             .setValue(chat)
     }
 
-    fun joinChat(chatId: String) {
+    suspend fun joinChat(chatId: String) {
         joinPublicChatUseCase(chatId)
     }
 

@@ -3,9 +3,8 @@ package com.example.myspeechy.services.chat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.core.net.toUri
+import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.example.myspeechy.services.auth.AuthService
-import com.example.myspeechy.utils.chat.getOtherUserId
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -34,10 +33,6 @@ class UserProfileServiceImpl(private val authService: AuthService) {
     val userId = Firebase.auth.currentUser!!.uid
     private var userListener: ValueEventListener? = null
     private var picListener: ValueEventListener? = null
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    fun listenForAuthState(onLogout: (Boolean) -> Unit) {
-        firebaseAuth.addAuthStateListener { onLogout(it.currentUser == null) }
-    }
 
     private fun listener(
         onCancelled: (Int) -> Unit,
@@ -181,6 +176,8 @@ class UserProfileServiceImpl(private val authService: AuthService) {
     }
     suspend fun deleteUser() {
         authService.removeProfilePics(userId)
+        authService.revokeMembership()
+        authService.deleteRdbUser()
         authService.deleteFirestoreData(userId)
         authService.deleteUser()
     }

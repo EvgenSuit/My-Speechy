@@ -1,6 +1,5 @@
-package com.example.myspeechy.utils.chat
+package com.example.myspeechy.presentation.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
@@ -27,27 +26,35 @@ class ChatsViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     val userId = chatsService.userId
     fun startOrStopListening(removeListeners: Boolean) {
-        viewModelScope.launch {
-            listOf("private", "public").forEach { type ->
-                val hasChats = chatsService.checkIfHasChats(type)
-                if (!hasChats) {
-                    _uiState.update { it.copy(chats = it.chats.filterValues { v -> v?.type != type }) }
+        try {
+            viewModelScope.launch {
+                listOf("private", "public").forEach { type ->
+                    val hasChats = chatsService.checkIfHasChats(type)
+                    if (!hasChats) {
+                        _uiState.update { it.copy(chats = it.chats.filterValues { v -> v?.type != type }) }
+                    }
                 }
             }
+            //listen for chats of which the current user is a member of
+            listenForPublicChats(removeListeners)
+            listenForPrivateChats(removeListeners)
+            //listen for all public chats
+            if (removeListeners) listenForAllPublicChats(remove = true)
+        } catch (e: Exception) {
+
         }
-        //listen for chats of which the current user is a member of
-        listenForPublicChats(removeListeners)
-        listenForPrivateChats(removeListeners)
-        //listen for all public chats
-        if (removeListeners) listenForAllPublicChats(remove = true)
     }
     fun handleDynamicAllChatsLoading(loadOnResume: Boolean = false,
                                       firstVisibleChatIndex: Int?) {
-        chatsService.handleDynamicAllChatsLoading(loadOnResume,
-            _uiState.value.maxChatBatchIndex,
-            firstVisibleChatIndex,
-            onRemove = {listenForAllPublicChats(remove = true)},
-            onLoad = {listenForAllPublicChats(it, false)})
+        try {
+            chatsService.handleDynamicAllChatsLoading(loadOnResume,
+                _uiState.value.maxChatBatchIndex,
+                firstVisibleChatIndex,
+                onRemove = {listenForAllPublicChats(remove = true)},
+                onLoad = {listenForAllPublicChats(it, false)})
+        } catch (e: Exception){
+
+        }
     }
     private fun listenForAllPublicChats(firstIndex: Int = 0, remove: Boolean) {
         if (!remove) {
@@ -165,29 +172,33 @@ class ChatsViewModel @Inject constructor(
     }
     fun leaveChat(type: String, chatId: String) {
         viewModelScope.launch {
-            if (type == "private") {
-                chatsService.leavePrivateChat(chatId)
-            }
-            if (type == "public") {
-                chatsService.checkIfIsAdmin(chatId) {isAdmin ->
+            try {
+                if (type == "private") {
+                    chatsService.leavePrivateChat(chatId)
+                }
+                if (type == "public") {
+                    val isAdmin = chatsService.checkIfIsAdmin(chatId)
                     if (isAdmin) {
-                        _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass(
-                                title = "Are you sure?",
-                                text = "If you leave the chat it will be deleted since you're its admin",
-                                onConfirm = {viewModelScope.launch {
-                                        chatsService.deletePublicChat(chatId)
-                                        chatsService.leavePublicChat(chatId)
-                                        _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
-                                        }
-                                },
-                                onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
-                            )) }
+                        _uiState.update { it.copy(
+                            chatsError = "",
+                            alertDialogDataClass = AlertDialogDataClass(
+                            title = "Are you sure?",
+                            text = "If you leave the chat it will be deleted since you're its admin",
+                            onConfirm = {viewModelScope.launch {
+                                chatsService.deletePublicChat(chatId)
+                                chatsService.leavePublicChat(chatId, false)
+                                _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
+                            }
+                            },
+                            onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
+                        )) }
                     } else {
-                        viewModelScope.launch {
-                            chatsService.leavePublicChat(chatId)
-                        }
+                        chatsService.leavePublicChat(chatId, true)
                     }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
+                _uiState.update { it.copy(chatsError = e.message!!) }
             }
         }
     }
@@ -224,6 +235,7 @@ class ChatsViewModel @Inject constructor(
         val picsId: String = "",
         val maxChatBatchIndex: Int = 0,
         val alertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
-        val storageErrorMessage: String = ""
+        val storageErrorMessage: String = "",
+        val chatsError: String = ""
     )
 }

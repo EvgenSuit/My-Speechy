@@ -71,7 +71,7 @@ import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
-import com.example.myspeechy.utils.chat.PublicChatViewModel
+import com.example.myspeechy.presentation.chat.PublicChatViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -187,27 +187,29 @@ fun PublicChatScreen(navController: NavHostController,
                         textFieldState = TextFieldValue()
                     }
                 }
-                if (uiState.chatLoaded && !uiState.joined) {
-                    JoinButton(viewModel::joinChat, Modifier)
-                }
-                else if (uiState.chatLoaded) {
-                    BottomRow(textFieldState,
-                        focusRequester = focusRequester,
-                        modifier = Modifier.heightIn(max = 200.dp),
-                        onFieldValueChange = { textFieldState = it }) {
-                        coroutineScope.launch {
-                            if (messageToEdit.isEmpty()) {
-                                viewModel.sendMessage(textFieldState.text)
-                            } else {
-                                viewModel.editMessage(
-                                    mapOf(
-                                        messageToEdit.keys.first() to messageToEdit.values.first()
-                                            .copy(text = textFieldState.text)
+                if (uiState.chat.title.isNotEmpty()) {
+                    if (uiState.chatLoaded && !uiState.joined) {
+                        JoinButton(viewModel::joinChat, Modifier)
+                    }
+                    else if (uiState.chatLoaded) {
+                        BottomRow(textFieldState,
+                            focusRequester = focusRequester,
+                            modifier = Modifier.heightIn(max = 200.dp),
+                            onFieldValueChange = { textFieldState = it }) {
+                            coroutineScope.launch {
+                                if (messageToEdit.isEmpty()) {
+                                    viewModel.sendMessage(textFieldState.text)
+                                } else {
+                                    viewModel.editMessage(
+                                        mapOf(
+                                            messageToEdit.keys.first() to messageToEdit.values.first()
+                                                .copy(text = textFieldState.text)
+                                        )
                                     )
-                                )
+                                }
+                                textFieldState = TextFieldValue()
+                                messageToEdit = mapOf()
                             }
-                            textFieldState = TextFieldValue()
-                            messageToEdit = mapOf()
                         }
                     }
                 }
