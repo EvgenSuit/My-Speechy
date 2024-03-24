@@ -171,7 +171,7 @@ class PrivateChatServiceImpl(
             ref.addValueEventListener(messagesStateListener!!)
         }
     }
-    fun listenIfIsMemberOfChat(chatId: String, onReceived: (Boolean) -> Unit, remove: Boolean) {
+    fun listenIfIsMemberOfChat(userId: String, chatId: String, onReceived: (Boolean) -> Unit, remove: Boolean) {
         val ref = usersRef.child(userId)
             .child("private_chats")
             .child(chatId)

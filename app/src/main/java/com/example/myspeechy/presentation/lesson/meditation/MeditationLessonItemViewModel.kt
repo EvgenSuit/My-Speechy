@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils.lesson.meditation
+package com.example.myspeechy.presentation.lesson.meditation
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

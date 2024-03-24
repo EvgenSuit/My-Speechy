@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils.lesson
+package com.example.myspeechy.presentation.lesson
 
 import android.content.res.AssetManager
 import androidx.lifecycle.SavedStateHandle

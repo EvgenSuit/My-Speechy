@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils.chat
+package com.example.myspeechy.presentation.chat
 
 import java.util.Locale
 

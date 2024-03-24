@@ -3,6 +3,9 @@ package com.example.myspeechy.modules
 import android.content.Context
 import android.content.res.AssetManager
 import android.widget.Toast
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.example.myspeechy.authDataStore
 import com.example.myspeechy.data.lesson.LessonDb
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.meditation.MeditationStatsDb
@@ -26,6 +29,7 @@ import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import dagger.Module
@@ -54,6 +58,10 @@ object ViewModelModule {
         return MeditationStatsDb.getDb(context)
     }
     @Provides
+    @Named("AuthDataStore")
+    fun provideAuthDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.authDataStore
+    @Provides
     fun provideMeditationStatsRepository(db: MeditationStatsDb): MeditationStatsRepository {
         return MeditationStatsRepository(db.meditationStatsDao())
     }
@@ -65,7 +73,7 @@ object ViewModelModule {
 
     @Provides
     fun provideMainLessonServiceImpl(): MainLessonServiceImpl {
-        return MainLessonServiceImpl()
+        return MainLessonServiceImpl(Firebase.firestore, Firebase.auth)
     }
     @Provides
     fun provideReadingLessonServiceImpl(): ReadingLessonServiceImpl {
@@ -89,9 +97,11 @@ object ViewModelModule {
         return ChatsServiceImpl(
             Firebase.database.reference,
             Firebase.auth,
-            LeavePrivateChatUseCase(), LeavePublicChatUseCase(),
-            JoinPublicChatUseCase(), CheckIfIsAdminUseCase(),
-            DeletePublicChatUseCase(),
+            provideLeavePrivateChatUseCase(),
+            provideLeavePublicChatUseCase(),
+            provideJoinPublicChatUseCase(),
+            provideCheckIfIsAdminUseCase(),
+            provideDeletePublicChatUseCase(),
             FormatDateUseCase()
         )
     }
@@ -101,8 +111,8 @@ object ViewModelModule {
             Firebase.auth,
             Firebase.storage.reference,
             Firebase.database.reference,
-            LeavePublicChatUseCase(),
-            JoinPublicChatUseCase(),
+            provideLeavePublicChatUseCase(),
+            provideJoinPublicChatUseCase(),
             FormatDateUseCase()
         )
     }
@@ -111,10 +121,29 @@ object ViewModelModule {
         Firebase.auth,
         Firebase.storage.reference,
         Firebase.database.reference,
-        LeavePrivateChatUseCase(),
+        provideLeavePrivateChatUseCase(),
         FormatDateUseCase())
+
     @Provides
-    fun provideUserProfileServiceImpl(): UserProfileServiceImpl = UserProfileServiceImpl(AuthService(Firebase.auth, Firebase.database.reference.child("users")))
+    fun provideCheckIfIsAdminUseCase(): CheckIfIsAdminUseCase = CheckIfIsAdminUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
+    @Provides
+    fun provideDeletePublicChatUseCase(): DeletePublicChatUseCase = DeletePublicChatUseCase(Firebase.database.reference)
+    @Provides
+    fun provideJoinPublicChatUseCase(): JoinPublicChatUseCase = JoinPublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
+    @Provides
+    fun provideLeavePublicChatUseCase(): LeavePublicChatUseCase = LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
+    @Provides
+    fun provideLeavePrivateChatUseCase(): LeavePrivateChatUseCase = LeavePrivateChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
+    @Provides
+    fun provideUserProfileServiceImpl(): UserProfileServiceImpl =
+        UserProfileServiceImpl(AuthService(Firebase.auth,
+            Firebase.database.reference,
+            Firebase.firestore, Firebase.storage.reference,
+            provideLeavePublicChatUseCase(),
+            provideLeavePrivateChatUseCase(),
+            provideCheckIfIsAdminUseCase(),
+            provideDeletePublicChatUseCase()
+        ))
     @Provides
     fun provideFilesDirPath(@ApplicationContext context: Context): String = context.cacheDir.path
 

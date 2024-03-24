@@ -57,8 +57,8 @@ import com.example.myspeechy.components.advancedShadow
 import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
-import com.example.myspeechy.utils.auth.AuthState
-import com.example.myspeechy.utils.auth.AuthViewModel
+import com.example.myspeechy.presentation.auth.AuthState
+import com.example.myspeechy.presentation.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -154,7 +154,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
                                viewModel.logIn()
                                withContext(Dispatchers.Main) {
                                    if (exceptionState.authState == AuthState.SUCCESS) {
-                                       focusManager.clearFocus()
+                                       focusManager.clearFocus(true)
                                        onNavigateToMain()
                                        Toasty.success(context, "Logged In", Toast.LENGTH_SHORT, true).show()
                                    } else if (exceptionState.authState == AuthState.FAILURE) {
@@ -168,7 +168,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
                                viewModel.signUp()
                                withContext(Dispatchers.Main) {
                                    if (exceptionState.authState == AuthState.SUCCESS) {
-                                       focusManager.clearFocus()
+                                       focusManager.clearFocus(true)
                                        onNavigateToMain()
                                        Toasty.success(context, "Signed Up", Toast.LENGTH_SHORT, true).show()
                                    } else if (exceptionState.authState == AuthState.FAILURE) {

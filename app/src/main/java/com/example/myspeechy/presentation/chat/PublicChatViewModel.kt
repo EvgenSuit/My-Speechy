@@ -1,9 +1,10 @@
-package com.example.myspeechy.utils.chat
+package com.example.myspeechy.presentation.chat
 
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
@@ -13,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -143,8 +145,6 @@ class PublicChatViewModel @Inject constructor(
             val name = username.getValue<String>()
             _uiState.update { it.copy(members =
                 it.members.mapValues { (k, v) -> if (k == id && name != null) name else v},
-            //else it.members.filterKeys { k -> k == id },
-
                 messages = it.messages.mapValues { (_, v) ->
                     if (v.sender == id && v.senderUsername != name) v.copy(senderUsername = name) else v }) }
         }, remove)
@@ -205,7 +205,9 @@ class PublicChatViewModel @Inject constructor(
     }
 
     fun joinChat() {
-        chatServiceImpl.joinChat(chatId)
+        viewModelScope.launch {
+            chatServiceImpl.joinChat(chatId)
+        }
     }
     private fun updateStorageErrorMessage(e: String) {
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }

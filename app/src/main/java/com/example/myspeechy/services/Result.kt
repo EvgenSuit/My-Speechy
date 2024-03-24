@@ -1,6 +1,6 @@
 package com.example.myspeechy.services
 
-import com.example.myspeechy.utils.RootError
+import com.example.myspeechy.presentation.RootError
 
 sealed interface Result<out D, out E: RootError> {
     data class Success<out D, out E: RootError>(val data: D): Result<D, E>

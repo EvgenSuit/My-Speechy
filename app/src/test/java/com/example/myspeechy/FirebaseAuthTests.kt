@@ -56,8 +56,8 @@ class FirebaseAuthTests {
         return mockedFirestore
     }
     fun mockRdb() = mockk<DatabaseReference> {
-        every { child(userId).setValue(User(username, "")) } returns mockTask()
-        every { child(userId).child("profilePicUpdated").get() } returns mockTask()
+        every {child("users").child(userId).setValue(User(username, "")) } returns mockTask()
+        every {child("users").child(userId).child("profilePicUpdated").get() } returns mockTask()
     }
 
     @Test
@@ -89,7 +89,7 @@ class FirebaseAuthTests {
     fun rdbTest() {
         val mockedAuth = mockAuth()
         val mockedRef = mockRdb()
-        val authService = spyk(AuthService(mockedAuth, rdbUsersRef = mockedRef), recordPrivateCalls = true)
+        val authService = spyk(AuthService(mockedAuth, rdbRef = mockedRef), recordPrivateCalls = true)
         runBlocking {
             authService.createRealtimeDbUser()
         }
@@ -152,7 +152,7 @@ class FirebaseAuthTests {
             userRef.delete().await()
         }*/
         every { mockedAuth.currentUser?.delete() } returns mockTask()
-        every { mockedRdb.child(userId).removeValue() } returns mockTask()
+        every { mockedRdb.child("users").child(userId).removeValue() } returns mockTask()
         listOf("normalQuality", "lowQuality").forEach { quality ->
             every { mockedStorage.child("profilePics")
                 .child(userId).child(quality).child("$userId.jpg").delete() } returns mockTask()

@@ -1,4 +1,4 @@
-package com.example.myspeechy.utils.auth
+package com.example.myspeechy.presentation.auth
 
 import android.content.Intent
 import android.content.IntentSender

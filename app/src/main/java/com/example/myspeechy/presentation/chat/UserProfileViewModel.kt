@@ -1,6 +1,5 @@
-package com.example.myspeechy.utils.chat
+package com.example.myspeechy.presentation.chat
 
-import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -36,13 +35,9 @@ class UserProfileViewModel @Inject constructor(
     val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
     private val lowQualityPicRef = File(lowQualityPicDir, "$userId.jpg")
 
-    fun startOrStopListening(removeListeners: Boolean, onLogout: () -> Unit) {
+    fun startOrStopListening(removeListeners: Boolean) {
         listenForUser(removeListeners)
         listenForUserPicture(removeListeners)
-        listenForAuthState(onLogout)
-    }
-    private fun listenForAuthState(onLogout: () -> Unit) {
-        userProfileServiceImpl.listenForAuthState { if (it) onLogout() }
     }
     private fun listenForUser(remove: Boolean) {
         userProfileServiceImpl.userListener(userId, {updateErrorCode(it)}, {user ->
@@ -131,15 +126,14 @@ class UserProfileViewModel @Inject constructor(
     fun deleteAccount() {
         _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(
             title = "Are you sure?",
-            text = "Account will be deleted along with all your progress and conversations",
+            text = "Account will be deleted along with all your progress, conversations and chats",
             onConfirm = {
                 viewModelScope.launch {
                     try {
                         _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = true, userManagementError = "") }
                         userProfileServiceImpl.deleteUser()
-                        logout()
                     } catch (e: Exception) {
-                        _uiState.update { it.copy(userManagementError = "Couldn't delete account", deletingAccount = false) }
+                        _uiState.update { it.copy(userManagementError = "Couldn't delete account: ${e.message}", deletingAccount = false) }
                     }
                 }
             },

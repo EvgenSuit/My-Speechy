@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.components.readingItemButtonBarGradient
-import com.example.myspeechy.utils.lesson.reading.ReadingLessonItemViewModel
+import com.example.myspeechy.presentation.lesson.reading.ReadingLessonItemViewModel
 import kotlinx.coroutines.Job
 import kotlin.math.round
 

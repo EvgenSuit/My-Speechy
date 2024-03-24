@@ -3,7 +3,11 @@ package com.example.myspeechy.modules
 import android.content.Context
 import com.example.myspeechy.services.auth.AuthService
 import com.example.myspeechy.services.auth.GoogleAuthService
-import com.example.myspeechy.utils.auth.AuthViewModel
+import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.presentation.auth.AuthViewModel
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
@@ -30,9 +34,14 @@ object AuthViewModelModule {
     @ViewModelScoped
     @Provides
     fun provideAuthService(): AuthService {
-        return AuthService(Firebase.auth, Firebase.database.reference.child("users"),
+        return AuthService(Firebase.auth, Firebase.database.reference,
             Firebase.firestore,
-            Firebase.storage.reference)
+            Firebase.storage.reference,
+            LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
+            LeavePrivateChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
+            CheckIfIsAdminUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
+            DeletePublicChatUseCase(Firebase.database.reference)
+        )
     }
 
     @ViewModelScoped

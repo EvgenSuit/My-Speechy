@@ -1,6 +1,6 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -13,20 +13,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,17 +33,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -55,7 +47,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -77,10 +68,7 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -88,11 +76,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -111,28 +97,25 @@ import coil.request.ImageRequest
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.components.ChatAlertDialog
-import com.example.myspeechy.components.CommonTextField
 import com.example.myspeechy.components.CreateOrChangePublicChatForm
 import com.example.myspeechy.data.chat.Chat
-import com.example.myspeechy.dataStore
+import com.example.myspeechy.navBarDataStore
 import com.example.myspeechy.screens
 import com.example.myspeechy.showNavBarDataStore
-import com.example.myspeechy.utils.chat.ChatsViewModel
+import com.example.myspeechy.presentation.chat.ChatsViewModel
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.delay
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 
 
 @Composable
 fun ChatsScreen(
-    navController: NavHostController = rememberNavController(),
-    onLogout: () -> Unit) {
+    navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
         ?.route in screens.map { it.route }
     LaunchedEffect(showNavBar) {
-        context.dataStore.edit {navBar ->
+        context.navBarDataStore.edit { navBar ->
             navBar[showNavBarDataStore] = showNavBar
         }
     }
@@ -157,7 +140,7 @@ fun ChatsScreen(
             }
             composable("userProfile/{userId}",
                 arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
-                UserProfileScreen({ navController.navigateUp() }, onLogout)
+                UserProfileScreen({ navController.navigateUp() })
             }
     }
 }
@@ -166,6 +149,7 @@ fun ChatsScreen(
 fun ChatComposable(navController: NavHostController,
                    viewModel: ChatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
     val interactionSource = remember { MutableInteractionSource() }
     val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
@@ -188,13 +172,15 @@ fun ChatComposable(navController: NavHostController,
     }
     LaunchedEffect(firstVisibleChatFromAllChats) {
         if (!isAppInBackground) {
-            Log.d("FIRST VISIBLE INDEX", firstVisibleChatFromAllChats.toString())
             viewModel.handleDynamicAllChatsLoading(false, firstVisibleChatFromAllChats)
         }
     }
-    Box(Modifier.pointerInput(Unit) {
-        detectTapGestures { isFormExpanded = false }
-    }) {
+    LaunchedEffect(uiState.chatsError) {
+        if (uiState.chatsError.isNotEmpty()) {
+            Toasty.error(context, uiState.chatsError, Toast.LENGTH_SHORT,true)
+        }
+    }
+    Box {
         Column(
             Modifier
                 .fillMaxSize()
@@ -243,7 +229,7 @@ fun ChatComposable(navController: NavHostController,
                             onNavigateToChat = {(type, chatId) ->
                                 navController.navigate("chats/$type/$chatId")},
                             onLeaveChat = { (type, chatId) ->
-                                viewModel.leaveChat(type, chatId)})
+                                viewModel.leaveChat(type, chatId) })
                     }
                     if (uiState.alertDialogDataClass.title.isNotEmpty()) {
                         ChatAlertDialog(alertDialogDataClass = uiState.alertDialogDataClass)

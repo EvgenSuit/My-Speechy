@@ -6,15 +6,19 @@ import android.content.IntentSender
 import android.content.pm.ApplicationInfo
 import android.util.Patterns
 import com.example.myspeechy.data.chat.User
-import com.example.myspeechy.services.error.Error
 import com.example.myspeechy.services.Result
 import com.example.myspeechy.services.error.EmailError
 import com.example.myspeechy.services.error.PasswordError
+import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.useCases.LeavePublicChatUseCase
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuth.AuthStateListener
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,9 +26,21 @@ import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 
 class AuthService(private val auth: FirebaseAuth,
-                   private val rdbUsersRef: DatabaseReference? = null,
+                   private val rdbRef: DatabaseReference? = null,
                    private val firestoreRef: FirebaseFirestore? = null,
-                   private val storageRef: StorageReference? = null) {
+                   private val storageRef: StorageReference? = null,
+    private val leavePublicChatUseCase: LeavePublicChatUseCase,
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
+    private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
+    private val deletePublicChatUseCase: DeletePublicChatUseCase) {
+    private lateinit var authStateListener: AuthStateListener
+    fun listenForAuthState( onLoggedOut: () -> Unit) {
+        authStateListener = AuthStateListener { if (it.currentUser == null) {
+            it.removeAuthStateListener(authStateListener)
+            onLoggedOut()
+        } }
+        auth.addAuthStateListener(authStateListener)
+    }
     fun validatePassword(password: String): Result<String, PasswordError> {
          if (password.isEmpty()) {
                 return Result.Error(PasswordError.IS_EMPTY)
@@ -58,11 +74,11 @@ class AuthService(private val auth: FirebaseAuth,
     suspend fun logInUser(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password).await()
     }
-     suspend fun checkIfUserExists(): Boolean? = rdbUsersRef?.child(auth.uid!!)?.get()?.await()?.exists()
+     suspend fun checkIfUserExists(): Boolean? = rdbRef?.child("users")?.child(auth.uid!!)?.get()?.await()?.exists()
      fun logOut() = auth.signOut()
      suspend fun createRealtimeDbUser() {
          val currUser = auth.currentUser
-         rdbUsersRef?.child(currUser!!.uid)
+         rdbRef?.child("users")?.child(currUser!!.uid)
              ?.setValue(User(currUser.displayName ?: "", ""))?.await()
      }
      suspend fun createFirestoreUser() {
@@ -73,20 +89,43 @@ class AuthService(private val auth: FirebaseAuth,
              }
          }
      }
+    suspend fun deleteRdbUser() {
+        val userId = auth.currentUser!!.uid
+        rdbRef?.child("users")?.child(userId)?.removeValue()?.await()
+    }
      suspend fun deleteUser() {
-         val userId = auth.currentUser!!.uid
-         rdbUsersRef?.child(userId)?.removeValue()?.await()
          auth.currentUser!!.delete().await()
      }
+    suspend fun revokeMembership() {
+        val userId = auth.currentUser!!.uid
+        if (rdbRef != null) {
+            val ref = rdbRef.child("users").child(userId)
+            val privateChats = ref.child("private_chats").get().await()
+            val publicChats = ref.child("public_chats").get().await()
+            for (privateChat in privateChats.children) {
+                val id = privateChat.key
+                if (id != null) {
+                    leavePrivateChatUseCase(id)
+                }
+            }
+            for (publicChat in publicChats.children) {
+                val id = publicChat.key
+                if (id != null) {
+                    if (checkIfIsAdminUseCase(id)) deletePublicChatUseCase(id)
+                    leavePublicChatUseCase(id, false)
+                }
+            }
+        }
+    }
      suspend fun removeProfilePics(userId: String) {
-         if (rdbUsersRef == null || storageRef == null) return
-         val profilePicsExist = rdbUsersRef.child(userId).child("profilePicUpdated").get().await()?.exists()
+         if (rdbRef == null || storageRef == null) return
+         val profilePicsExist = rdbRef.child("users").child(userId).child("profilePicUpdated").get().await()?.exists()
          if (profilePicsExist == true) {
-                 val picsRef = storageRef.child("profilePics")
-                     .child(userId)
-                 listOf("normalQuality", "lowQuality").forEach { quality ->
-                     picsRef.child(quality).child("$userId.jpg").delete().await()
-                 }
+             val picsRef = storageRef.child("profilePics")
+                 .child(userId)
+             listOf("normalQuality", "lowQuality").forEach { quality ->
+                 picsRef.child(quality).child("$userId.jpg").delete().await()
+             }
              }
      }
      suspend fun deleteFirestoreData(userId: String) {
@@ -107,7 +146,6 @@ class AuthService(private val auth: FirebaseAuth,
                  ref1.delete().await()
              }
          userRef.delete().await()
-         Result
      }
 
 }

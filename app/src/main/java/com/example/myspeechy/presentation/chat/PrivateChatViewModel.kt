@@ -1,25 +1,20 @@
-package com.example.myspeechy.utils.chat
+package com.example.myspeechy.presentation.chat
 
 import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.services.chat.PictureStorageError
 import com.example.myspeechy.services.chat.PrivateChatServiceImpl
-import com.google.accompanist.permissions.PermissionState
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -62,7 +57,7 @@ class PrivateChatViewModel @Inject constructor(
                 listenForMessages(topIndex, false)})
     }
     private fun listenIfIsMemberOfChat(remove: Boolean) {
-        chatServiceImpl.listenIfIsMemberOfChat(chatId, {isMemberOfChat ->
+        chatServiceImpl.listenIfIsMemberOfChat(userId, chatId, {isMemberOfChat ->
             _uiState.update { it.copy(isMemberOfChat = isMemberOfChat) }
         }, remove)
     }
@@ -70,11 +65,12 @@ class PrivateChatViewModel @Inject constructor(
     private fun listenForUsername(id: String, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {}, {username ->
             val name = username.getValue<String>()
+            Log.d("USERNAME", name.toString())
             _uiState.update {
                 it.copy(messages = it.messages.mapValues { (_, v) -> if (v.sender == id) v.copy(senderUsername = name) else v })
             }
             _uiState.update {
-                if (id == userId) it.copy(currUsername = name!!) else it.copy(otherUsername = name)
+                if (id == userId) it.copy(currUsername = name) else it.copy(otherUsername = name)
             }
         }, remove)
     }
@@ -146,13 +142,17 @@ class PrivateChatViewModel @Inject constructor(
         }, remove)
     }
     suspend fun sendMessage(text: String) {
-        if (_uiState.value.isMemberOfChat == true) {
+        val isMemberOfChat = _uiState.value.isMemberOfChat
+        if (isMemberOfChat != null && !isMemberOfChat) {
             chatServiceImpl.joinChat(chatId)
         }
-        val timestamp = chatServiceImpl.sendMessage(chatId, _uiState.value.currUsername, text)
-        chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
-            _uiState.value.otherUsername,
-            _uiState.value.chat.copy(lastMessage = text, timestamp = timestamp))
+        val currUsername = _uiState.value.currUsername
+        if (currUsername != null) {
+            val timestamp = chatServiceImpl.sendMessage(chatId, currUsername, text)
+            chatServiceImpl.updateLastMessage(chatId, _uiState.value.currUsername,
+                _uiState.value.otherUsername,
+                _uiState.value.chat.copy(lastMessage = text, timestamp = timestamp))
+        }
     }
     suspend fun editMessage(message: Map<String, Message>) {
         chatServiceImpl.editMessage(chatId, message)
@@ -203,7 +203,7 @@ class PrivateChatViewModel @Inject constructor(
         val isMemberOfChat: Boolean? = null,
         val topMessageBatchIndex: Int = 0,
         val picId: String = "",
-        val currUsername: String = "",
+        val currUsername: String? = "",
         val otherUsername: String? = "",
         val storageErrorMessage: String = "",
         val messagesState: MessagesState = MessagesState.IDLE,
