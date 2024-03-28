@@ -1,5 +1,7 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -10,9 +12,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,7 +25,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +57,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -61,17 +69,21 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
+import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
+import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.ChatPictureComposable
 import com.example.myspeechy.components.CreateOrChangePublicChatForm
 import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
+import com.example.myspeechy.components.ScrollDownButton
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.presentation.chat.PublicChatViewModel
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -80,14 +92,17 @@ fun PublicChatScreen(navController: NavHostController,
                       viewModel: PublicChatViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
     val membersListState = rememberLazyListState()
-    val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val lastVisibleMessageIndex by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
-    val lastVisibleMemberIndex by remember { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
+    val showScrollDownButton by remember {
+        derivedStateOf { uiState.messages.isNotEmpty() && firstVisibleMessage?.index != 0
+                && listState.canScrollBackward && !listState.isScrollInProgress } }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
         //listen for the same messages and members as before if the app was previously in the background
@@ -112,6 +127,11 @@ fun PublicChatScreen(navController: NavHostController,
             viewModel.scrollToBottom(listState, firstVisibleMessage)
         }
     }
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage.isNotEmpty()) {
+            Toasty.error(context, uiState.errorMessage, Toasty.LENGTH_SHORT, true)
+        }
+    }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showChangeChatInfoForm by remember(drawerState.isClosed) { mutableStateOf(false) }
     var textFieldState by remember {
@@ -128,8 +148,10 @@ fun PublicChatScreen(navController: NavHostController,
                     admin = uiState.admin,
                     isAdmin = uiState.isAdmin,
                     chat = uiState.chat,
+                    joined = uiState.joined,
                     members = uiState.members, recomposeIds = uiState.picsRecomposeIds, picPaths = uiState.picPaths,
                     membersListState = membersListState,
+                    onLeave = viewModel::leaveChat,
                     onChangeChatInfo = {showChangeChatInfoForm = true},
                     onNavigate = { userId ->
                         if (userId != viewModel.userId) {
@@ -143,7 +165,7 @@ fun PublicChatScreen(navController: NavHostController,
             }) {
             Column(modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.onPrimaryContainer)) {
+                .background(MaterialTheme.colorScheme.background)) {
                 PublicChatTopRow(
                     title = if (uiState.chat.title.isEmpty() && uiState.chatLoaded) "Deleted chat" else uiState.chat.title,
                     membersSize = if (uiState.chat.timestamp.toInt() != 0) uiState.members.size else null,
@@ -155,31 +177,51 @@ fun PublicChatScreen(navController: NavHostController,
                 if (uiState.messagesState == MessagesState.LOADING) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 }
-                if (uiState.messagesState != MessagesState.EMPTY) {
-                    MessagesColumn(viewModel.userId, uiState.joined, listState, uiState.messages,
-                        LocalContext.current.cacheDir.path, Modifier.weight(1f),
-                        onFormatDate = viewModel::formatMessageDate,
-                        onEdit = {
-                            focusManager.clearFocus(true)
-                            messageToEdit = it
-                            val message = it.values.first()
-                            textFieldState = TextFieldValue(
-                                message.text,
-                                selection = TextRange(message.text.length)
-                            )
-                            focusRequester.requestFocus()
-                        },
-                        onDelete = {
-                            coroutineScope.launch { viewModel.deleteMessage(it) }
-                        }) { chatId ->
-                        navController.navigate("chats/private/$chatId")
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterHorizontally), contentAlignment = Alignment.BottomCenter) {
+                    if (uiState.messagesState != MessagesState.EMPTY) {
+                        MessagesColumn(
+                            false,
+                            viewModel.userId,
+                            uiState.joined,
+                            listState,
+                            uiState.messages,
+                            LocalContext.current.cacheDir.path,
+                            onFormatDate = viewModel::formatMessageDate,
+                            onEdit = {
+                                focusManager.clearFocus(true)
+                                messageToEdit = it
+                                val message = it.values.first()
+                                textFieldState = TextFieldValue(
+                                    message.text,
+                                    selection = TextRange(message.text.length)
+                                )
+                                focusRequester.requestFocus()
+                            },
+                            onDelete = {
+                                coroutineScope.launch { viewModel.deleteMessage(it) }
+                            }) { chatId ->
+                            navController.navigate("chats/private/$chatId")
+                        }
+                        if (showScrollDownButton) {
+                            ScrollDownButton(
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(25.dp)) {
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
+                            }
+                        }
+                    } else {
+                        Text("No messages here yet",
+                            color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .align(Alignment.Center))
                     }
-                } else {
-                    Text("No messages here yet",
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .align(Alignment.CenterHorizontally))
                 }
                 if (messageToEdit.isNotEmpty()) {
                     EditMessageForm(messageToEdit.values.first()) {
@@ -229,6 +271,9 @@ fun PublicChatScreen(navController: NavHostController,
                 })
         }
     }
+    if (uiState.joined && uiState.alertDialogDataClass.title.isNotEmpty()) {
+        ChatAlertDialog(uiState.alertDialogDataClass)
+    }
     DisposableEffect(Unit) {
         onDispose {
             viewModel.startOrStopListening(true)
@@ -240,23 +285,33 @@ fun PublicChatScreen(navController: NavHostController,
 fun SideDrawer(
     admin: String?,
     isAdmin: Boolean,
+    joined: Boolean,
     chat: Chat,
     members: Map<String, String>,
     recomposeIds: Map<String, String>,
     picPaths: Map<String, String>,
     membersListState: LazyListState,
     onChangeChatInfo: () -> Unit,
-    onNavigate: (String) -> Unit,
-) {
+    onLeave: () -> Unit,
+    onNavigate: (String) -> Unit) {
     Column(
         Modifier
             .fillMaxWidth(0.7f)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.primary)
-            .padding(top = 15.dp),
+            .background(MaterialTheme.colorScheme.background)
+            .padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
         if (chat.title.isNotEmpty()) {
             ChatInfoColumn(isAdmin, chat, onChangeChatInfo)
+        }
+        if (joined) {
+            IconButton(onClick = onLeave) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp,
+                    tint = MaterialTheme.colorScheme.error,
+                    contentDescription = null,
+                    modifier = Modifier.size(dimensionResource(R.dimen.back_button_size)))
+            }
         }
         MembersColumn(admin = admin, members = members, recomposeIds = recomposeIds, picPaths = picPaths,
             listState = membersListState,
@@ -269,21 +324,29 @@ fun ChatInfoColumn(
     isAdmin: Boolean,
     chat: Chat,
     onChangeChatInfo: () -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(0.7f))
+            .clip(RoundedCornerShape(corner))
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(1f))
             .clickable { if (isAdmin) onChangeChatInfo() }
-            .padding(15.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        verticalArrangement = if (chat.description.isNotEmpty()) Arrangement.spacedBy(10.dp) else Arrangement.Center) {
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(chat.title, textAlign = TextAlign.Center, fontSize = 25.sp)
-            if (isAdmin) Icon(Icons.Filled.Edit, contentDescription = null)
+            Text(chat.title,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                fontSize = 25.sp)
+            if (isAdmin) Icon(Icons.Filled.Edit,
+                tint = MaterialTheme.colorScheme.onBackground,
+                contentDescription = null)
         }
-        Text(chat.description, textAlign = TextAlign.Center)
+        Text(chat.description,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center)
     }
 }
 
@@ -306,14 +369,13 @@ fun MembersColumn(
         items(members.size) {i ->
             ElevatedCard(
                 Modifier
-                    .clickable {
-                        if (usernames[i] != "Deleted user") onNavigate(userIds[i])
-                    }
-                    .padding(2.dp)) {
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)))
+                    .padding(2.dp)
+                    .clickable { if (usernames[i] != "Deleted user") onNavigate(userIds[i]) }) {
                 Row(
                     Modifier
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .fillMaxSize()
                         .padding(5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start) {
@@ -323,7 +385,8 @@ fun MembersColumn(
                         ChatPictureComposable(picRef = File(picPath ?: ""))
                     }
                     Column(Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(usernames[i], fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (userId == admin) {
                             Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
@@ -339,33 +402,37 @@ fun PublicChatTopRow(
     title: String,
     membersSize: Int?,
     onSideDrawerShow: () -> Unit,
-    onNavigateUp: () -> Unit
-) {
+    onNavigateUp: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp),
+            .padding(5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        BackButton(onNavigateUp, Modifier.weight(0.01f))
+        BackButton(onNavigateUp)
         Spacer(modifier = Modifier.weight(0.01f))
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f)) {
             Text(title,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = MaterialTheme.colorScheme.primary,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1)
             if (membersSize != null) {
-                Row(horizontalArrangement = Arrangement.Center) {
-                    Text(membersSize.toString())
-                    Icon(Icons.Filled.Person, contentDescription = null)
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)) {
+                    Text(membersSize.toString(),
+                        color = MaterialTheme.colorScheme.onBackground)
+                    Icon(Icons.Filled.Person,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        contentDescription = null)
                 }
             }
         }
         IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.2f)) {
-            Icon(Icons.Filled.Menu, contentDescription = null,
+            Icon(Icons.Filled.Menu,
+                tint = MaterialTheme.colorScheme.onBackground,
+                contentDescription = null,
                 modifier = Modifier.size(50.dp))
         }
     }

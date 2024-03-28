@@ -31,7 +31,8 @@
         <meta-data
             android:name="DEBUG_GOOGLE_OAUTH_API_KEY"
             android:value="${DEBUG_GOOGLE_OAUTH_API_KEY}" />
-        <meta-data android:name="RELEASE_GOOGLE_OAUTH_API_KEY"
+        <meta-data
+            android:name="RELEASE_GOOGLE_OAUTH_API_KEY"
             android:value="${RELEASE_GOOGLE_OAUTH_API_KEY}" />
     </application>
 

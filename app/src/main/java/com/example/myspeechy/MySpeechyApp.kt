@@ -1,6 +1,7 @@
 package com.example.myspeechy
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -8,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +54,8 @@ import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationStatsScreen
 import com.example.myspeechy.screens.chat.ChatsScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 
@@ -66,15 +71,14 @@ open class NavScreens(val route: String, val icon: ImageVector, val label: Strin
 }
 val screens = listOf(NavScreens.Main, NavScreens.Stats, NavScreens.ChatsScreen)
 
-@OptIn(FlowPreview::class)
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
-    val startDestination = if (FirebaseAuth.getInstance().currentUser == null) "auth" else NavScreens.Main.route
+    var startDestination by rememberSaveable {
+        mutableStateOf(if (Firebase.auth.currentUser == null) "auth" else NavScreens.Main.route)
+    }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currDestination = navBackStackEntry?.destination
-    var showNavBar by remember {
-        mutableStateOf(false)
-    }
+    var showNavBar by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         context.navBarDataStore.edit { navBar ->
@@ -85,16 +89,16 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
         }
     }
     LaunchedEffect(Unit) {
-        context.authDataStore.edit { auth ->
-            auth[loggedOutDataStore] = false
-        }
         context.authDataStore.data.collectLatest {
             val loggedOut = it[loggedOutDataStore] ?: false
-            if (loggedOut) {
+            if (loggedOut && startDestination != "auth") {
                 context.navBarDataStore.edit { navBar ->
                     navBar[showNavBarDataStore] = false
                 }
+                startDestination = "auth"
                 navController.navigate("auth") { popUpTo(0) }
+            } else if (!loggedOut && startDestination != NavScreens.Main.route) {
+                startDestination = NavScreens.Main.route
             }
         }
     }
@@ -119,17 +123,21 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                                 } },
                             icon = { Icon(
                                     screen.icon,
-                                    null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                    contentDescription = null,
                                     modifier = Modifier.padding(bottom = 10.dp)
                                 ) },
                             label = { if (selected) Text(
                                     screen.label,
+                                color = MaterialTheme.colorScheme.onBackground,
                                     fontSize = 20.sp
                                 ) else Text("") },
                             selectedContentColor = Color.White,
                             modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
                                 .offset(y = if (!selected) 10.dp else 0.dp)
                                 .weight(1f)
+
                         )
                     }
                 }
@@ -167,7 +175,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     }
                     composable("auth") {
                         AuthScreen(onNavigateToMain = {
-                            navController.navigate(NavScreens.Main.route) { popUpTo(0) }
+                            //navController.navigate(NavScreens.Main.route) { popUpTo(0) }
                         })
                     }
                 }

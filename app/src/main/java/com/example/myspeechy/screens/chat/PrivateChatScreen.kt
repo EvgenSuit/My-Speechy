@@ -1,9 +1,12 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -33,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -40,6 +44,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,9 +59,11 @@ import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
 import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.components.MessagesColumn
+import com.example.myspeechy.components.ScrollDownButton
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.presentation.chat.PrivateChatViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -80,12 +87,13 @@ fun PrivateChatScreen(navController: NavHostController,
     val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    var retryHash by remember { mutableStateOf(0) }
+    val showScrollDownButton by remember {
+        derivedStateOf { uiState.messages.isNotEmpty() && firstVisibleMessage?.index != 0
+                && listState.canScrollBackward && !listState.isScrollInProgress}
+    }
     val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
         .data(viewModel.picRef.path)
-        .setParameter("retry_hash", retryHash)
         .build())
-    if (painter.state is AsyncImagePainter.State.Error) { retryHash++ }
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
@@ -97,8 +105,8 @@ fun PrivateChatScreen(navController: NavHostController,
     }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         isAppInBackground = true
-        viewModel.startOrStopListening(true)
         focusManager.clearFocus(true)
+        viewModel.startOrStopListening(true)
     }
     LaunchedEffect(lastVisibleMessageIndex) {
         if (!isAppInBackground) {
@@ -113,12 +121,17 @@ fun PrivateChatScreen(navController: NavHostController,
         }
     }
     Column(modifier = Modifier
-        .background(MaterialTheme.colorScheme.onPrimaryContainer)
+        .background(MaterialTheme.colorScheme.background)
         .fillMaxSize(),
         verticalArrangement = Arrangement.Center
     ) {
             Row(modifier = Modifier
                 .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        if (uiState.otherUsername != null) navController.navigate("userProfile/${viewModel.otherUserId}")
+                    }
+                }
                 .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -131,8 +144,7 @@ fun PrivateChatScreen(navController: NavHostController,
                         modifier = Modifier
                             .size(chatPicSize)
                             .weight(0.15f, fill = false)
-                            .clip(CircleShape)
-                            .clickable { navController.navigate("userProfile/${viewModel.otherUserId}") })
+                            .clip(CircleShape))
                 } else {
                     Image(painter = painterResource(R.drawable.user),
                         contentScale = ContentScale.Crop,
@@ -140,37 +152,63 @@ fun PrivateChatScreen(navController: NavHostController,
                         modifier = Modifier
                             .size(chatPicSize)
                             .clip(CircleShape)
-                            .clickable { if (otherUserExists) navController.navigate("userProfile/${viewModel.otherUserId}") }
                             .weight(0.15f, fill = false))
                 }
                 Spacer(modifier = Modifier.weight(0.05f))
                 Text(uiState.otherUsername ?: "Deleted account",
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 1,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(0.45f)
                 )
             }
-        if (uiState.messagesState == MessagesState.LOADING) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-            MessagesColumn(viewModel.userId, true, listState, uiState.messages,
-                LocalContext.current.filesDir.path, Modifier.weight(1f),
-                onFormatDate = viewModel::formatMessageDate,
-                onEdit = {
-                    if (otherUserExists) {
-                        focusManager.clearFocus(true)
-                        messageToEdit = it
-                        val message = it.values.first()
-                        textFieldState = TextFieldValue(message.text,
-                            selection = TextRange(message.text.length))
-                        focusRequester.requestFocus()
-                    } },
-                onDelete = { coroutineScope.launch {
-                    if(otherUserExists) viewModel.deleteMessage(it)
-                } }) {chatId ->
-                navController.navigate("chats/private/$chatId")
+            if (uiState.messagesState == MessagesState.LOADING) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .align(Alignment.CenterHorizontally), contentAlignment = Alignment.BottomCenter) {
+                if (uiState.messagesState != MessagesState.EMPTY && viewModel.userId != null) {
+                    MessagesColumn(
+                        true,
+                        viewModel.userId,
+                        true,
+                        listState,
+                        uiState.messages,
+                        LocalContext.current.filesDir.path,
+                        onFormatDate = viewModel::formatMessageDate,
+                        onEdit = {
+                            if (otherUserExists) {
+                                focusManager.clearFocus(true)
+                                messageToEdit = it
+                                val message = it.values.first()
+                                textFieldState = TextFieldValue(message.text,
+                                    selection = TextRange(message.text.length))
+                                focusRequester.requestFocus()
+                            } },
+                        onDelete = { coroutineScope.launch {
+                            if(otherUserExists) viewModel.deleteMessage(it)
+                        } }) {chatId ->
+                        navController.navigate("chats/private/$chatId")
+                    }
+                    if (showScrollDownButton) {
+                        ScrollDownButton(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(25.dp)) {
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    }
+                } else {
+                    Text("No messages here yet",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center))
+                }
             }
 
             if (messageToEdit.isNotEmpty() && uiState.otherUsername != null) {

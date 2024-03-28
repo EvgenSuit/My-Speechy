@@ -76,15 +76,10 @@ class JoinPublicChatUseCase(
 }
 class DeletePublicChatUseCase(private val database: DatabaseReference) {
     suspend operator fun invoke(chatId: String) {
-        Log.d("REMOVING", "CHAT")
         removeChat(chatId)
-        Log.d("REMOVED CHAT", "")
         removeMessages(chatId)
-        Log.d("REMOVED MESSAGES", "")
         removeMembers(chatId)
-        Log.d("REMOVED MEMBERS", "")
         revokeAdminPermissions(chatId)
-        Log.d("REMOVED ADMIN", "")
     }
     private suspend fun revokeAdminPermissions(chatId: String) {
         database.child("admins")
@@ -113,8 +108,7 @@ class CheckIfIsAdminUseCase(private val userId: String?,
         val admin = database.child("admins")
             .child(chatId)
             .get().await()
-        Log.d("REMOVING", "INSIDE OF CHECK")
-        return admin.getValue<String>() == userId
+        return admin.getValue(String::class.java) == userId
     }
 }
 

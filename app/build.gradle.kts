@@ -24,10 +24,12 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
+        resourceConfigurations.addAll(listOf("en"))
         }
 
     buildTypes {
         release {
+            isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -75,9 +77,6 @@ dependencies {
     //Coil (image display handler)
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil-svg:2.6.0")
-
-    //Blur
-    implementation("com.github.skydoves:cloudy:0.1.2")
 
     //Hilt
     implementation("com.google.dagger:hilt-android:$hilt_version")

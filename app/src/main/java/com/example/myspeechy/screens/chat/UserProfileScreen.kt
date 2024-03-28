@@ -1,6 +1,7 @@
 package com.example.myspeechy.screens.chat
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -63,8 +65,10 @@ import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
+import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CommonTextField
+import com.example.myspeechy.domain.chat.PictureStorageError
 import com.example.myspeechy.presentation.chat.PictureState
 import com.example.myspeechy.presentation.chat.UserProfileViewModel
 import es.dmoral.toasty.Toasty
@@ -73,12 +77,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun UserProfileScreen(
     onOkClick: () -> Unit,
+    onAccountDelete: () -> Unit,
     viewModel: UserProfileViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
-    val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     val placeholders = Pair("Username", "Description")
     val focusManager = LocalFocusManager.current
     var name by remember(uiState.user?.name) {
@@ -90,11 +94,17 @@ fun UserProfileScreen(
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
-    LaunchedEffect(uiState.userManagementError) {
-        if (uiState.userManagementError.isNotEmpty()) {
-            Toasty.error(context, uiState.userManagementError, Toast.LENGTH_SHORT, true).show()
+    LaunchedEffect(uiState.deletingAccount) {
+        if (uiState.deletingAccount) {
+            onAccountDelete()
         }
     }
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage.isNotEmpty()) {
+            Toasty.error(context, uiState.errorMessage, Toast.LENGTH_SHORT, true).show()
+        }
+    }
+    val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
     if (isCurrentUser)
         launcher = rememberLauncherForActivityResult(
@@ -104,8 +114,7 @@ fun UserProfileScreen(
             val imgBytes = img?.readBytes()
             img?.close()
             if (imgBytes != null) {
-                viewModel.writePicture(imgBytes, false, 40)
-                viewModel.writePicture(imgBytes.copyOf(), true, 15)
+                viewModel.writePicture(imgBytes)
             }
         }
     }
@@ -114,73 +123,65 @@ fun UserProfileScreen(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.onPrimaryContainer)
-                .padding(10.dp)
-                .blur(if (uiState.logginOut || uiState.deletingAccount) 5.dp else 0.dp),
+                .background(MaterialTheme.colorScheme.background)
+                .padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            ElevatedButton(onClick = onOkClick, modifier = Modifier.align(Alignment.Start)) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            Box(Modifier.fillMaxWidth()) {
+                BackButton(onOkClick)
             }
-            Box(Modifier.padding(top = 20.dp).size(picSize).clip(CircleShape)) {
-                    key(uiState.recomposePic) {
-                        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-                            .data(viewModel.normalQualityPicRef.path)
-                            .size(coil.size.Size.ORIGINAL)
-                            .build())
-                        if (viewModel.normalQualityPicRef.exists() &&
-                            uiState.pictureState != PictureState.DOWNLOADING) {
-                            Image(painter,
-                                contentScale = ContentScale.FillBounds,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .clickable {
-                                        if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
-                                            arrayOf("image/png", "image/jpeg")
-                                        )
-                                    }
-                                    .clip(CircleShape)
-                                    .fillMaxSize())
-                        }
-                        if((uiState.pictureState == PictureState.ERROR || painter.state is AsyncImagePainter.State.Error)) {
-                            Image(painter = painterResource(R.drawable.user),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .clickable {
-                                        launcher?.launch(
-                                            arrayOf("image/png", "image/jpeg")
-                                        )
-                                    }.fillMaxSize())
-                        }
-                        if (
-                            (uiState.pictureState == PictureState.DOWNLOADING || painter.state is AsyncImagePainter.State.Loading)) {
-                            CircularProgressIndicator(Modifier.align(Alignment.Center).size(50.dp))
+            key(uiState.recomposePic) {
+                Box(contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(top = 5.dp)
+                        .size(picSize)
+                        .clip(CircleShape)) {
+                    val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(context)
+                        .data(viewModel.normalQualityPicRef.path)
+                        .size(coil.size.Size.ORIGINAL)
+                        .build())
+                    if (viewModel.normalQualityPicRef.exists() &&
+                        uiState.pictureState != PictureState.DOWNLOADING) {
+                        UserProfilePicture(painter = painter) {
+                            if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
+                                arrayOf("image/png", "image/jpeg")
+                            )
                         }
                     }
+                    if((uiState.storageMessage.isNotEmpty() || painter.state is AsyncImagePainter.State.Error)) {
+                        UserProfilePicture(painter = painterResource(R.drawable.user)) {
+                            launcher?.launch(
+                                arrayOf("image/png", "image/jpeg")
+                            )
+                        }
+                    }
+                    if (uiState.pictureState == PictureState.DOWNLOADING || painter.state is AsyncImagePainter.State.Loading) {
+                        CircularProgressIndicator(Modifier.size(50.dp))
+                    }
                 }
+            }
             Column(
                 Modifier
                     .width(300.dp)
-                    .padding(top = 50.dp),
+                    .padding(top = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                AnimatedVisibility(name != null) {
+                AnimatedVisibility(!name.isNullOrEmpty()) {
                     if (isCurrentUser) {
-                        CommonTextField(value = name ?: "", onChange = {name = it}, placeholders = placeholders)
+                        name?.let { CommonTextField(value = it, onChange = {name = it}, placeholders = placeholders) }
                     } else {
-                        UserInfoTable(value = name ?: "")
+                        name?.let { UserInfoTable(value = it) }
                     }
                 }
-                AnimatedVisibility(info != null) {
+                AnimatedVisibility(!info.isNullOrEmpty()) {
                     if (isCurrentUser) {
-                        CommonTextField(value = info ?: "", onChange = {info = it}, last = true, placeholders = placeholders)
+                        info?.let { CommonTextField(value = it, onChange = {info = it}, last = true, placeholders = placeholders) }
                     }else {
-                        UserInfoTable(value = info ?: "")
+                        info?.let { UserInfoTable(value = it) }
                     }
                 }
             }
-
             AnimatedVisibility(uiState.pictureState == PictureState.UPLOADING) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
@@ -197,17 +198,16 @@ fun UserProfileScreen(
                 }
             }
             if (isCurrentUser) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp),
+                Column(verticalArrangement = Arrangement.spacedBy(40.dp),
                     modifier = Modifier.padding(top = 25.dp)) {
-                    AnimatedVisibility(
-                        uiState.pictureState != PictureState.UPLOADING &&
-                                uiState.pictureState != PictureState.IDLE && uiState.storageMessage.isEmpty(),
-                        enter = slideInHorizontally(), modifier = Modifier.padding(bottom = 0.dp)) {
+                    if (uiState.pictureState != PictureState.UPLOADING &&
+                        uiState.pictureState != PictureState.DOWNLOADING &&
+                        uiState.storageMessage.isEmpty()) {
                         ProfileActionButton(icon = Icons.Filled.Face, text = "Delete profile picture", viewModel::removeUserPicture)
                     }
-                    ProfileActionButton(icon = Icons.AutoMirrored.Filled.ExitToApp, text = "Log out", viewModel::logout)
-                    ProfileActionButton(icon = Icons.Filled.Delete, text = "Delete account") {
-                        viewModel.deleteAccount()
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ProfileActionButton(icon = Icons.AutoMirrored.Filled.ExitToApp, text = "Log out", viewModel::logout)
+                        ProfileActionButton(icon = Icons.Filled.Delete, text = "Delete account", viewModel::deleteAccount)
                     }
                 }
             }
@@ -215,42 +215,32 @@ fun UserProfileScreen(
                 ChatAlertDialog(alertDialogDataClass = uiState.chatAlertDialogDataClass)
             }
         }
-        AnimatedVisibility(uiState.logginOut) {
-            AccountStatusProgress("Logging out...")
-        }
-        AnimatedVisibility(uiState.deletingAccount) {
-            AccountStatusProgress("Deleting account...")
-        }
     }
     DisposableEffect(Unit) {
         onDispose {
+            focusManager.clearFocus(true)
             viewModel.startOrStopListening(true)
         }
     }
 }
 
 @Composable
-fun AccountStatusProgress(text: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(verticalArrangement = Arrangement.SpaceEvenly,
-            horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .height(250.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(10.dp)
-                ) {
-                    Text(text, color = MaterialTheme.colorScheme.onBackground)
-                    LinearProgressIndicator()
-                }
-    }
+fun UserProfilePicture(painter: Painter, onClick: () -> Unit) {
+    Image(painter,
+        contentScale = ContentScale.FillBounds,
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable { onClick() }
+    )
 }
 
 @Composable
 fun UserInfoTable(value: String) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
     Box(contentAlignment = Alignment.Center,
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(corner))
             .background(MaterialTheme.colorScheme.primary)
             .fillMaxWidth()) {
         Text(value, color = MaterialTheme.colorScheme.onPrimary,

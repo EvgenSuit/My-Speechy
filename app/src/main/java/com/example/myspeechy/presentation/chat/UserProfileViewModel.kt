@@ -1,15 +1,19 @@
 package com.example.myspeechy.presentation.chat
 
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
 import com.example.myspeechy.data.chat.User
-import com.example.myspeechy.services.chat.PictureStorageError
-import com.example.myspeechy.services.chat.UserProfileServiceImpl
+import com.example.myspeechy.domain.chat.DirectoryManager
+import com.example.myspeechy.domain.chat.ImageCompressor
+import com.example.myspeechy.domain.chat.PictureStorageError
+import com.example.myspeechy.domain.chat.UserProfileServiceImpl
 import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -23,7 +27,6 @@ import javax.inject.Named
 class UserProfileViewModel @Inject constructor(
     private val userProfileServiceImpl: UserProfileServiceImpl,
     filesDirPath: String,
-    @Named("ProfilePictureSizeError") private val storageSizeError: Toast,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val _uiState = MutableStateFlow(UserProfileUiState())
@@ -38,20 +41,21 @@ class UserProfileViewModel @Inject constructor(
     fun startOrStopListening(removeListeners: Boolean) {
         listenForUser(removeListeners)
         listenForUserPicture(removeListeners)
+        if (removeListeners) updateErrorMessage("")
     }
     private fun listenForUser(remove: Boolean) {
-        userProfileServiceImpl.userListener(userId, {updateErrorCode(it)}, {user ->
-             _uiState.update { it.copy(user = user.getValue<User>()) }
+        userProfileServiceImpl.userListener(userId, {updateErrorMessage(it)}, {user ->
+             _uiState.update { it.copy(user = user.getValue(User::class.java)) }
         }, remove)
     }
 
     //Listen for only normal quality image
     private fun listenForUserPicture(remove: Boolean) {
-        _uiState.update { it.copy(pictureState = PictureState.DOWNLOADING) }
+        updatePictureState(PictureState.DOWNLOADING)
         userProfileServiceImpl.userPictureListener(userId,
             normalQualityPicRef,
             dir = normalQualityPicDir,
-            onCancelled = {updateErrorCode(it)},
+            onCancelled = {updateErrorMessage(it)},
             onStorageFailure = {m ->
                 updateStorageMessage(m)
                 val errorMessage = _uiState.value.storageMessage
@@ -65,105 +69,128 @@ class UserProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     storageMessage = "",
                     recomposePic = UUID.randomUUID().toString(),
-                    pictureState = PictureState.SUCCESS
+                    pictureState = PictureState.IDLE
                 ) }
             }, remove)
     }
 
-    fun writePicture(imgBytes: ByteArray, lowQuality: Boolean, quality: Int) {
-        userProfileServiceImpl.compressPicture(imgBytes, quality, {compressedBytes ->
-            userProfileServiceImpl.createPicDir(if (lowQuality) lowQualityPicDir else normalQualityPicDir)
-            if (lowQuality) {
-                lowQualityPicRef.writeBytes(compressedBytes)
-            } else {
-                normalQualityPicRef.writeBytes(compressedBytes)
+    fun writePicture(imgBytes: ByteArray) {
+        try {
+            updateErrorMessage()
+            viewModelScope.launch {
+                for (lowQuality in listOf(true, false)) {
+                    if (_uiState.value.errorMessage != "Couldn't compress picture. Perhaps it's too big") {
+                        val compressedBytes = ImageCompressor.compressPicture(imgBytes, lowQuality)
+                        if (compressedBytes != null && compressedBytes.isNotEmpty()) {
+                            DirectoryManager.createPicDir(if (lowQuality) lowQualityPicDir else normalQualityPicDir)
+                            if (lowQuality) {
+                                lowQualityPicRef.writeBytes(compressedBytes)
+                            } else {
+                                normalQualityPicRef.writeBytes(compressedBytes)
+                            }
+                            uploadUserPicture(lowQuality)
+                        } else {
+                            if (!_uiState.value.loggingOut) {
+                                updateErrorMessage()
+                                delay(1) //without it the launched effect in the screen doesn't work
+                                updateErrorMessage("Couldn't compress picture. Perhaps it's too big")
+                            }
+                        }
+                    }
             }
-            uploadUserPicture(lowQuality)
-        }, {
-            if (!_uiState.value.logginOut) {
-                storageSizeError.show()
             }
-        })
+        } catch (e: Exception){
+            updateErrorMessage(e.message!!)
+        }
     }
 
-    init {
-        userProfileServiceImpl.createPicDir(lowQualityPicDir)
-        userProfileServiceImpl.createPicDir(normalQualityPicDir)
-    }
     suspend fun changeUserInfo(newName: String, newInfo: String) {
-        val nameIsSame = _uiState.value.user?.name == newName
-        val infoIsSame = _uiState.value.user?.info == newInfo
-        if (!nameIsSame) {
-            userProfileServiceImpl.changeUsername(newName)
-        }
-        if (!infoIsSame) {
-            userProfileServiceImpl.changeUserInfo(newInfo)
+        try {
+            val nameIsSame = _uiState.value.user?.name == newName
+            val infoIsSame = _uiState.value.user?.info == newInfo
+            if (!nameIsSame) {
+                userProfileServiceImpl.changeUsername(newName)
+            }
+            if (!infoIsSame) {
+                userProfileServiceImpl.changeUserInfo(newInfo)
+            }
+        } catch (e: Exception) {
+            updateErrorMessage(e.message!!)
         }
     }
     private fun uploadUserPicture(lowQuality: Boolean) {
-            _uiState.update { it.copy(pictureState = PictureState.UPLOADING) }
-            userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef,
-                lowQuality, {
-                    updateStorageMessage(it)
-                    _uiState.update { it.copy(pictureState = PictureState.ERROR) }
-                }) {
-                _uiState.update { it.copy(pictureState = PictureState.SUCCESS, storageMessage = "" ) }
+        viewModelScope.launch {
+            try {
+                updatePictureState(PictureState.UPLOADING)
+                userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef, lowQuality)
+                updatePictureState(PictureState.IDLE)
+                updateStorageMessage("")
+            } catch (e: Exception) {
+                updatePictureState(PictureState.ERROR)
+                updateErrorMessage(e.message!!)
             }
+        }
     }
     fun removeUserPicture() {
-        listOf(true, false).forEach {lowQuality ->
-            userProfileServiceImpl.removeUserPicture(lowQuality, {updateStorageMessage(it)}, { m ->
-                _uiState.update { it.copy(storageMessage = m) }
-                if (lowQuality) File(lowQualityPicDir).deleteRecursively()
-                else File(normalQualityPicDir).deleteRecursively()
-            })
+        viewModelScope.launch {
+            try {
+                listOf(true, false).forEach {lowQuality ->
+                    userProfileServiceImpl.removeUserPicture(lowQuality)
+                    if (lowQuality) File(lowQualityPicDir).deleteRecursively()
+                    else File(normalQualityPicDir).deleteRecursively()
+                    _uiState.update { it.copy(storageMessage = PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name) }
+                }
+            } catch (e: Exception) {
+                updateErrorMessage(e.message!!)
+            }
         }
     }
     fun logout() {
-        _uiState.update { it.copy(logginOut = true, deletingAccount = false) }
-        userProfileServiceImpl.logout()
-    }
-    fun deleteAccount() {
-        _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(
-            title = "Are you sure?",
-            text = "Account will be deleted along with all your progress, conversations and chats",
-            onConfirm = {
-                viewModelScope.launch {
-                    try {
-                        _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = true, userManagementError = "") }
-                        userProfileServiceImpl.deleteUser()
-                    } catch (e: Exception) {
-                        _uiState.update { it.copy(userManagementError = "Couldn't delete account: ${e.message}", deletingAccount = false) }
-                    }
-                }
-            },
-            onDismiss = {_uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass()) }}))
+        try {
+            _uiState.update { it.copy(loggingOut = true, deletingAccount = false) }
+            userProfileServiceImpl.logout()
+        } catch (e: Exception) {
+            updateErrorMessage(e.message!!)
         }
     }
-    private fun updateErrorCode(e: Int) {
-        _uiState.update { it.copy(errorCode = e) }
+    fun deleteAccount() {
+        _uiState.update { it.copy(
+            deletingAccount = false,
+            chatAlertDialogDataClass = AlertDialogDataClass(
+            title = "Are you sure?",
+            text = "Account will be deleted along with all your progress, conversations and chats of which you're an admin",
+            onConfirm = {
+                _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = true, userManagementError = "") }
+            },
+            onDismiss = {_uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = false) }}))
+        }
+    }
+    private fun updateErrorMessage(e: String = "") {
+        _uiState.update { it.copy(errorMessage = e) }
     }
     private fun updateStorageMessage(e: String) {
         _uiState.update { it.copy(storageMessage = e.formatStorageErrorMessage(),
             pictureState = PictureState.ERROR) }
     }
+    private fun updatePictureState(state: PictureState) {
+        _uiState.update { it.copy(pictureState = state) }
+    }
 
     data class UserProfileUiState(
         val user: User? = User(),
-        val logginOut: Boolean = false,
+        val loggingOut: Boolean = false,
         val deletingAccount: Boolean = false,
         val recomposePic: String = "",
-        val errorCode: Int = 0,
         val chatAlertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
         val userManagementError: String = "",
         val storageMessage: String = "",
-        val pictureState: PictureState = PictureState.IDLE
+        val pictureState: PictureState = PictureState.DOWNLOADING,
+        val errorMessage: String = ""
     )
 }
 enum class PictureState {
     IDLE,
     DOWNLOADING,
     UPLOADING,
-    SUCCESS,
     ERROR,
 }

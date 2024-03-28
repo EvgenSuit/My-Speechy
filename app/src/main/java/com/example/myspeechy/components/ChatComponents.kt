@@ -1,6 +1,5 @@
 package com.example.myspeechy.components
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -32,15 +29,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -67,7 +60,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -82,7 +74,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -91,36 +82,16 @@ import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-@Composable
-fun BackButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier) {
-    /*ElevatedButton(onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ),
-        modifier = modifier.width(60.dp)) {
-        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null,
-            modifier = Modifier.fillMaxWidth())
-    }*/
-    IconButton(onClick = onClick) {
-        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-    }
-}
 
 @Composable
 fun MessagesColumn(
+    isPrivate: Boolean,
     userId: String,
     joined: Boolean,
     listState: LazyListState,
     messages: Map<String, Message>,
     filesDir: String,
-    modifier: Modifier,
     onFormatDate: (Long) -> String,
     onEdit: (Map<String, Message>) -> Unit,
     onDelete: (Map<String, Message>) -> Unit,
@@ -132,7 +103,7 @@ fun MessagesColumn(
     }
     LazyColumn(
         state = listState,
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
         reverseLayout = true,
@@ -149,12 +120,13 @@ fun MessagesColumn(
                                 space = 2.dp,
                                 alignment = if (message.sender != userId)
                                     Alignment.Start else Alignment.End)) {
-                            if (message.sender != userId) {
+                            if (message.sender != userId && !isPrivate) {
                                 ProfilePictureInChat(filesDir = filesDir, sender = message.sender) {
                                     onNavigate(chatId)
                                 }
                             }
                             MessageContent(
+                                isPrivate = isPrivate,
                                 userId = userId,
                                 chatId = chatId,
                                 index = index,
@@ -211,6 +183,7 @@ fun ProfilePictureInChat(filesDir: String,
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageContent(
+    isPrivate: Boolean,
     userId: String,
     chatId: String,
     index: Int,
@@ -220,11 +193,12 @@ fun MessageContent(
     onFormatDate: (Long) -> String,
     onSelectedMessageIndexChange: (Int) -> Unit,
     onNavigate: (String) -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
     Box(contentAlignment = if (message.sender == userId) Alignment.CenterEnd else Alignment.CenterEnd) {
         ElevatedCard(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(corner),
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(corner))
                 .fillMaxWidth(0.8f)
                 .combinedClickable(
                     onClick = { onSelectedMessageIndexChange(-1) },
@@ -243,7 +217,7 @@ fun MessageContent(
                     .padding(dimensionResource(R.dimen.message_content_padding))) {
                 val senderUsername = message.senderUsername
                 AnimatedVisibility(senderUsername != null){
-                    if (senderUsername != null && message.sender != userId) {
+                    if (senderUsername != null && message.sender != userId && !isPrivate) {
                         Text(senderUsername,
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 18.sp,
@@ -262,13 +236,15 @@ fun MessageContent(
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 18.sp,
                     modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
-                Row{
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         onFormatDate(message.timestamp),
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.weight(1f))
                     if (message.edited) {
-                        Text("Edited", Modifier.alpha(0.5f))
+                        Text("Edited",
+                            fontSize = 14.sp,
+                            modifier = Modifier.alpha(0.5f))
                     }
                 }
             }
@@ -311,14 +287,15 @@ fun BottomRow(textFieldValue: TextFieldValue,
               onFieldValueChange: (TextFieldValue) -> Unit,
               onSendButtonClick: () -> Unit) {
     val maxMessageLength = integerResource(R.integer.max_message_length)
-    Row(modifier = modifier.fillMaxWidth(),
+    val corner = dimensionResource(R.dimen.common_corner_size)
+    Row(modifier = modifier.fillMaxWidth().padding(4.dp),
         verticalAlignment = Alignment.Bottom) {
         OutlinedTextField(
             value = textFieldValue, onValueChange = {
                 if (it.text.length <= maxMessageLength) onFieldValueChange(it) },
-            shape = RectangleShape,
+            shape = RoundedCornerShape(corner),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
                 focusedBorderColor = MaterialTheme.colorScheme.inversePrimary,
                 unfocusedContainerColor = MaterialTheme.colorScheme.primary
@@ -330,7 +307,7 @@ fun BottomRow(textFieldValue: TextFieldValue,
         IconButton(
             onClick = { if (textFieldValue.text.isNotEmpty() && textFieldValue.text.isNotBlank()) onSendButtonClick() },
             modifier = Modifier
-                .weight(0.25f)
+                .weight(0.2f)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Send,
@@ -381,6 +358,7 @@ fun CreateOrChangePublicChatForm(
     onClose: () -> Unit,
     onCreateOrChange: (Pair<String, String>) -> Unit) {
     val placeholders = Pair("Title", "Description")
+    val corner = dimensionResource(R.dimen.common_corner_size)
     var title by remember { mutableStateOf(chat?.title ?: "") }
     var description by remember { mutableStateOf(chat?.description ?: "") }
     var isTitleBlank by remember { mutableStateOf(false) }
@@ -388,24 +366,23 @@ fun CreateOrChangePublicChatForm(
         Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Max)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(corner))
             .border(
-                BorderStroke(2.dp, MaterialTheme.colorScheme.onSecondary),
-                shape = RoundedCornerShape(20.dp)
+                BorderStroke(2.dp, MaterialTheme.colorScheme.primaryContainer),
+                shape = RoundedCornerShape(corner)
             )
-            .background(MaterialTheme.colorScheme.primary)
+            .background(MaterialTheme.colorScheme.background)
             .padding(20.dp)
-            .verticalScroll(rememberScrollState())
-            ) {
+            .verticalScroll(rememberScrollState())) {
         Row(horizontalArrangement = Arrangement.SpaceEvenly) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Clear, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(30.dp))
             }
             Text("${if (chat == null) "Create a" else "Change the"} public chat", textAlign = TextAlign.Center,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium)
+                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground))
         }
         Column(
             Modifier
@@ -426,7 +403,7 @@ fun CreateOrChangePublicChatForm(
                     .size(200.dp, 50.dp),
                 colors = ButtonDefaults.buttonColors(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.inversePrimary
+                    containerColor = MaterialTheme.colorScheme.primary
                 )) {
                 Text(if (chat == null) "Create" else "Change", fontSize = 20.sp)
             }
@@ -444,6 +421,7 @@ fun CommonTextField(value: String,
                     last: Boolean=false,
                     placeholders: Pair<String, String>) {
     val focusManager = LocalFocusManager.current
+    val corner = dimensionResource(R.dimen.common_corner_size)
     val descriptionMaxChar = integerResource(R.integer.max_description_length)
     val usernameOrTitleMaxChar = integerResource(R.integer.max_username_or_title_length)
     OutlinedTextField(value = value,
@@ -452,6 +430,7 @@ fun CommonTextField(value: String,
         keyboardOptions = KeyboardOptions.Default.copy(
             imeAction = ImeAction.Next
         ),
+        shape = RoundedCornerShape(corner),
         keyboardActions = KeyboardActions(
             onNext = {
                 if (last) focusManager.clearFocus()
@@ -462,23 +441,14 @@ fun CommonTextField(value: String,
             if (last && it.length <= descriptionMaxChar) onChange(it) //description
             if (!last && it.length <= usernameOrTitleMaxChar) onChange(it) //username or title
         },
-        placeholder = {Text(if (!last) placeholders.first else placeholders.second)},
-        supportingText = {Text(if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar",
+        placeholder = {Text(if (!last) placeholders.first else placeholders.second,
+            )},
+        supportingText = {Text(if (value.isNotEmpty())
+            if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar" else "",
             Modifier.fillMaxWidth(),
             fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.End)},
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = MaterialTheme.colorScheme.onPrimary,
-            unfocusedTextColor = MaterialTheme.colorScheme.onPrimary,
-            focusedBorderColor = MaterialTheme.colorScheme.inversePrimary,
-            unfocusedContainerColor = MaterialTheme.colorScheme.primary,
-            errorLabelColor = MaterialTheme.colorScheme.onPrimary,
-            errorSupportingTextColor = MaterialTheme.colorScheme.onPrimary,
-            cursorColor = MaterialTheme.colorScheme.onPrimary,
-            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onPrimary,
-            focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondary
-        ),
         textStyle = TextStyle(fontSize = 22.sp),
         modifier = Modifier.fillMaxWidth())
 }
@@ -487,7 +457,8 @@ fun CommonTextField(value: String,
 fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
         AlertDialog(
             title = {Text(alertDialogDataClass.title)},
-            text = {Text(alertDialogDataClass.text)},
+            text = {Text(alertDialogDataClass.text, color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 16.sp, textAlign = TextAlign.Center)},
             onDismissRequest = alertDialogDataClass.onDismiss,
             confirmButton = {
                 TextButton(onClick = alertDialogDataClass.onConfirm) {
@@ -533,3 +504,22 @@ fun ChatPictureComposable(picRef: File) {
                 .clip(CircleShape))
     }
 }
+
+@Composable
+fun ScrollDownButton(modifier: Modifier, onClick: () -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
+    IconButton(onClick = onClick,
+        modifier = modifier
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.inversePrimary),
+                RoundedCornerShape(corner)
+            )
+            .size(dimensionResource(R.dimen.scroll_down_button_size))
+            .clip(RoundedCornerShape(corner))
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))) {
+        Icon(Icons.Filled.KeyboardArrowDown,
+            tint = MaterialTheme.colorScheme.onSurface,
+            contentDescription = null)
+    }
+}
+

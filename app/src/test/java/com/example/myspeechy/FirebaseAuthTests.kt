@@ -3,8 +3,8 @@ package com.example.myspeechy
 import android.content.Context
 import android.content.Intent
 import com.example.myspeechy.data.chat.User
-import com.example.myspeechy.services.auth.AuthService
-import com.example.myspeechy.services.auth.GoogleAuthService
+import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.auth.GoogleAuthService
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth

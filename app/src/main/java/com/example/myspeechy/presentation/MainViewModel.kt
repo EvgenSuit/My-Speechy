@@ -1,6 +1,5 @@
 package com.example.myspeechy.presentation
 
-import android.widget.Toast
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -10,11 +9,13 @@ import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.loggedOutDataStore
-import com.example.myspeechy.services.auth.AuthService
-import com.example.myspeechy.services.lesson.MainLessonServiceImpl
+import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.lesson.MainLessonServiceImpl
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -28,7 +29,6 @@ class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: MainLessonServiceImpl,
     private val authService: AuthService,
-    private val listenErrorToast: Toast,
     @Named("AuthDataStore")
     private val authDataStore: DataStore<Preferences>
 ): ViewModel() {
@@ -36,34 +36,39 @@ class MainViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
    init {
-       listenForAuthState()
-       viewModelScope.launch {
-           handleProgressLoading()
-       }
+       //listenForAuthState()
+       handleProgressLoading()
    }
     private fun listenForAuthState() {
-        authService.listenForAuthState {
+        authService.listenForAuthState { isLoggedOut ->
             viewModelScope.launch {
-                authDataStore.edit { loggedOut ->
-                    loggedOut[loggedOutDataStore] = true
+                authDataStore.edit { loggedOutPref ->
+                    loggedOutPref[loggedOutDataStore] = isLoggedOut
                 }
             }
         }
     }
-    private suspend fun handleProgressLoading() {
-        val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
-            .values.toList().flatten()
-        lessonServiceImpl.trackRemoteProgress({
-            if (Firebase.auth.currentUser != null) listenErrorToast.show()
-        }) { data ->
-            //If error listening, the lesson list doesn't get changed
-            var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
-            viewModelScope.launch {
-                newLessonList = handleAvailability(newLessonList)
-                _uiState.update {
-                    UiState(newLessonList.map { lesson ->
-                        lessonServiceImpl.convertToLessonItem(lesson)
-                    })
+    fun handleProgressLoading() {
+        _uiState.update { it.copy(dataState = FirestoreDataState.LOADING) }
+        viewModelScope.launch {
+            val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
+                .values.toList().flatten()
+            lessonServiceImpl.trackRemoteProgress({errorCode ->
+                if (Firebase.auth.currentUser != null) {
+                    _uiState.update { it.copy(dataState = FirestoreDataState.ERROR,
+                         errorCode = errorCode) }
+                }
+            }) { data ->
+                //If error listening, the lesson list doesn't get changed
+                var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
+                viewModelScope.launch {
+                    newLessonList = handleAvailability(newLessonList)
+                    _uiState.update {
+                        UiState(newLessonList.map { lesson ->
+                            lessonServiceImpl.convertToLessonItem(lesson)
+                        }, dataState = FirestoreDataState.SUCCESS,
+                            errorCode = FirebaseFirestoreException.Code.OK)
+                    }
                 }
             }
         }
@@ -85,5 +90,14 @@ class MainViewModel @Inject constructor(
     fun getStringType(category: String): Int {
         return lessonServiceImpl.lessonServiceHelpers.categoryMapperReverse(category)
     }
-    data class UiState(val lessonItems: List<LessonItem> = listOf())
+    fun logout() = authService.logOut()
+    data class UiState(val lessonItems: List<LessonItem> = listOf(),
+        val dataState: FirestoreDataState = FirestoreDataState.LOADING,
+        val errorCode: FirebaseFirestoreException.Code = FirebaseFirestoreException.Code.OK)
+}
+
+enum class FirestoreDataState {
+    LOADING,
+    ERROR,
+    SUCCESS
 }

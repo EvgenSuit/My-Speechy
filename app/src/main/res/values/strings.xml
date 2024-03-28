@@ -4,4 +4,6 @@
     <string name="mark_as_complete">"Mark as complete"</string>
     <string name="meditation_notification_name">Meditation</string>
     <string name="meditation_notification_channel">1</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="leave_chat_admin">If you leave the chat it will be deleted since you are its admin</string>
 </resources>
