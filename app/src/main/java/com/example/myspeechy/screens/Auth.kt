@@ -1,7 +1,11 @@
 package com.example.myspeechy.screens
 
+import android.app.Activity
+import android.app.Activity.RESULT_CANCELED
+import android.app.Activity.RESULT_OK
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +35,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +64,7 @@ import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
 import com.example.myspeechy.presentation.auth.AuthState
+import com.example.myspeechy.presentation.auth.AuthType
 import com.example.myspeechy.presentation.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +74,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun AuthScreen(
     onNavigateToMain: () -> Unit) {
+    val focusManger = LocalFocusManager.current
     val imageLoader = ImageLoader.Builder(LocalContext.current)
         .components {
             add(SvgDecoder.Factory())
@@ -93,6 +101,11 @@ fun AuthScreen(
                 imageLoader = imageLoader)
         }
     }
+    DisposableEffect(Unit) {
+        onDispose {
+            focusManger.clearFocus(true)
+        }
+    }
 }
 
 
@@ -105,8 +118,21 @@ fun MainBox(onNavigateToMain: () -> Unit,
     val focusManager = LocalFocusManager.current
     val exceptionState by viewModel.exceptionState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val coroutine = rememberCoroutineScope()
     val padding = dimensionResource(id = R.dimen.padding_auth_fields)
+    LaunchedEffect(uiState.authState) {
+        withContext(Dispatchers.Main) {
+            if (uiState.authState == AuthState.SUCCESS) {
+                focusManager.clearFocus(true)
+                onNavigateToMain()
+                Toasty.success(
+                    context, if (uiState.authType == AuthType.SIGN_UP) "Signed Up"
+                    else "Logged In", Toast.LENGTH_SHORT, true
+                ).show()
+            } else if (uiState.authState == AuthState.FAILURE) {
+                Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
+            }
+        }
+    }
     Box(modifier = modifier
         .border(
             width = 1.dp,
@@ -145,45 +171,17 @@ fun MainBox(onNavigateToMain: () -> Unit,
                if (!exceptionState.passwordErrorMessage.isNullOrEmpty()) {
                    ErrorMessage(exceptionState.passwordErrorMessage!!)
                }
-               AnimatedVisibility(exceptionState.authState != AuthState.IN_PROGRESS) {
+               AnimatedVisibility(uiState.authState != AuthState.IN_PROGRESS) {
                    AuthButtons(
                        enabled = exceptionState.emailErrorMessage?.isEmpty() == true &&
                        exceptionState.passwordErrorMessage?.isEmpty() == true,
-                       onLogIn = {
-                           coroutine.launch {
-                               viewModel.logIn()
-                               withContext(Dispatchers.Main) {
-                                   if (exceptionState.authState == AuthState.SUCCESS) {
-                                       focusManager.clearFocus(true)
-                                       onNavigateToMain()
-                                       Toasty.success(context, "Logged In", Toast.LENGTH_SHORT, true).show()
-                                   } else if (exceptionState.authState == AuthState.FAILURE) {
-                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
-                                   }
-                               }
-                           }
-                       },
-                       onSignUp = {
-                           coroutine.launch {
-                               viewModel.signUp()
-                               withContext(Dispatchers.Main) {
-                                   if (exceptionState.authState == AuthState.SUCCESS) {
-                                       focusManager.clearFocus(true)
-                                       onNavigateToMain()
-                                       Toasty.success(context, "Signed Up", Toast.LENGTH_SHORT, true).show()
-                                   } else if (exceptionState.authState == AuthState.FAILURE) {
-                                       Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
-                                   }
-                               }
-                           }
-                       })
+                       onLogIn = viewModel::logIn,
+                       onSignUp = viewModel::signUp)
                }
-               AnimatedVisibility(exceptionState.authState == AuthState.IN_PROGRESS) {
+               AnimatedVisibility(uiState.authState == AuthState.IN_PROGRESS) {
                    LinearProgressIndicator(modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_auth_button_row)))
                }
-               GoogleAuthButton(viewModel, imageLoader) {
-                   onNavigateToMain()
-               }
+               GoogleAuthButton(viewModel, imageLoader, onNavigateToMain)
            }
         }
     }
@@ -199,12 +197,8 @@ fun AuthButtons(
             .padding(top = dimensionResource(id = R.dimen.padding_auth_button_row))
             .fillMaxWidth()
     ) {
-        AuthButton(label = "Log In", enabled) {
-            onLogIn()
-        }
-        AuthButton(label = "Sign Up", enabled) {
-            onSignUp()
-        }
+        AuthButton(label = "Log In", enabled, onLogIn)
+        AuthButton(label = "Sign Up", enabled, onSignUp)
     }
 }
 

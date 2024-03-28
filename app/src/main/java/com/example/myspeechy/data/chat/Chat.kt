@@ -1,5 +1,8 @@
 package com.example.myspeechy.data.chat
 
+import androidx.annotation.Keep
+
+@Keep
 data class Chat(
     val title: String = "",
     val description: String = "",

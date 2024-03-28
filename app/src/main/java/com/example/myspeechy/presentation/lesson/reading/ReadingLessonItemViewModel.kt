@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.lesson.ReadingLessonItemState
-import com.example.myspeechy.services.lesson.ReadingLessonServiceImpl
+import com.example.myspeechy.domain.lesson.ReadingLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

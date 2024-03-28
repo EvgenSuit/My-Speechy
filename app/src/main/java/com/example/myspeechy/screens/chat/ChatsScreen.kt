@@ -1,6 +1,8 @@
 package com.example.myspeechy.screens.chat
 
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -34,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -47,10 +50,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -75,10 +78,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -103,6 +109,7 @@ import com.example.myspeechy.navBarDataStore
 import com.example.myspeechy.screens
 import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.presentation.chat.ChatsViewModel
+import com.example.myspeechy.screens.AccountDeletionScreen
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.delay
 import java.io.File
@@ -125,7 +132,7 @@ fun ChatsScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             composable(NavScreens.ChatsScreen.route) {
-                ChatComposable(navController)
+                ChatsComposable(navController)
             }
             composable("chats/{type}/{chatId}",
                 arguments = listOf(
@@ -140,14 +147,23 @@ fun ChatsScreen(
             }
             composable("userProfile/{userId}",
                 arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
-                UserProfileScreen({ navController.navigateUp() })
+                UserProfileScreen({ navController.navigateUp() },
+                    onAccountDelete = {
+                        navController.navigate("accountDelete") {popUpTo(0)}
+                    })
             }
+        composable("accountDelete") {
+            BackHandler(true) {}
+            AccountDeletionScreen(onGoBack = {userId ->
+                navController.navigate("userProfile/$userId") {popUpTo(0)}
+            })
+        }
     }
 }
 
 @Composable
-fun ChatComposable(navController: NavHostController,
-                   viewModel: ChatsViewModel = hiltViewModel()) {
+fun ChatsComposable(navController: NavHostController,
+                    viewModel: ChatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
@@ -177,19 +193,20 @@ fun ChatComposable(navController: NavHostController,
     }
     LaunchedEffect(uiState.chatsError) {
         if (uiState.chatsError.isNotEmpty()) {
-            Toasty.error(context, uiState.chatsError, Toast.LENGTH_SHORT,true)
+            Toasty.error(context, uiState.chatsError, Toast.LENGTH_SHORT,true).show()
         }
     }
     Box {
         Column(
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.onPrimaryContainer)
+                .background(MaterialTheme.colorScheme.background)
                 .blur(if (isFormExpanded) 5.dp else 0.dp)) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { isFormExpanded = true },
+                            .padding(top = 5.dp)
+                            .height(dimensionResource(R.dimen.chats_top_row_height)),
                         verticalAlignment = Alignment.CenterVertically) {
                         ChatSearch(Modifier.clickable { isFormExpanded = false },
                             onSearch = viewModel::searchForChat,
@@ -199,7 +216,7 @@ fun ChatComposable(navController: NavHostController,
                             Modifier.fillMaxWidth()) {
                             Icon(
                                 Icons.Filled.AccountBox,
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -288,6 +305,7 @@ fun ChatComposable(navController: NavHostController,
     }
     DisposableEffect(Unit) {
         onDispose {
+            focusManager.clearFocus(true)
             viewModel.startOrStopListening(true)
         }
     }
@@ -298,7 +316,8 @@ fun ChatSearch(
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource,
     onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
-        val focusManager = LocalFocusManager.current
+    val focusManager = LocalFocusManager.current
+    val corner = dimensionResource(R.dimen.common_corner_size)
     var chatSearchTitle by remember { mutableStateOf("") }
     LaunchedEffect(chatSearchTitle) {
         if (chatSearchTitle.isNotEmpty() && chatSearchTitle.isNotBlank()) {
@@ -306,22 +325,24 @@ fun ChatSearch(
             onSearch(chatSearchTitle)
         } else onEmptyTitle()
     }
-    TextField(value = chatSearchTitle,
+    OutlinedTextField(value = chatSearchTitle,
         maxLines = 1,
         keyboardOptions = KeyboardOptions.Default.copy(
             imeAction = ImeAction.Done
         ),
+        shape = RoundedCornerShape(corner),
         keyboardActions = KeyboardActions(
             onDone = { focusManager.clearFocus() }
         ),
+        textStyle = TextStyle(textAlign = TextAlign.Center,
+            fontSize = 18.sp),
         suffix = {
             if (chatSearchTitle.isNotEmpty()) IconButton(onClick = {
                 chatSearchTitle = ""
                 focusManager.clearFocus(true)
-            }) {
+            }, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Filled.Clear, contentDescription = null,
-                    modifier = Modifier.size(30.dp)
+                    imageVector = Icons.Filled.Clear, contentDescription = null
                 )
             }
         },
@@ -331,7 +352,7 @@ fun ChatSearch(
         interactionSource = interactionSource,
         modifier = modifier
             .fillMaxWidth(0.85f)
-            .height(dimensionResource(id = R.dimen.chat_search_text_field_height))
+            .height(70.dp)
     )
 }
 

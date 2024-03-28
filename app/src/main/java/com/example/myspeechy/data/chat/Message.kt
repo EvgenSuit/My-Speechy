@@ -1,5 +1,8 @@
 package com.example.myspeechy.data.chat
 
+import androidx.annotation.Keep
+
+@Keep
 data class Message(
     var sender: String = "",
     var senderUsername: String? = null,

@@ -49,8 +49,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
+import com.example.myspeechy.authDataStore
 import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.loggedOutDataStore
 import com.example.myspeechy.navBarDataStore
+import com.example.myspeechy.presentation.FirestoreDataState
 import com.example.myspeechy.presentation.MainViewModel
 import com.example.myspeechy.screens
 import com.example.myspeechy.screens.lesson.MeditationLessonItem
@@ -59,8 +62,8 @@ import com.example.myspeechy.screens.lesson.RegularLessonItem
 import com.example.myspeechy.showNavBarDataStore
 
 @Composable
-fun MainScreen(navController: NavHostController = rememberNavController()) {
-    val viewModel: MainViewModel = hiltViewModel()
+fun MainScreen(navController: NavHostController = rememberNavController(),
+               viewModel: MainViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
@@ -70,48 +73,71 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
             navBar[showNavBarDataStore] = showNavBar
         }
     }
-    NavHost(navController = navController, startDestination = NavScreens.Main.route,
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
-        modifier = Modifier.fillMaxSize()) {
-        composable(NavScreens.Main.route) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Image(painter = painterResource(id = R.drawable.main_page_background_medium),
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize()
-                )
-                if (uiState.lessonItems.isNotEmpty()) {
-                    UnitColumn(
-                        lessonItems = uiState.lessonItems,
-                        navController
-                    ) { viewModel.getStringType(it) }
+    if (uiState.dataState == FirestoreDataState.SUCCESS) {
+        NavHost(navController = navController, startDestination = NavScreens.Main.route,
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            modifier = Modifier.fillMaxSize()) {
+            composable(NavScreens.Main.route) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Image(painter = painterResource(id = R.drawable.main_page_background_medium),
+                        contentDescription = null,
+                        contentScale = ContentScale.FillBounds,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    if (uiState.lessonItems.isNotEmpty()) {
+                        UnitColumn(
+                            lessonItems = uiState.lessonItems,
+                            navController
+                        ) { viewModel.getStringType(it) }
+                    }
                 }
             }
+            composable(
+                "regularLessonItem/{regularLessonItemId}",
+                arguments = listOf(navArgument("regularLessonItemId")
+                { type = NavType.IntType })
+            ) {
+                RegularLessonItem()
+                { navController.navigateUp() }
+            }
+            composable(
+                "readingLessonItem/{readingLessonItemId}",
+                arguments = listOf(navArgument("readingLessonItemId")
+                { type = NavType.IntType })
+            ) {
+                ReadingLessonItem()
+                { navController.navigateUp() }
+            }
+            composable(
+                "meditationLessonItem/{meditationLessonItemId}",
+                arguments = listOf(navArgument("meditationLessonItemId")
+                { type = NavType.IntType })
+            ) {
+                MeditationLessonItem()
+                { navController.navigateUp() }
+            }
         }
-        composable(
-            "regularLessonItem/{regularLessonItemId}",
-            arguments = listOf(navArgument("regularLessonItemId")
-            { type = NavType.IntType })
-        ) {
-            RegularLessonItem()
-            { navController.navigateUp() }
-        }
-        composable(
-            "readingLessonItem/{readingLessonItemId}",
-            arguments = listOf(navArgument("readingLessonItemId")
-            { type = NavType.IntType })
-        ) {
-            ReadingLessonItem()
-            { navController.navigateUp() }
-        }
-        composable(
-            "meditationLessonItem/{meditationLessonItemId}",
-            arguments = listOf(navArgument("meditationLessonItemId")
-            { type = NavType.IntType })
-        ) {
-            MeditationLessonItem()
-            { navController.navigateUp() }
+    } else {
+        //TODO Show app logo instead
+        Column(Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(120.dp, Alignment.CenterVertically)) {
+            Text("My Speechy",
+                fontSize = 30.sp,
+                color = MaterialTheme.colorScheme.onBackground)
+            if (uiState.dataState == FirestoreDataState.ERROR) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Couldn't load data. Error code: ${uiState.errorCode.name}",
+                        style = MaterialTheme.typography.bodySmall)
+                    ElevatedButton(onClick = viewModel::handleProgressLoading) {
+                        Text("Try again")
+                    }
+                    ElevatedButton(onClick = viewModel::logout) {
+                        Text("Log out")
+                    }
+                }
+            }
         }
     }
 }
@@ -120,8 +146,7 @@ fun MainScreen(navController: NavHostController = rememberNavController()) {
 fun UnitColumn(
     lessonItems: List<LessonItem>,
     navController: NavController,
-    getStringType: (String) -> Int
-) {
+    getStringType: (String) -> Int) {
     val groupedItems = lessonItems.groupBy { it.unit }
     val keys = groupedItems.keys.toList()
     LazyColumn(

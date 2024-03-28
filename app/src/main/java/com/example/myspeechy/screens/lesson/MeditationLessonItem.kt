@@ -42,10 +42,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.myspeechy.R
 import com.example.myspeechy.components.LessonItemWrapper
 import com.example.myspeechy.presentation.lesson.meditation.MeditationLessonItemViewModel
 import kotlin.time.Duration.Companion.seconds
@@ -141,6 +143,7 @@ fun TimeScroller(
     var selectedItemIndex by remember {
         mutableIntStateOf(0)
     }
+    val corner = dimensionResource(R.dimen.common_corner_size)
     LaunchedEffect(started) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
             .collect { list ->
@@ -155,7 +158,7 @@ fun TimeScroller(
         Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(corner))
                         .background(Color.White.copy(0.2f))
                 ) {
                     Text("Minutes", style = MaterialTheme.typography.bodyMedium)

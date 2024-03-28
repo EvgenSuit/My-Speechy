@@ -3,15 +3,18 @@ package com.example.myspeechy.presentation.auth
 import android.content.Intent
 import android.content.IntentSender
 import androidx.lifecycle.ViewModel
-import com.example.myspeechy.services.auth.AuthService
-import com.example.myspeechy.services.auth.GoogleAuthService
-import com.example.myspeechy.services.Result
-import com.example.myspeechy.services.error.EmailError
-import com.example.myspeechy.services.error.PasswordError
+import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.auth.GoogleAuthService
+import com.example.myspeechy.domain.Result
+import com.example.myspeechy.domain.error.EmailError
+import com.example.myspeechy.domain.error.PasswordError
+import com.google.firebase.auth.FirebaseAuthException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -58,58 +61,69 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(password = value) }
     }
 
-    suspend fun signUp() {
-        if (!_exceptionState.value.emailErrorMessage.isNullOrEmpty() ||
-            !_exceptionState.value.passwordErrorMessage.isNullOrEmpty()) return
-        try {
-            _exceptionState.update { it.copy(authState = AuthState.IN_PROGRESS) }
-            authService.createUser(_uiState.value.email, _uiState.value.password)
-            authService.createRealtimeDbUser()
-            authService.createFirestoreUser()
-            _exceptionState.update {
-                it.copy(
-                    exceptionMessage = "",
-                    authState = AuthState.SUCCESS
-                )
-            }
-        } catch (e: Exception) {
-            _exceptionState.update {
-                it.copy(
-                    exceptionMessage = e.message ?: "",
-                    authState = AuthState.FAILURE
-                )
+    fun signUp() {
+        viewModelScope.launch {
+            if (!_exceptionState.value.emailErrorMessage.isNullOrEmpty() ||
+                !_exceptionState.value.passwordErrorMessage.isNullOrEmpty()) return@launch
+            try {
+                updateAuthState(AuthState.IN_PROGRESS)
+                authService.createUser(_uiState.value.email, _uiState.value.password)
+                authService.createRealtimeDbUser()
+                authService.createFirestoreUser()
+                updateExceptionMessage()
+                updateAuthState(AuthState.SUCCESS, AuthType.SIGN_UP)
+            } catch (e: Exception) {
+                updateExceptionMessage(e.message!!)
+                updateAuthState(AuthState.FAILURE)
             }
         }
     }
 
-    suspend fun logIn() {
-        if (!_exceptionState.value.emailErrorMessage.isNullOrEmpty() ||
-            !_exceptionState.value.passwordErrorMessage.isNullOrEmpty()) return
-        try {
-            _exceptionState.update { it.copy(authState = AuthState.IN_PROGRESS) }
-            authService.logInUser(_uiState.value.email, _uiState.value.password)
-            _exceptionState.update { it.copy(exceptionMessage = "", authState = AuthState.SUCCESS) }
-        } catch (e: Exception) {
-            _exceptionState.update { it.copy(exceptionMessage = e.message ?: "", authState = AuthState.FAILURE) }
+    fun logIn() {
+        viewModelScope.launch {
+            if (!_exceptionState.value.emailErrorMessage.isNullOrEmpty() ||
+                !_exceptionState.value.passwordErrorMessage.isNullOrEmpty()) return@launch
+            try {
+                updateAuthState(AuthState.IN_PROGRESS)
+                authService.logInUser(_uiState.value.email, _uiState.value.password)
+                updateExceptionMessage()
+                updateAuthState(AuthState.SUCCESS, AuthType.SIGN_IN)
+            } catch (e: FirebaseAuthException) {
+                updateExceptionMessage(e.message!!)
+                updateAuthState(AuthState.FAILURE)
+            }
         }
     }
     suspend fun googleSignInWithIntent(intent: Intent) {
         googleAuthService.signInWithIntent(intent)
+        updateAuthState(AuthState.SUCCESS)
     }
     suspend fun googleSignIn(): IntentSender? {
         return googleAuthService.signIn()
+    }
+    private fun updateExceptionMessage(m: String = "") {
+        _exceptionState.update { it.copy(exceptionMessage = m) }
+    }
+    private fun updateAuthState(state: AuthState, type: AuthType? = null) {
+        _uiState.update { it.copy(authState = state, authType = type ?: it.authType) }
     }
 }
 
 data class AuthExceptionState(val exceptionMessage: String = "",
                               val emailErrorMessage: String? = null,
-                              val passwordErrorMessage: String? = null,
-                              val authState: AuthState = AuthState.IDLE)
-data class AuthUiState(val email: String = "", val password: String = "")
+                              val passwordErrorMessage: String? = null)
+data class AuthUiState(val email: String = "", val password: String = "",
+                       val authState: AuthState = AuthState.IDLE,
+                       val authType: AuthType = AuthType.NONE)
 
 enum class AuthState {
     IDLE,
     SUCCESS,
     IN_PROGRESS,
     FAILURE
+}
+enum class AuthType {
+    NONE,
+    SIGN_IN,
+    SIGN_UP
 }

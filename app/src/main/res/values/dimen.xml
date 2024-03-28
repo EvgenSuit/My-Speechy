@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <dimen name="back_button_size">35dp</dimen>
+    <dimen name="chats_top_row_height">70dp</dimen>
     <dimen name="auth_components_height">430dp</dimen>
     <dimen name="auth_components_width">320dp</dimen>
     <dimen name="padding_auth_text_fields">20dp</dimen>
@@ -13,4 +15,6 @@
     <dimen name="max_message_length">500</dimen>
     <dimen name="message_content_padding">10dp</dimen>
     <dimen name="messages_and_chats_spacing">6dp</dimen>
+    <dimen name="scroll_down_button_size">60dp</dimen>
+    <dimen name="common_corner_size">20dp</dimen>
 </resources>

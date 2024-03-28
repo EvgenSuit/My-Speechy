@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -118,6 +119,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
 @Composable
 fun DialogBox(title: String, text: String,
               onDismiss: () -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -126,7 +128,7 @@ fun DialogBox(title: String, text: String,
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(corner)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

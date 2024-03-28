@@ -10,15 +10,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.lifecycle.lifecycleScope
+import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.ui.theme.MySpeechyTheme
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Named
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var authService: AuthService
+
+    @Inject
+    @Named("AuthDataStore")
+    lateinit var authDataStore: DataStore<Preferences>
     private fun createNotificationChannel() {
         val name = "Meditation"
         val importance = NotificationManager.IMPORTANCE_DEFAULT
@@ -27,10 +37,19 @@ class MainActivity : ComponentActivity() {
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
     }
+    private fun listenForAuthState() {
+        authService.listenForAuthState {isLoggedOut ->
+            lifecycleScope.launch {
+                authDataStore.edit { loggedOutPref ->
+                    loggedOutPref[loggedOutDataStore] = isLoggedOut
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Firebase.database.setPersistenceEnabled(true)
+        listenForAuthState()
         createNotificationChannel()
         setContent {
             MySpeechyTheme(darkTheme = true) {
