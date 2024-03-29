@@ -139,7 +139,7 @@ interface RootChatService {
             Files.createDirectories(Paths.get(picDir))
         }
     }
-    //scroll to bottom if the previous message is 100% visible at the time of receiving a new one
+    //scroll to bottom if the message before the last one is 100% visible at the time of receiving a new one
     suspend fun scrollToBottom(messages: Map<String, Message>, listState: LazyListState, firstVisibleItem: LazyListItemInfo) {
         val viewportHeight = listState.layoutInfo.viewportEndOffset
         val itemTop = firstVisibleItem.offset
