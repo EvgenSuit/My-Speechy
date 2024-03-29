@@ -91,7 +91,6 @@ fun MessagesColumn(
     joined: Boolean,
     listState: LazyListState,
     messages: Map<String, Message>,
-    filesDir: String,
     onFormatDate: (Long) -> String,
     onEdit: (Map<String, Message>) -> Unit,
     onDelete: (Map<String, Message>) -> Unit,
@@ -120,11 +119,6 @@ fun MessagesColumn(
                                 space = 2.dp,
                                 alignment = if (message.sender != userId)
                                     Alignment.Start else Alignment.End)) {
-                            if (message.sender != userId && !isPrivate) {
-                                ProfilePictureInChat(filesDir = filesDir, sender = message.sender) {
-                                    onNavigate(chatId)
-                                }
-                            }
                             MessageContent(
                                 isPrivate = isPrivate,
                                 userId = userId,
@@ -146,37 +140,6 @@ fun MessagesColumn(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ProfilePictureInChat(filesDir: String,
-                         sender: String,
-                         onNavigate: () -> Unit) {
-    val picSize = dimensionResource(R.dimen.chat_pic_size)
-    val picPath = "${filesDir}/profilePics/${sender}/lowQuality/${sender}.jpg"
-    if (File(picPath).exists()) {
-        var retryHash by remember { mutableStateOf(0) }
-        val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
-            .data(picPath)
-            .setParameter("retry_hash", retryHash)
-            .build())
-        if (painter.state is AsyncImagePainter.State.Error) {retryHash++}
-        Image(painter,
-            contentScale = ContentScale.Crop,
-            contentDescription = null,
-            modifier = Modifier
-                .size(picSize)
-                .clip(CircleShape)
-                .clickable { onNavigate() })
-    } else {
-        Image(painter = painterResource(R.drawable.user),
-            contentScale = ContentScale.Crop,
-            contentDescription = null,
-            modifier = Modifier
-                .size(picSize)
-                .clip(CircleShape)
-                .clickable { onNavigate() })
     }
 }
 
@@ -216,9 +179,8 @@ fun MessageContent(
                     .fillMaxSize()
                     .padding(dimensionResource(R.dimen.message_content_padding))) {
                 val senderUsername = message.senderUsername
-                AnimatedVisibility(senderUsername != null){
-                    if (senderUsername != null && message.sender != userId && !isPrivate) {
-                        Text(senderUsername,
+                if (message.sender != userId && !isPrivate) {
+                        Text(senderUsername ?: "Deleted account",
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -230,7 +192,6 @@ fun MessageContent(
                             }
                         )
                     }
-                }
                 Text(
                     message.text,
                     overflow = TextOverflow.Ellipsis,
@@ -506,14 +467,13 @@ fun ChatPictureComposable(picRef: File) {
 }
 
 @Composable
-fun ScrollDownButton(modifier: Modifier, onClick: () -> Unit) {
+fun ScrollDownButton(onClick: () -> Unit) {
     val corner = dimensionResource(R.dimen.common_corner_size)
     IconButton(onClick = onClick,
-        modifier = modifier
+        modifier = Modifier
             .border(
                 BorderStroke(1.dp, MaterialTheme.colorScheme.inversePrimary),
-                RoundedCornerShape(corner)
-            )
+                RoundedCornerShape(corner))
             .size(dimensionResource(R.dimen.scroll_down_button_size))
             .clip(RoundedCornerShape(corner))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))) {

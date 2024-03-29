@@ -42,10 +42,12 @@ class LeavePrivateChatUseCase(
 }
 
 class LeavePublicChatUseCase(private val userId: String?,
-                             private val database: DatabaseReference) {
+                             private val database: DatabaseReference,
+    private val decrementMemberCountUseCase: DecrementMemberCountUseCase) {
     suspend operator fun invoke(chatId: String, revokeMembership: Boolean = true) {
         if (userId == null) return
         if (revokeMembership) {
+            decrementMemberCountUseCase(chatId)
             database.child("members")
                 .child(chatId)
                 .child(userId)
@@ -67,17 +69,33 @@ class JoinPublicChatUseCase(
         database.child("members")
             .child(chatId)
             .child(userId).setValue(true).await()
+        incrementMemberCount(chatId)
         database.child("users")
             .child(userId)
             .child("public_chats")
             .child(chatId)
             .setValue(true).await()
     }
+    private suspend fun incrementMemberCount(chatId: String) {
+        val ref = database.child("member_count").child(chatId)
+        val memberCount = ref.get().await().getValue(Int::class.java) ?: 0
+        ref.setValue(memberCount+1).await()
+    }
 }
-class DeletePublicChatUseCase(private val database: DatabaseReference) {
+class DecrementMemberCountUseCase(private val database: DatabaseReference) {
+    suspend operator fun invoke(chatId: String, remove: Boolean = false) {
+        val ref = database.child("member_count").child(chatId)
+        val memberCount = ref.get().await().getValue(Int::class.java) ?: return
+        if (memberCount-1 <= 0 || remove) ref.removeValue().await()
+        else ref.setValue(memberCount-1).await()
+    }
+}
+class DeletePublicChatUseCase(private val database: DatabaseReference,
+    private val decrementMemberCountUseCase: DecrementMemberCountUseCase) {
     suspend operator fun invoke(chatId: String) {
         removeChat(chatId)
         removeMessages(chatId)
+        decrementMemberCountUseCase(chatId, true)
         removeMembers(chatId)
         revokeAdminPermissions(chatId)
     }

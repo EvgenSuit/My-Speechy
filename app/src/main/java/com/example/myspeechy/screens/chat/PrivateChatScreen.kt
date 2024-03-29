@@ -1,9 +1,11 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +24,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -51,7 +52,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
-import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
@@ -87,16 +87,15 @@ fun PrivateChatScreen(navController: NavHostController,
     val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    val showScrollDownButton by remember {
-        derivedStateOf { uiState.messages.isNotEmpty() && firstVisibleMessage?.index != 0
-                && listState.canScrollBackward && !listState.isScrollInProgress}
+    val canScroll by remember{ derivedStateOf {
+        uiState.messages.isNotEmpty() &&
+        !listState.isScrollInProgress && listState.canScrollBackward && firstVisibleMessage?.index != 0} }
+    var showScrollDownButton by remember {
+        mutableStateOf(false)
     }
     val painter = rememberAsyncImagePainter(model = ImageRequest.Builder(LocalContext.current)
         .data(viewModel.picRef.path)
         .build())
-    LaunchedEffect(Unit) {
-        viewModel.startOrStopListening(false)
-    }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
         //listen for the same messages as before if the app was previously in the background
@@ -119,6 +118,10 @@ fun PrivateChatScreen(navController: NavHostController,
         if (!isAppInBackground) {
             viewModel.scrollToBottom(listState, firstVisibleMessage)
         }
+    }
+    LaunchedEffect(canScroll) {
+        if (canScroll) delay(300)
+        showScrollDownButton = canScroll
     }
     Column(modifier = Modifier
         .background(MaterialTheme.colorScheme.background)
@@ -177,7 +180,6 @@ fun PrivateChatScreen(navController: NavHostController,
                         true,
                         listState,
                         uiState.messages,
-                        LocalContext.current.filesDir.path,
                         onFormatDate = viewModel::formatMessageDate,
                         onEdit = {
                             if (otherUserExists) {
@@ -193,11 +195,13 @@ fun PrivateChatScreen(navController: NavHostController,
                         } }) {chatId ->
                         navController.navigate("chats/private/$chatId")
                     }
-                    if (showScrollDownButton) {
-                        ScrollDownButton(
-                            Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(25.dp)) {
+                    this@Column.AnimatedVisibility(showScrollDownButton,
+                        enter = slideInVertically(animationSpec = tween(100)) {it},
+                        exit = slideOutVertically(animationSpec = tween(100)) {it},
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(20.dp)) {
+                        ScrollDownButton {
                             coroutineScope.launch {
                                 listState.animateScrollToItem(0)
                             }
@@ -242,10 +246,4 @@ fun PrivateChatScreen(navController: NavHostController,
                 }
             }
         }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.startOrStopListening(true)
-        }
-    }
 }

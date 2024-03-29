@@ -303,12 +303,6 @@ fun ChatsComposable(navController: NavHostController,
             }
         }
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            focusManager.clearFocus(true)
-            viewModel.startOrStopListening(true)
-        }
-    }
 }
 
 @Composable

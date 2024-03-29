@@ -22,6 +22,7 @@ import com.example.myspeechy.domain.lesson.ReadingLessonServiceImpl
 import com.example.myspeechy.domain.lesson.RegularLessonServiceImpl
 import com.example.myspeechy.domain.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.useCases.FormatDateUseCase
 import com.example.myspeechy.useCases.JoinPublicChatUseCase
@@ -129,11 +130,13 @@ object ViewModelModule {
     @Provides
     fun provideCheckIfIsAdminUseCase(): CheckIfIsAdminUseCase = CheckIfIsAdminUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
     @Provides
-    fun provideDeletePublicChatUseCase(): DeletePublicChatUseCase = DeletePublicChatUseCase(Firebase.database.reference)
+    fun provideDeletePublicChatUseCase(): DeletePublicChatUseCase =
+        DeletePublicChatUseCase(Firebase.database.reference, DecrementMemberCountUseCase(Firebase.database.reference))
     @Provides
     fun provideJoinPublicChatUseCase(): JoinPublicChatUseCase = JoinPublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
     @Provides
-    fun provideLeavePublicChatUseCase(): LeavePublicChatUseCase = LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
+    fun provideLeavePublicChatUseCase(): LeavePublicChatUseCase =
+        LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference, DecrementMemberCountUseCase(Firebase.database.reference))
     @Provides
     fun provideLeavePrivateChatUseCase(): LeavePrivateChatUseCase = LeavePrivateChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference)
     @Provides

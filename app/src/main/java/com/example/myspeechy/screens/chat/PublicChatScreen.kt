@@ -1,10 +1,10 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,22 +12,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,12 +33,12 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -58,7 +56,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -80,10 +77,12 @@ import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
 import com.example.myspeechy.components.ScrollDownButton
 import com.example.myspeechy.data.chat.Chat
+import com.example.myspeechy.data.chat.MembersState
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.presentation.chat.PublicChatViewModel
 import es.dmoral.toasty.Toasty
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -94,19 +93,25 @@ fun PublicChatScreen(navController: NavHostController,
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val listState = rememberLazyListState()
+    val messagesListState = rememberLazyListState()
     val membersListState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
-    val firstVisibleMessage by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull() } }
-    val lastVisibleMessageIndex by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val firstVisibleMessage by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.firstOrNull() } }
+    val lastVisibleMemberIndex by remember { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    val lastVisibleMessageIndex by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
-    val showScrollDownButton by remember {
+    val canScroll by remember {
         derivedStateOf { uiState.messages.isNotEmpty() && firstVisibleMessage?.index != 0
-                && listState.canScrollBackward && !listState.isScrollInProgress } }
+                && messagesListState.canScrollBackward && !messagesListState.isScrollInProgress } }
+    var showScrollDownButton by remember {
+        mutableStateOf(false)
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
         //listen for the same messages and members as before if the app was previously in the background
         viewModel.handleDynamicMessageLoading(isAppInBackground, lastVisibleMessageIndex)
+        viewModel.handleDynamicMembersLoading(isAppInBackground, lastVisibleMemberIndex)
         isAppInBackground = false
     }
 
@@ -120,11 +125,16 @@ fun PublicChatScreen(navController: NavHostController,
             viewModel.handleDynamicMessageLoading(false, lastVisibleMessageIndex)
         }
     }
+    LaunchedEffect(lastVisibleMemberIndex) {
+        if (!isAppInBackground) {
+            viewModel.handleDynamicMembersLoading(false, lastVisibleMemberIndex)
+        }
+    }
     LaunchedEffect(uiState.messages.entries.lastOrNull()) {
         //if a new message was just sent and the
         //user was at the bottom of the chat, animate to the bottom
         if (!isAppInBackground) {
-            viewModel.scrollToBottom(listState, firstVisibleMessage)
+            viewModel.scrollToBottom(messagesListState, firstVisibleMessage)
         }
     }
     LaunchedEffect(uiState.errorMessage) {
@@ -132,7 +142,11 @@ fun PublicChatScreen(navController: NavHostController,
             Toasty.error(context, uiState.errorMessage, Toasty.LENGTH_SHORT, true)
         }
     }
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    LaunchedEffect(canScroll) {
+        if (canScroll) delay(300)
+        showScrollDownButton = canScroll
+    }
+
     var showChangeChatInfoForm by remember(drawerState.isClosed) { mutableStateOf(false) }
     var textFieldState by remember {
         mutableStateOf(TextFieldValue())
@@ -145,6 +159,7 @@ fun PublicChatScreen(navController: NavHostController,
             drawerState = drawerState,
             drawerContent = {
                 SideDrawer(
+                    state = uiState.membersState,
                     admin = uiState.admin,
                     isAdmin = uiState.isAdmin,
                     chat = uiState.chat,
@@ -168,7 +183,7 @@ fun PublicChatScreen(navController: NavHostController,
                 .background(MaterialTheme.colorScheme.background)) {
                 PublicChatTopRow(
                     title = if (uiState.chat.title.isEmpty() && uiState.chatLoaded) "Deleted chat" else uiState.chat.title,
-                    membersSize = if (uiState.chat.timestamp.toInt() != 0) uiState.members.size else null,
+                    membersSize = uiState.memberCount,
                     onSideDrawerShow = { coroutineScope.launch {
                         drawerState.apply { if (isClosed) open() else close() }
                     } },
@@ -186,9 +201,8 @@ fun PublicChatScreen(navController: NavHostController,
                             false,
                             viewModel.userId,
                             uiState.joined,
-                            listState,
+                            messagesListState,
                             uiState.messages,
-                            LocalContext.current.cacheDir.path,
                             onFormatDate = viewModel::formatMessageDate,
                             onEdit = {
                                 focusManager.clearFocus(true)
@@ -205,13 +219,15 @@ fun PublicChatScreen(navController: NavHostController,
                             }) { chatId ->
                             navController.navigate("chats/private/$chatId")
                         }
-                        if (showScrollDownButton) {
-                            ScrollDownButton(
-                                Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(25.dp)) {
+                        this@Column.AnimatedVisibility(showScrollDownButton,
+                            enter = slideInVertically {it},
+                            exit = slideOutVertically {it},
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(20.dp)) {
+                            ScrollDownButton {
                                 coroutineScope.launch {
-                                    listState.animateScrollToItem(0)
+                                    messagesListState.animateScrollToItem(0)
                                 }
                             }
                         }
@@ -239,18 +255,20 @@ fun PublicChatScreen(navController: NavHostController,
                             modifier = Modifier.heightIn(max = 200.dp),
                             onFieldValueChange = { textFieldState = it }) {
                             coroutineScope.launch {
+                                val text = textFieldState.text
                                 if (messageToEdit.isEmpty()) {
-                                    viewModel.sendMessage(textFieldState.text)
+                                    textFieldState = TextFieldValue()
+                                    viewModel.sendMessage(text)
+                                    messagesListState.animateScrollToItem(0)
                                 } else {
-                                    viewModel.editMessage(
-                                        mapOf(
-                                            messageToEdit.keys.first() to messageToEdit.values.first()
-                                                .copy(text = textFieldState.text)
-                                        )
-                                    )
+                                    val messageToEditValue = messageToEdit.values.first()
+                                    val messageToEditKey = messageToEdit.keys.first()
+                                    if (messageToEditValue.text != text) {
+                                        textFieldState = TextFieldValue()
+                                        messageToEdit = mapOf()
+                                        viewModel.editMessage(mapOf(messageToEditKey to messageToEditValue.copy(text = text)))
+                                    }
                                 }
-                                textFieldState = TextFieldValue()
-                                messageToEdit = mapOf()
                             }
                         }
                     }
@@ -274,20 +292,16 @@ fun PublicChatScreen(navController: NavHostController,
     if (uiState.joined && uiState.alertDialogDataClass.title.isNotEmpty()) {
         ChatAlertDialog(uiState.alertDialogDataClass)
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.startOrStopListening(true)
-        }
-    }
 }
 
 @Composable
 fun SideDrawer(
+    state: MembersState,
     admin: String?,
     isAdmin: Boolean,
     joined: Boolean,
     chat: Chat,
-    members: Map<String, String>,
+    members: Map<String, String?>,
     recomposeIds: Map<String, String>,
     picPaths: Map<String, String>,
     membersListState: LazyListState,
@@ -313,7 +327,9 @@ fun SideDrawer(
                     modifier = Modifier.size(dimensionResource(R.dimen.back_button_size)))
             }
         }
-        MembersColumn(admin = admin, members = members, recomposeIds = recomposeIds, picPaths = picPaths,
+        MembersColumn(
+            state = state,
+            admin = admin, members = members, recomposeIds = recomposeIds, picPaths = picPaths,
             listState = membersListState,
             onNavigate = onNavigate)
     }
@@ -352,26 +368,30 @@ fun ChatInfoColumn(
 
 @Composable
 fun MembersColumn(
+    state: MembersState,
     admin: String?,
-    members: Map<String, String>,
+    members: Map<String, String?>,
     recomposeIds: Map<String, String>,
     picPaths: Map<String, String>,
     listState: LazyListState,
     onNavigate: (String) -> Unit) {
     val usernames by remember(members) {
-        mutableStateOf(members.values.toList())
+        derivedStateOf { members.values.toList() }
     }
     val userIds by remember(members) {
-        mutableStateOf(members.keys.toList())
+        derivedStateOf { members.keys.toList() }
     }
     LazyColumn(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chats_padding)),
         state = listState) {
-        items(members.size) {i ->
+        items(userIds, key = {it}) {userId ->
+            val username = usernames[userIds.indexOf(userId)]
             ElevatedCard(
                 Modifier
                     .clip(RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)))
                     .padding(2.dp)
-                    .clickable { if (usernames[i] != "Deleted user") onNavigate(userIds[i]) }) {
+                    .clickable { if (username != null) onNavigate(userId) }) {
                 Row(
                     Modifier
                         .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -379,21 +399,27 @@ fun MembersColumn(
                         .padding(5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start) {
-                    val userId = userIds[i]
                     val picPath = picPaths[userId]
                     key(recomposeIds[userId]) {
                         ChatPictureComposable(picRef = File(picPath ?: ""))
                     }
-                    Column(Modifier.weight(1f),
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .padding(5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(usernames[i], fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(username ?: "Deleted account", fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (userId == admin) {
                             Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
                         }
                     }
                 }
             }
+        }
+        if (state == MembersState.LOADING)
+        item {
+                LinearProgressIndicator(modifier = Modifier)
         }
     }
 }
@@ -419,7 +445,7 @@ fun PublicChatTopRow(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1)
-            if (membersSize != null) {
+            if (membersSize != null && title.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)) {
                     Text(membersSize.toString(),
                         color = MaterialTheme.colorScheme.onBackground)

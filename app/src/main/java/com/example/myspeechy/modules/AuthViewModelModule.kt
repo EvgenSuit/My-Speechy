@@ -5,6 +5,7 @@ import com.example.myspeechy.domain.auth.AccountDeletionService
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.auth.GoogleAuthService
 import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.useCases.LeavePublicChatUseCase
@@ -29,10 +30,10 @@ object AuthViewModelModule {
         return AuthService(Firebase.auth, Firebase.database.reference,
             Firebase.firestore,
             Firebase.storage.reference,
-            LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
+            LeavePublicChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference, DecrementMemberCountUseCase(Firebase.database.reference)),
             LeavePrivateChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
             CheckIfIsAdminUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
-            DeletePublicChatUseCase(Firebase.database.reference),
+            DeletePublicChatUseCase(Firebase.database.reference, DecrementMemberCountUseCase(Firebase.database.reference)),
             context.cacheDir.path
         )
     }

@@ -1,5 +1,6 @@
 package com.example.myspeechy.domain.chat
 
+import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.useCases.DeletePublicChatUseCase
@@ -41,6 +42,7 @@ class PublicChatServiceImpl(
     private var adminListener: ValueEventListener? = null
     private var messagesStateListener: ValueEventListener? = null
     private var isMemberOfChatListener: ValueEventListener? = null
+    private var memberCountListener: ValueEventListener? = null
 
     private fun chatMembersChildListener(
         onAdded: (Map<String, Boolean>) -> Unit,
@@ -130,8 +132,7 @@ class PublicChatServiceImpl(
         id: String?,
         onCancelled: (String) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
-        remove: Boolean
-    ) {
+        remove: Boolean) {
         if (id == null) return
         val ref = database.child("users").child(id)
             .child("name")
@@ -143,14 +144,30 @@ class PublicChatServiceImpl(
         }
     }
 
+    fun memberCountListener(
+        id: String?,
+        onCancelled: (String) -> Unit,
+        onDataReceived: (DataSnapshot) -> Unit,
+        remove: Boolean) {
+        if (id == null) return
+        val ref = database.child("member_count").child(id)
+        if (remove && memberCountListener != null) {
+            ref.removeEventListener(memberCountListener!!)
+        } else {
+            memberCountListener = chatEventListener(onCancelled, onDataReceived)
+            ref.addValueEventListener(memberCountListener!!)
+        }
+    }
+
     fun chatMembersListener(
         id: String,
+        lastIndex: Int,
         onAdded: (Map<String, Boolean>) -> Unit,
         onChanged: (Map<String, Boolean>) -> Unit,
         onRemoved: (Map<String, Boolean>) -> Unit,
         onCancelled: (String) -> Unit,
         remove: Boolean) {
-        val ref = membersRef.child(id)
+        val ref = membersRef.child(id).limitToFirst(lastIndex)
         if (remove && membershipListener != null) {
             ref.removeEventListener(membershipListener!!)
         } else {
@@ -191,23 +208,22 @@ class PublicChatServiceImpl(
         }
     }
 
-    /*fun handleDynamicMembersLoading(
+    fun handleDynamicMembersLoading(
         loadOnResume: Boolean = false,
         maxMemberIndex: Int,
         lastVisibleItemIndex: Int?,
         onRemove: () -> Unit,
-        onLoad: (Int) -> Unit
-    ) {
+        onLoad: (Int) -> Unit) {
         if ((lastVisibleItemIndex != null && lastVisibleItemIndex >= maxMemberIndex-1 || maxMemberIndex == 0)
             && !loadOnResume) {
             if (lastVisibleItemIndex != null) onRemove()
-            onLoad(1)
+            onLoad(10)
         }
         if (loadOnResume) {
             //load same members as before by not increasing lastMemberBatchIndex
             onLoad(0)
         }
-    }*/
+    }
 
     suspend fun updateLastMessage(chatId: String, chat: Chat) {
         chatsRef.child(chatId)
