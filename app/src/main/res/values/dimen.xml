@@ -17,4 +17,7 @@
     <dimen name="messages_and_chats_spacing">6dp</dimen>
     <dimen name="scroll_down_button_size">60dp</dimen>
     <dimen name="common_corner_size">20dp</dimen>
+    <dimen name="logout_delete_account_padding">120dp</dimen>
+    <dimen name="try_again_button_width">150dp</dimen>
+    <dimen name="try_again_button_height">50dp</dimen>
 </resources>

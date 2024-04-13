@@ -12,3 +12,7 @@ enum class PasswordError: Error {
     NOT_ENOUGH_DIGITS,
     IS_NOT_MIXED_CASE
 }
+enum class PictureStorageError {
+    USING_DEFAULT_PROFILE_PICTURE,
+    OBJECT_DOES_NOT_EXIST_AT_LOCATION,
+}

@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,6 +82,7 @@ import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import kotlinx.coroutines.launch
 import java.io.File
 
 
@@ -249,7 +251,9 @@ fun BottomRow(textFieldValue: TextFieldValue,
               onSendButtonClick: () -> Unit) {
     val maxMessageLength = integerResource(R.integer.max_message_length)
     val corner = dimensionResource(R.dimen.common_corner_size)
-    Row(modifier = modifier.fillMaxWidth().padding(4.dp),
+    Row(modifier = modifier
+        .fillMaxWidth()
+        .padding(4.dp),
         verticalAlignment = Alignment.Bottom) {
         OutlinedTextField(
             value = textFieldValue, onValueChange = {
@@ -416,13 +420,18 @@ fun CommonTextField(value: String,
 
 @Composable
 fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
+    val coroutineScope = rememberCoroutineScope()
         AlertDialog(
             title = {Text(alertDialogDataClass.title)},
             text = {Text(alertDialogDataClass.text, color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp, textAlign = TextAlign.Center)},
             onDismissRequest = alertDialogDataClass.onDismiss,
             confirmButton = {
-                TextButton(onClick = alertDialogDataClass.onConfirm) {
+                TextButton(onClick = {
+                    coroutineScope.launch {
+                        alertDialogDataClass.onConfirm()
+                    }
+                }) {
                     Text("Confirm")
                 }
             },
@@ -435,7 +444,7 @@ fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
 
 data class AlertDialogDataClass(val title: String = "",
                                 val text: String = "",
-                                val onConfirm: () -> Unit = {},
+                                val onConfirm: suspend () -> Unit = {},
                                 val onDismiss: () -> Unit = {})
 
 
@@ -473,7 +482,8 @@ fun ScrollDownButton(onClick: () -> Unit) {
         modifier = Modifier
             .border(
                 BorderStroke(1.dp, MaterialTheme.colorScheme.inversePrimary),
-                RoundedCornerShape(corner))
+                RoundedCornerShape(corner)
+            )
             .size(dimensionResource(R.dimen.scroll_down_button_size))
             .clip(RoundedCornerShape(corner))
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))) {

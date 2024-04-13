@@ -1,23 +1,21 @@
 package com.example.myspeechy.presentation.chat
 
-import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.MembersState
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.domain.chat.PublicChatServiceImpl
-import com.google.firebase.database.getValue
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -58,6 +56,7 @@ class PublicChatViewModel @Inject constructor(
     }
     private fun checkIfIsMemberOfChat(remove: Boolean) {
         chatServiceImpl.checkIfIsMemberOfChat(chatId, remove, {updateErrorMessage(it)}) {isMember ->
+            println(isMember)
             _uiState.update { it.copy(joined = isMember) }
         }
     }
@@ -65,7 +64,7 @@ class PublicChatViewModel @Inject constructor(
     fun handleDynamicMessageLoading(loadOnResume: Boolean = false,
                                     lastVisibleItemIndex: Int?) {
         chatServiceImpl.handleDynamicMessageLoading(
-            loadOnResume = loadOnResume,
+            loadOnActivityResume = loadOnResume,
             topMessageIndex = _uiState.value.topMessageBatchIndex,
             lastVisibleItemIndex = lastVisibleItemIndex,
             onRemove = {listenForMessages(remove = true)},
@@ -183,11 +182,16 @@ class PublicChatViewModel @Inject constructor(
     suspend fun sendMessage(text: String) {
         try {
             val chat = _uiState.value.chat
-            val currUsername =
-                _uiState.value.members.entries.first { it.key == userId }.value ?: return
-            val timestamp = chatServiceImpl.sendMessage(chatId, currUsername, text)
-            chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
+            val memberKeys = _uiState.value.members.keys
+            if (memberKeys.contains(userId)) {
+                val currUsername = _uiState.value.members[userId] ?: return
+                val timestamp = chatServiceImpl.sendMessage(chatId, currUsername, text)
+                if (timestamp != 0L) {
+                    chatServiceImpl.updateLastMessage(chatId, chat.copy(lastMessage = text, timestamp = timestamp))
+                }
+            }
         } catch (e: Exception) {
+            println(e.message)
             updateErrorMessage(e.message!!)
         }
     }
@@ -224,38 +228,36 @@ class PublicChatViewModel @Inject constructor(
         }
     }
 
-    fun changeChat(title: String, description: String) {
+    suspend fun changeChat(title: String, description: String) {
         try {
             chatServiceImpl.changePublicChat(chatId, _uiState.value.chat.copy(title = title, description = description))
         } catch (e: Exception) {
             updateErrorMessage(e.message!!)
         }
     }
-    fun leaveChat() {
-        viewModelScope.launch {
-            try {
-                if (_uiState.value.isAdmin) {
-                    _uiState.update { it.copy(
-                        errorMessage = "",
-                        alertDialogDataClass = AlertDialogDataClass(
-                            title = "Are you sure?",
-                            text = "If you leave the chat it will be deleted since you're its admin",
-                            onConfirm = {viewModelScope.launch {
-                                try {
-                                    _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
-                                    chatServiceImpl.deletePublicChat(chatId)
-                                } catch (e: Exception) {
-                                    updateErrorMessage(e.message!!)
-                                }
+    // is Admin is essential for testing purposes
+    suspend fun leaveChat(isAdmin: Boolean) {
+        try {
+            if (isAdmin) {
+                _uiState.update { it.copy(
+                    errorMessage = "",
+                    alertDialogDataClass = AlertDialogDataClass(
+                        title = "Are you sure?",
+                        text = "If you leave the chat it will be deleted since you're its admin",
+                        onConfirm = {
+                            try {
+                                _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
+                                chatServiceImpl.deletePublicChat(chatId)
+                            } catch (e: Exception) {
+                                updateErrorMessage(e.message!!)
                             }
-                            },
-                            onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
-                        )) }
-                } else chatServiceImpl.leavePublicChat(chatId, true)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
-                updateErrorMessage(e.message!!)
-            }
+                        },
+                        onDismiss = {_uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }}
+                    )) }
+            } else chatServiceImpl.leavePublicChat(chatId, true)
+        } catch (e: Exception) {
+            _uiState.update { it.copy(alertDialogDataClass = AlertDialogDataClass()) }
+            updateErrorMessage(e.message!!)
         }
     }
     suspend fun scrollToBottom(listState: LazyListState, firstVisibleItem: LazyListItemInfo?) {
@@ -267,20 +269,21 @@ class PublicChatViewModel @Inject constructor(
         return chatServiceImpl.formatDate(timestamp)
     }
 
-    fun joinChat() {
-        viewModelScope.launch {
-            try {
-                chatServiceImpl.joinChat(chatId)
-            } catch (e: Exception) {
-                updateErrorMessage(e.message!!)
-            }
+    suspend fun joinChat() {
+        try {
+            chatServiceImpl.joinChat(chatId)
+        } catch (e: Exception) {
+            println(e.message)
+            updateErrorMessage(e.message!!)
         }
     }
     private fun updateMembersState(state: MembersState) {
         _uiState.update { it.copy(membersState = state) }
     }
     private fun updateErrorMessage(m: String) {
-        _uiState.update { it.copy(errorMessage = m) }
+        if (Firebase.auth.currentUser != null) {
+            _uiState.update { it.copy(errorMessage = m) }
+        }
     }
     private fun updateStorageErrorMessage(e: String) {
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }

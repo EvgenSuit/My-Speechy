@@ -10,25 +10,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.lifecycleScope
+import com.example.myspeechy.data.DataStoreManager
 import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.chat.DirectoryManager
 import com.example.myspeechy.ui.theme.MySpeechyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
-import javax.inject.Named
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authService: AuthService
-
     @Inject
-    @Named("AuthDataStore")
-    lateinit var authDataStore: DataStore<Preferences>
+    lateinit var dataStoreManager: DataStoreManager
     private fun createNotificationChannel() {
         val name = "Meditation"
         val importance = NotificationManager.IMPORTANCE_DEFAULT
@@ -40,16 +38,27 @@ class MainActivity : ComponentActivity() {
     private fun listenForAuthState() {
         authService.listenForAuthState {isLoggedOut ->
             lifecycleScope.launch {
-                authDataStore.edit { loggedOutPref ->
+                if (isLoggedOut) {
+                    DirectoryManager.clearCache(applicationContext.cacheDir.toString())
+                    clearDataStore()
+                }
+                applicationContext.authDataStore.edit { loggedOutPref ->
                     loggedOutPref[loggedOutDataStore] = isLoggedOut
                 }
             }
+        }
+    }
+    private fun clearDataStore() {
+        runBlocking {
+            dataStoreManager.editError("")
+            dataStoreManager.showNavBar(false)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         listenForAuthState()
+        clearDataStore()
         createNotificationChannel()
         setContent {
             MySpeechyTheme(darkTheme = true) {

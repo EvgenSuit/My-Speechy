@@ -1,13 +1,11 @@
 package com.example.myspeechy.screens.chat
 
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Face
@@ -49,7 +45,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,7 +63,7 @@ import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CommonTextField
-import com.example.myspeechy.domain.chat.PictureStorageError
+import com.example.myspeechy.domain.Result
 import com.example.myspeechy.presentation.chat.PictureState
 import com.example.myspeechy.presentation.chat.UserProfileViewModel
 import es.dmoral.toasty.Toasty
@@ -83,7 +78,7 @@ fun UserProfileScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val isCurrentUser = viewModel.userId == viewModel.currUserId
-    val placeholders = Pair("Username", "Description")
+    val placeholders = Pair("Username", "About me")
     val focusManager = LocalFocusManager.current
     var name by remember(uiState.user?.name) {
         mutableStateOf(uiState.user?.name)
@@ -94,9 +89,14 @@ fun UserProfileScreen(
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
-    LaunchedEffect(uiState.deletingAccount) {
-        if (uiState.deletingAccount) {
+    LaunchedEffect(uiState.accountDeletionResult) {
+        if (uiState.accountDeletionResult is Result.InProgress) {
             onAccountDelete()
+        }
+    }
+    LaunchedEffect(uiState.authResult) {
+        if (uiState.authResult is Result.Error) {
+            Toasty.success(context, uiState.authResult.error, Toast.LENGTH_SHORT, true).show()
         }
     }
     LaunchedEffect(uiState.errorMessage) {
@@ -167,18 +167,22 @@ fun UserProfileScreen(
                     .padding(top = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                AnimatedVisibility(!name.isNullOrEmpty()) {
+                AnimatedVisibility(name != null) {
                     if (isCurrentUser) {
-                        name?.let { CommonTextField(value = it, onChange = {name = it}, placeholders = placeholders) }
+                        CommonTextField(value = name ?: "", onChange = {name = it}, placeholders = placeholders)
                     } else {
-                        name?.let { UserInfoTable(value = it) }
+                        if (!name.isNullOrEmpty()) {
+                            UserInfoTable(value = name ?: "")
+                        }
                     }
                 }
-                AnimatedVisibility(!info.isNullOrEmpty()) {
+                AnimatedVisibility(info != null) {
                     if (isCurrentUser) {
-                        info?.let { CommonTextField(value = it, onChange = {info = it}, last = true, placeholders = placeholders) }
-                    }else {
-                        info?.let { UserInfoTable(value = it) }
+                        CommonTextField(value = info ?: "", onChange = {info = it}, last = true, placeholders = placeholders)
+                    } else {
+                         if (!info.isNullOrEmpty()) {
+                             UserInfoTable(value = info ?: "")
+                         }
                     }
                 }
             }
@@ -213,6 +217,19 @@ fun UserProfileScreen(
             }
             if (uiState.chatAlertDialogDataClass.title.isNotEmpty()) {
                 ChatAlertDialog(alertDialogDataClass = uiState.chatAlertDialogDataClass)
+            }
+        }
+        if (uiState.authResult is Result.InProgress) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.logout_delete_account_padding), Alignment.CenterVertically)) {
+                    Text("Logging out...", style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onBackground
+                    ))
+                    CircularProgressIndicator()
+                }
             }
         }
     }

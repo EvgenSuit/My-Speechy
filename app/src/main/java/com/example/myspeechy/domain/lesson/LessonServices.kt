@@ -1,11 +1,11 @@
 package com.example.myspeechy.domain.lesson
 
 import android.content.res.AssetManager
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.helpers.LessonServiceHelpers
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -15,8 +15,8 @@ import com.google.firebase.ktx.Firebase
 interface LessonService {
     val lessonServiceHelpers: LessonServiceHelpers
         get() = LessonServiceHelpers()
-    val userId: String
-        get() = Firebase.auth.currentUser!!.uid
+    val userId: String?
+        get() = Firebase.auth.currentUser?.uid
 
     fun convertToLessonItem(lesson: Lesson): LessonItem {
         return LessonItem(
@@ -41,11 +41,14 @@ interface LessonService {
         return mapOf()
     }
     fun markAsComplete(lessonItem: LessonItem) {
-        Firebase.firestore.collection(userId).document("lesson")
-            .collection("items").document(lessonItem.id.toString()).set(mapOf(
-                "id" to lessonItem.id))
+        if (userId != null) {
+            Firebase.firestore.collection("users").document(userId!!).collection("lessons")
+                .document(lessonItem.id.toString()).set(mapOf("id" to lessonItem.id))
+        }
     }
-    fun trackRemoteProgress(onListenError: (errorCode: FirebaseFirestoreException.Code) -> Unit, onDataReceived: (List<Int>) -> Unit) {}
+    fun trackRemoteProgress(onListenError: (errorCode: FirebaseFirestoreException.Code) -> Unit,
+                            onOtherError: (String) -> Unit,
+                            onDataReceived: (List<Int>) -> Unit) {}
 }
 
 class RegularLessonServiceImpl: LessonService {
@@ -77,30 +80,35 @@ class RegularLessonServiceImpl: LessonService {
     }
 }
 
-class MainLessonServiceImpl(private val firestoreRef: FirebaseFirestore,
-    private val auth: FirebaseAuth): LessonService {
+class MainLessonServiceImpl(private val firestoreRef: FirebaseFirestore): LessonService {
     override fun trackRemoteProgress(onListenError: (errorCode: FirebaseFirestoreException.Code) -> Unit,
+                                     onOtherError: (String) -> Unit,
         onDataReceived: (List<Int>) -> Unit) {
-        val docRef = firestoreRef.collection("users").document(userId).collection("lessons")
-            .document("items")
+        if (userId == null) return
+        val docRef = firestoreRef.collection("users").document(userId!!).collection("lessons")
         docRef.addSnapshotListener{snapshot, e ->
             if (e != null) {
-                if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    auth.signOut()
-                }
                 onListenError(e.code)
                 return@addSnapshotListener
             }
-            if (snapshot == null || !snapshot.exists()) {
-                auth.signOut()
+            else if (snapshot == null || snapshot.isEmpty) {
+                onListenError(FirebaseFirestoreException.Code.NOT_FOUND)
                 return@addSnapshotListener
             }
-            val data = mutableListOf<Int>()
-            val keys = snapshot.data?.keys ?: return@addSnapshotListener
-            for (k in keys) {
-                data.add(k.toInt())
+           else {
+                val data = mutableListOf<Int>()
+                try {
+                    for (doc in snapshot.documents) {
+                        val id = doc.id.toIntOrNull()
+                        if (id != null) {
+                            data.add(id)
+                        }
+                    }
+                } catch (e: Exception) {
+                    onOtherError(e.message!!)
+                }
+                onDataReceived(data)
             }
-            onDataReceived(data)
         }
     }
 }

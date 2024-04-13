@@ -1,13 +1,15 @@
 package com.example.myspeechy.domain.auth
 
-class AccountDeletionService(private val authService: AuthService) {
-    val userId = authService.userId
+import com.google.firebase.auth.FirebaseAuth
+
+class AccountDeletionService(private val authService: AuthService,
+    private val auth: FirebaseAuth) {
     suspend fun deleteUser() {
-        if (userId == null) throw Exception("Couldn't delete account")
+        val userId = auth.currentUser?.uid ?: throw Exception("Couldn't delete account: authentication error")
         authService.removeProfilePics(userId)
         authService.revokeMembership()
-        authService.deleteRdbUser()
         authService.deleteFirestoreData(userId)
+        authService.deleteRdbUser()
         authService.deleteUser()
     }
 }

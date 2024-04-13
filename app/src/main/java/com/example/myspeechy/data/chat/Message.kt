@@ -18,6 +18,5 @@ enum class MessagesState {
 }
 enum class MembersState {
     IDLE,
-    LOADING,
-    EMPTY
+    LOADING
 }

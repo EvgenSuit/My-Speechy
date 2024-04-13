@@ -1,6 +1,5 @@
 package com.example.myspeechy.presentation.chat
 
-import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
@@ -8,9 +7,10 @@ import androidx.lifecycle.ViewModel
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
-import com.example.myspeechy.domain.chat.PictureStorageError
 import com.example.myspeechy.domain.chat.PrivateChatServiceImpl
-import com.google.firebase.database.getValue
+import com.example.myspeechy.domain.error.PictureStorageError
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,7 +52,7 @@ class PrivateChatViewModel @Inject constructor(
     }
     fun handleDynamicMessageLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
         chatServiceImpl.handleDynamicMessageLoading(
-            loadOnResume = loadOnResume,
+            loadOnActivityResume = loadOnResume,
             topMessageIndex = _uiState.value.topMessageBatchIndex,
             lastVisibleItemIndex = lastVisibleItemIndex,
             onRemove = {listenForMessages(remove = true)},
@@ -217,7 +217,9 @@ class PrivateChatViewModel @Inject constructor(
         _uiState.update { it.copy(storageErrorMessage = e.formatStorageErrorMessage()) }
     }
     private fun updateErrorMessage(m: String) {
-        _uiState.update { it.copy(errorMessage = m) }
+        if (Firebase.auth.currentUser != null) {
+            _uiState.update { it.copy(errorMessage = m) }
+        }
     }
 
     data class PrivateChatUiState(

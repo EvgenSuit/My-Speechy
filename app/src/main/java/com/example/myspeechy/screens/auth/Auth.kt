@@ -1,17 +1,16 @@
-package com.example.myspeechy.screens
+package com.example.myspeechy.screens.auth
 
-import android.app.Activity
-import android.app.Activity.RESULT_CANCELED
-import android.app.Activity.RESULT_OK
+import android.content.Intent
+import android.content.IntentSender
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +38,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,16 +63,14 @@ import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import com.example.myspeechy.R
 import com.example.myspeechy.components.advancedShadow
+import com.example.myspeechy.domain.Result
+import com.example.myspeechy.presentation.UiText
+import com.example.myspeechy.presentation.auth.AuthViewModel
 import com.example.myspeechy.ui.theme.itimFamily
 import com.example.myspeechy.ui.theme.kalamFamily
 import com.example.myspeechy.ui.theme.lalezarFamily
-import com.example.myspeechy.presentation.auth.AuthState
-import com.example.myspeechy.presentation.auth.AuthType
-import com.example.myspeechy.presentation.auth.AuthViewModel
 import es.dmoral.toasty.Toasty
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun AuthScreen(
@@ -114,23 +115,37 @@ fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
             modifier: Modifier = Modifier) {
     val viewModel: AuthViewModel = hiltViewModel()
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val exceptionState by viewModel.exceptionState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val padding = dimensionResource(id = R.dimen.padding_auth_fields)
-    LaunchedEffect(uiState.authState) {
-        withContext(Dispatchers.Main) {
-            if (uiState.authState == AuthState.SUCCESS) {
-                focusManager.clearFocus(true)
-                onNavigateToMain()
-                Toasty.success(
-                    context, if (uiState.authType == AuthType.SIGN_UP) "Signed Up"
-                    else "Logged In", Toast.LENGTH_SHORT, true
-                ).show()
-            } else if (uiState.authState == AuthState.FAILURE) {
-                Toasty.error(context, exceptionState.exceptionMessage, Toast.LENGTH_SHORT, true).show()
+    val linearProgressBarDescription = stringResource(R.string.waiting_for_auth)
+    val emailError by remember(exceptionState.emailErrorMessage) {
+        mutableStateOf(exceptionState.emailErrorMessage?.let { e ->
+            when (e) {
+                is UiText.StringResource -> e.asString(context)
+                is UiText.StringResource.DynamicString -> e.s
             }
+        })
+    }
+    val passwordError by remember(exceptionState.passwordErrorMessage) {
+        mutableStateOf(exceptionState.passwordErrorMessage?.let { e ->
+            when (e) {
+                is UiText.StringResource -> e.asString(context)
+                is UiText.StringResource.DynamicString -> e.s
+            }
+        })
+    }
+
+    LaunchedEffect(uiState.result) {
+        if (uiState.result is Result.Success) {
+            focusManager.clearFocus(true)
+            Toasty.success(context, uiState.result.data, Toast.LENGTH_SHORT, true).show()
+            onNavigateToMain()
+        } else if (uiState.result is Result.Error) {
+            Toasty.error(context, uiState.result.error, Toast.LENGTH_SHORT, true).show()
         }
     }
     Box(modifier = modifier
@@ -155,33 +170,51 @@ fun MainBox(onNavigateToMain: () -> Unit,
                 color = Color.Black,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(top = 15.dp))
+                    .padding(top = 15.dp, bottom = 15.dp))
            Column(modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
                AuthTextField(value = uiState.email,
-                   exceptionMessage = exceptionState.emailErrorMessage ?: "",
+                   exceptionMessage = emailError ?: "",
                    label = "Email",
+                   modifier = Modifier.clickable(onClickLabel = stringResource(R.string.email_auth_field_click_label),
+                       onClick = {}),
                    onValueChange = {viewModel.onEmailChanged(it)})
-               if (!exceptionState.emailErrorMessage.isNullOrEmpty()) {
-                   ErrorMessage(exceptionState.emailErrorMessage!!)
+               if (!emailError.isNullOrEmpty()) {
+                   ErrorMessage(emailError!!)
                }
                AuthTextField(value = uiState.password,
-                   exceptionMessage = exceptionState.passwordErrorMessage ?: "",
+                   exceptionMessage = passwordError ?: "",
                    label = "Password",
+                   modifier = Modifier.clickable(onClickLabel = stringResource(R.string.password_auth_field_click_label),
+                       onClick = {}),
                    onValueChange = {viewModel.onPasswordChanged(it)})
-               if (!exceptionState.passwordErrorMessage.isNullOrEmpty()) {
-                   ErrorMessage(exceptionState.passwordErrorMessage!!)
+
+               if (!passwordError.isNullOrEmpty()) {
+                   ErrorMessage(passwordError!!)
                }
-               AnimatedVisibility(uiState.authState != AuthState.IN_PROGRESS) {
+               AnimatedVisibility(uiState.result !is Result.InProgress) {
                    AuthButtons(
-                       enabled = exceptionState.emailErrorMessage?.isEmpty() == true &&
-                       exceptionState.passwordErrorMessage?.isEmpty() == true,
-                       onLogIn = viewModel::logIn,
-                       onSignUp = viewModel::signUp)
+                       enabled = emailError?.isEmpty() == true &&
+                       passwordError?.isEmpty() == true && uiState.result !is Result.Error,
+                       onLogIn = {
+                           coroutineScope.launch {
+                               viewModel.logIn()
+                           }
+                       },
+                       onSignUp = {
+                           coroutineScope.launch {
+                               viewModel.signUp()
+                           }
+                       })
                }
-               AnimatedVisibility(uiState.authState == AuthState.IN_PROGRESS) {
-                   LinearProgressIndicator(modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_auth_button_row)))
+               AnimatedVisibility(uiState.result is Result.InProgress) {
+                   LinearProgressIndicator(modifier = Modifier
+                       .padding(top = dimensionResource(R.dimen.padding_auth_button_row))
+                       .semantics { stateDescription = linearProgressBarDescription })
                }
-               GoogleAuthButton(viewModel, imageLoader, onNavigateToMain)
+               GoogleAuthButton(imageLoader = imageLoader,
+                        enabled = uiState.result !is Result.InProgress,
+                       onGoogleSignIn = viewModel::googleSignIn,
+                       onGoogleSignInWithIntent = viewModel::googleSignInWithIntent)
            }
         }
     }
@@ -191,53 +224,52 @@ fun MainBox(onNavigateToMain: () -> Unit,
 fun AuthButtons(
     enabled: Boolean,
     onLogIn: () -> Unit,
-    onSignUp: () -> Unit, ) {
+    onSignUp: () -> Unit) {
+    val signUp = stringResource(R.string.sign_up)
+    val logIn = stringResource(R.string.log_in)
     Row(horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .padding(top = dimensionResource(id = R.dimen.padding_auth_button_row))
             .fillMaxWidth()
     ) {
-        AuthButton(label = "Log In", enabled, onLogIn)
-        AuthButton(label = "Sign Up", enabled, onSignUp)
+        AuthButton(label = logIn, enabled,
+            Modifier.clickable(onClickLabel = logIn, onClick = {}), onLogIn)
+        AuthButton(label = signUp, enabled,
+            Modifier.clickable(onClickLabel = signUp, onClick = {}), onSignUp)
     }
 }
 
 @Composable
-fun GoogleAuthButton(viewModel: AuthViewModel,
-                     imageLoader: ImageLoader,
-                     onClick: () -> Unit) {
-    val context = LocalContext.current
+fun GoogleAuthButton(imageLoader: ImageLoader,
+                     enabled: Boolean,
+                     onGoogleSignIn: suspend () -> IntentSender?,
+                     onGoogleSignInWithIntent: suspend (Intent) -> Unit) {
     val painter = rememberAsyncImagePainter(R.raw.google_icon, imageLoader)
     val coroutine = rememberCoroutineScope()
+
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult(),
-        onResult = { result ->
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val res = result.data
+        if (res != null) {
             coroutine.launch {
-                try {
-                    viewModel.googleSignInWithIntent(
-                        result.data ?: return@launch)
-                    onClick()
-                } catch (e: Exception) {
-                    Toasty.error(context, e.message!!, Toast.LENGTH_SHORT, true).show()
-                }
+                onGoogleSignInWithIntent(res)
             }
         }
-    )
+    }
     Button(onClick = {
         coroutine.launch {
-            try {
-                val signInIntentSender = viewModel.googleSignIn()
-                if (signInIntentSender != null) {
-                    launcher.launch(
-                        IntentSenderRequest.Builder(
-                            intentSender = signInIntentSender
-                        ).build()
-                    )
-                }
-            } catch (e: Exception) {
-                Toasty.error(context, e.message!!, Toast.LENGTH_SHORT, true).show()
+            val signInIntentSender = onGoogleSignIn()
+            if (signInIntentSender != null) {
+                launcher.launch(
+                    IntentSenderRequest.Builder(
+                        intentSender = signInIntentSender
+                    ).build()
+                )
             }
-        }},
+        }
+        },
+        enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Blue.copy(alpha = 0.7f)
@@ -271,6 +303,7 @@ fun GoogleAuthButton(viewModel: AuthViewModel,
 @Composable
 fun AuthTextField(value:String, label: String,
                   exceptionMessage: String,
+                  modifier: Modifier,
                   onValueChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
      Column {
@@ -304,7 +337,7 @@ fun AuthTextField(value:String, label: String,
                  errorTextColor = Color.Black
              ),
              shape = RoundedCornerShape(10.dp),
-             modifier = Modifier
+             modifier = modifier
                  .padding(top = dimensionResource(id = R.dimen.padding_auth_text_fields))
                  .advancedShadow(
                      alpha = 0.5f,
@@ -319,7 +352,7 @@ fun AuthTextField(value:String, label: String,
 }
 
 @Composable
-fun AuthButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+fun AuthButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Button(onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(5.dp),
@@ -328,7 +361,7 @@ fun AuthButton(label: String, enabled: Boolean, onClick: () -> Unit) {
             disabledContainerColor = Color.White.copy(alpha = 0.4f),
             disabledContentColor = Color.White.copy(alpha = 1f)
         ),
-        modifier = Modifier
+        modifier = modifier
             .width(120.dp)
             .height(50.dp)
     ) {

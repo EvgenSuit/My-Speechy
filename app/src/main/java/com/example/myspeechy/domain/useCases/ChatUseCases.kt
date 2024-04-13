@@ -1,9 +1,7 @@
-package com.example.myspeechy.useCases
+package com.example.myspeechy.domain.useCases
 
-import android.util.Log
 import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.getValue
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -13,8 +11,7 @@ import java.util.Locale
 
 class LeavePrivateChatUseCase(
     private val userId: String?,
-    private val database: DatabaseReference
-) {
+    private val database: DatabaseReference) {
     suspend operator fun invoke(chatId: String) {
         if (userId == null) return
         val otherUserId = chatId.getOtherUserId(userId)
@@ -90,8 +87,18 @@ class DecrementMemberCountUseCase(private val database: DatabaseReference) {
         else ref.setValue(memberCount-1).await()
     }
 }
+class CheckIfIsAdminUseCase(private val userId: String?,
+                            private val database: DatabaseReference) {
+    suspend operator fun invoke(chatId: String): Boolean {
+        val admin = database.child("admins")
+            .child(chatId)
+            .get().await()
+        return admin.getValue(String::class.java) == userId
+    }
+}
 class DeletePublicChatUseCase(private val database: DatabaseReference,
-    private val decrementMemberCountUseCase: DecrementMemberCountUseCase) {
+    private val decrementMemberCountUseCase: DecrementMemberCountUseCase
+) {
     suspend operator fun invoke(chatId: String) {
         removeChat(chatId)
         removeMessages(chatId)
@@ -118,15 +125,6 @@ class DeletePublicChatUseCase(private val database: DatabaseReference,
         database.child("public_chats")
             .child(chatId)
             .removeValue().await()
-    }
-}
-class CheckIfIsAdminUseCase(private val userId: String?,
-                            private val database: DatabaseReference) {
-    suspend operator fun invoke(chatId: String): Boolean {
-        val admin = database.child("admins")
-            .child(chatId)
-            .get().await()
-        return admin.getValue(String::class.java) == userId
     }
 }
 
