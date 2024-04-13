@@ -1,15 +1,15 @@
 package com.example.myspeechy.domain.chat
 
-import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.domain.error.PictureStorageError
+import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -22,8 +22,10 @@ import java.util.UUID
 interface RootChatService {
     val userId: String?
     val messagesRef: DatabaseReference
-    val picsRef: StorageReference
-    val usersRef: DatabaseReference
+    val picsRef: StorageReference?
+    val usersRef: DatabaseReference?
+    val formatDateUseCase: FormatDateUseCase
+        get() = FormatDateUseCase()
     fun messagesChildListener(onAdded: (Map<String, Message>) -> Unit,
                               onChanged: (Map<String, Message>) -> Unit,
                               onRemoved: (Map<String, Message>) -> Unit,
@@ -94,14 +96,14 @@ interface RootChatService {
                 file.createNewFile()
             }
             val picRef = File(picDir, "$id.jpg")
-            picsRef.child(id)
-                .child("lowQuality")
-                .child("$id.jpg")
-                .getFile(picRef)
-                .addOnSuccessListener {
+            picsRef?.child(id)
+                ?.child("lowQuality")
+                ?.child("$id.jpg")
+                ?.getFile(picRef)
+                ?.addOnSuccessListener {
                     onPicReceived()
                 }
-                .addOnFailureListener {onStorageFailure(it.message?:"")}
+                ?.addOnFailureListener {onStorageFailure(it.message?:"")}
         } else {
             onStorageFailure(PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name)
         }
@@ -114,14 +116,16 @@ interface RootChatService {
             messagesRef.child(chatId)
                 .child(UUID.randomUUID().toString())
                 .setValue(Message(id, senderUsername, text, timestamp,false)).await()
-        return timestamp
+        return if (id != null) timestamp else 0L
     }
     suspend fun editMessage(chatId: String, message: Map<String, Message>) {
+        if (userId == null) return
         messagesRef.child(chatId)
             .child(message.keys.first())
             .setValue(message.values.first().copy(edited = true)).await()
     }
     suspend fun deleteMessage(chatId: String, message: Map<String, Message>) {
+        if (userId == null) return
         messagesRef.child(chatId)
             .child(message.keys.first())
             .removeValue().await()
@@ -139,6 +143,7 @@ interface RootChatService {
             Files.createDirectories(Paths.get(picDir))
         }
     }
+    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
     //scroll to bottom if the message before the last one is 100% visible at the time of receiving a new one
     suspend fun scrollToBottom(messages: Map<String, Message>, listState: LazyListState, firstVisibleItem: LazyListItemInfo) {
         val viewportHeight = listState.layoutInfo.viewportEndOffset
@@ -153,17 +158,17 @@ interface RootChatService {
     }
 
     fun handleDynamicMessageLoading(
-        loadOnResume: Boolean = false,
+        loadOnActivityResume: Boolean = false,
         topMessageIndex: Int,
         lastVisibleItemIndex: Int?,
         onRemove: () -> Unit,
         onLoad: (Int) -> Unit) {
         if ((lastVisibleItemIndex != null && lastVisibleItemIndex >= topMessageIndex-1 || topMessageIndex == 0)
-            && !loadOnResume) {
+            && !loadOnActivityResume) {
             if (lastVisibleItemIndex != null) onRemove()
             onLoad(10)
         }
-        if (loadOnResume) {
+        if (loadOnActivityResume) {
             //load same messages as before by not increasing topMessageBatchIndex
             onLoad(0)
         }

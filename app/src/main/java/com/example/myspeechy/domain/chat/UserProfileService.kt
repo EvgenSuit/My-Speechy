@@ -2,6 +2,7 @@ package com.example.myspeechy.domain.chat
 
 import androidx.core.net.toUri
 import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.error.PictureStorageError
 import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -13,14 +14,10 @@ import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.util.UUID
 
-enum class PictureStorageError {
-    USING_DEFAULT_PROFILE_PICTURE,
-    OBJECT_DOES_NOT_EXIST_AT_LOCATION,
-}
 
 private val database = Firebase.database.reference
 private val storage = Firebase.storage.reference
-class UserProfileServiceImpl(private val authService: AuthService) {
+class UserProfileService(private val authService: AuthService) {
     private val usersRef = database.child("users")
     private val picsRef = storage.child("profilePics")
     val userId = authService.userId

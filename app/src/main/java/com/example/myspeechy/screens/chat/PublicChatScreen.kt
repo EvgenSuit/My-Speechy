@@ -166,7 +166,7 @@ fun PublicChatScreen(navController: NavHostController,
                     joined = uiState.joined,
                     members = uiState.members, recomposeIds = uiState.picsRecomposeIds, picPaths = uiState.picPaths,
                     membersListState = membersListState,
-                    onLeave = viewModel::leaveChat,
+                    onLeave = {viewModel.leaveChat(uiState.isAdmin)},
                     onChangeChatInfo = {showChangeChatInfoForm = true},
                     onNavigate = { userId ->
                         if (userId != viewModel.userId) {
@@ -247,7 +247,8 @@ fun PublicChatScreen(navController: NavHostController,
                 }
                 if (uiState.chat.title.isNotEmpty()) {
                     if (uiState.chatLoaded && !uiState.joined) {
-                        JoinButton(viewModel::joinChat, Modifier)
+                        JoinButton({ coroutineScope.launch { viewModel.joinChat() }
+                        }, Modifier)
                     }
                     else if (uiState.chatLoaded) {
                         BottomRow(textFieldState,
@@ -306,8 +307,9 @@ fun SideDrawer(
     picPaths: Map<String, String>,
     membersListState: LazyListState,
     onChangeChatInfo: () -> Unit,
-    onLeave: () -> Unit,
+    onLeave: suspend () -> Unit,
     onNavigate: (String) -> Unit) {
+    val coroutineScope = rememberCoroutineScope()
     Column(
         Modifier
             .fillMaxWidth(0.7f)
@@ -320,7 +322,11 @@ fun SideDrawer(
             ChatInfoColumn(isAdmin, chat, onChangeChatInfo)
         }
         if (joined) {
-            IconButton(onClick = onLeave) {
+            IconButton(onClick = {
+                coroutineScope.launch {
+                    onLeave()
+                }
+            }) {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp,
                     tint = MaterialTheme.colorScheme.error,
                     contentDescription = null,
@@ -418,9 +424,9 @@ fun MembersColumn(
             }
         }
         if (state == MembersState.LOADING)
-        item {
-                LinearProgressIndicator(modifier = Modifier)
-        }
+            item {
+                    LinearProgressIndicator(modifier = Modifier)
+            }
     }
 }
 @Composable

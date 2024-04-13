@@ -1,14 +1,13 @@
 package com.example.myspeechy.presentation
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.data.DataStoreManager
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
-import com.example.myspeechy.loggedOutDataStore
+import com.example.myspeechy.domain.Result
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.lesson.MainLessonServiceImpl
 import com.google.firebase.auth.ktx.auth
@@ -22,52 +21,58 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Named
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: MainLessonServiceImpl,
-    private val authService: AuthService,
-    @Named("AuthDataStore")
-    private val authDataStore: DataStore<Preferences>
+    private val dataStoreManager: DataStoreManager
 ): ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
    init {
-       //listenForAuthState()
-       handleProgressLoading()
+       try {
+           handleProgressLoading()
+       } catch (e: Exception) {
+           updateResult(Result.Error(e.message!!))
+       }
    }
-    private fun listenForAuthState() {
-        authService.listenForAuthState { isLoggedOut ->
-            viewModelScope.launch {
-                authDataStore.edit { loggedOutPref ->
-                    loggedOutPref[loggedOutDataStore] = isLoggedOut
-                }
-            }
-        }
-    }
-    fun handleProgressLoading() {
-        _uiState.update { it.copy(dataState = FirestoreDataState.LOADING) }
+    private fun handleProgressLoading() {
+        updateResult(Result.InProgress)
         viewModelScope.launch {
+            dataStoreManager.editError("")
+            dataStoreManager.showNavBar(false)
+            delay(500) //show logo
             val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
                 .values.toList().flatten()
             lessonServiceImpl.trackRemoteProgress({errorCode ->
                 if (Firebase.auth.currentUser != null) {
-                    _uiState.update { it.copy(dataState = FirestoreDataState.ERROR,
-                         errorCode = errorCode) }
+                    updateResult(Result.Error(errorCode.name))
+                    viewModelScope.launch {
+                        dataStoreManager.editError(errorCode.name)
+                        dataStoreManager.showNavBar(false)
+                    }
                 }
-            }) { data ->
+            },
+                { updateResult(Result.Error(it))
+                viewModelScope.launch {
+                    dataStoreManager.showNavBar(false)
+                }
+                }) { data ->
                 //If error listening, the lesson list doesn't get changed
                 var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
                 viewModelScope.launch {
                     newLessonList = handleAvailability(newLessonList)
+                    if (uiState.value.result !is Result.Success) {
+                        dataStoreManager.editError("")
+                        dataStoreManager.showNavBar(true)
+                    }
                     _uiState.update {
                         UiState(newLessonList.map { lesson ->
                             lessonServiceImpl.convertToLessonItem(lesson)
-                        }, dataState = FirestoreDataState.SUCCESS,
-                            errorCode = FirebaseFirestoreException.Code.OK)
+                        },
+                            result = Result.Success(FirebaseFirestoreException.Code.OK.name))
                     }
                 }
             }
@@ -90,14 +95,9 @@ class MainViewModel @Inject constructor(
     fun getStringType(category: String): Int {
         return lessonServiceImpl.lessonServiceHelpers.categoryMapperReverse(category)
     }
-    fun logout() = authService.logOut()
+    private fun updateResult(result: Result) {
+        _uiState.update { it.copy(result = result) }
+    }
     data class UiState(val lessonItems: List<LessonItem> = listOf(),
-        val dataState: FirestoreDataState = FirestoreDataState.LOADING,
-        val errorCode: FirebaseFirestoreException.Code = FirebaseFirestoreException.Code.OK)
-}
-
-enum class FirestoreDataState {
-    LOADING,
-    ERROR,
-    SUCCESS
+                       val result: Result = Result.Idle)
 }

@@ -2,6 +2,7 @@ package com.example.myspeechy.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.domain.Result
 import com.example.myspeechy.domain.auth.AccountDeletionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,20 +17,18 @@ class AccountDeletionViewModel @Inject constructor(
 ): ViewModel() {
     private val _uiState = MutableStateFlow(AccountDeletionUiState())
     val uiState = _uiState.asStateFlow()
-    val userId = accountDeletionService.userId
-    fun deleteUser() {
-        viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(error = "") }
-                accountDeletionService.deleteUser()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Couldn't delete account: ${e.message!!}") }
-            }
+    suspend fun deleteUser() {
+        try {
+            updateAccountDeletionResult(Result.InProgress)
+            accountDeletionService.deleteUser()
+            updateAccountDeletionResult(Result.Success("Successfully deleted account"))
+        } catch (e: Exception) {
+            updateAccountDeletionResult(Result.Error("Couldn't delete account: ${e.message}"))
         }
     }
-    init {
-        deleteUser()
+    private fun updateAccountDeletionResult(result: Result) {
+        _uiState.update { it.copy(result = result) }
     }
 
-    data class AccountDeletionUiState(val error: String = "")
+    data class AccountDeletionUiState(val result: Result = Result.InProgress)
 }

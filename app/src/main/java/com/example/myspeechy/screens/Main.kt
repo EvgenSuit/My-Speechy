@@ -1,5 +1,7 @@
 package com.example.myspeechy.screens
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.Image
@@ -49,31 +51,40 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
-import com.example.myspeechy.authDataStore
 import com.example.myspeechy.data.lesson.LessonItem
-import com.example.myspeechy.loggedOutDataStore
+import com.example.myspeechy.domain.Result
 import com.example.myspeechy.navBarDataStore
-import com.example.myspeechy.presentation.FirestoreDataState
 import com.example.myspeechy.presentation.MainViewModel
 import com.example.myspeechy.screens
 import com.example.myspeechy.screens.lesson.MeditationLessonItem
 import com.example.myspeechy.screens.lesson.ReadingLessonItem
 import com.example.myspeechy.screens.lesson.RegularLessonItem
 import com.example.myspeechy.showNavBarDataStore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import es.dmoral.toasty.Toasty
 
 @Composable
 fun MainScreen(navController: NavHostController = rememberNavController(),
                viewModel: MainViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val destination = navBackStackEntry?.destination
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
         ?.route in screens.map { it.route }
     LaunchedEffect(showNavBar) {
-        context.navBarDataStore.edit { navBar ->
-            navBar[showNavBarDataStore] = showNavBar
+        if (destination != null) {
+            context.navBarDataStore.edit { navBar ->
+               navBar[showNavBarDataStore] = showNavBar
+            }
         }
     }
-    if (uiState.dataState == FirestoreDataState.SUCCESS) {
+    LaunchedEffect(uiState.result) {
+        if (uiState.result is Result.Error && uiState.result.error != FirebaseFirestoreException.Code.NOT_FOUND.name) {
+            Toasty.error(context, uiState.result.error, Toast.LENGTH_SHORT, true).show()
+        }
+    }
+    if (uiState.result is Result.Success) {
         NavHost(navController = navController, startDestination = NavScreens.Main.route,
             enterTransition = { EnterTransition.None },
             exitTransition = { ExitTransition.None },
@@ -118,26 +129,14 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
                 { navController.navigateUp() }
             }
         }
-    } else {
-        //TODO Show app logo instead
+    } else if (uiState.result is Result.InProgress) {
+        // TODO Show app logo instead
         Column(Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(120.dp, Alignment.CenterVertically)) {
-            Text("My Speechy",
+            Text("My Speechy Logo",
                 fontSize = 30.sp,
                 color = MaterialTheme.colorScheme.onBackground)
-            if (uiState.dataState == FirestoreDataState.ERROR) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Couldn't load data. Error code: ${uiState.errorCode.name}",
-                        style = MaterialTheme.typography.bodySmall)
-                    ElevatedButton(onClick = viewModel::handleProgressLoading) {
-                        Text("Try again")
-                    }
-                    ElevatedButton(onClick = viewModel::logout) {
-                        Text("Log out")
-                    }
-                }
-            }
         }
     }
 }

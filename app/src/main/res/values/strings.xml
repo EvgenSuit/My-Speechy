@@ -4,6 +4,18 @@
     <string name="mark_as_complete">"Mark as complete"</string>
     <string name="meditation_notification_name">Meditation</string>
     <string name="meditation_notification_channel">1</string>
-    <string name="are_you_sure">Are you sure?</string>
-    <string name="leave_chat_admin">If you leave the chat it will be deleted since you are its admin</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="log_in">Log In</string>
+    
+    <string name="email_auth_field_click_label">Email</string>
+    <string name="password_auth_field_click_label">Password</string>
+
+    <string name="email_not_valid">Email is of a wrong format</string>
+    <string name="email_is_empty">"Email is empty"</string>
+    <string name="password_is_empty">Password is empty</string>
+    <string name="password_is_not_mixed_case">Password must contain mixed letters</string>
+    <string name="password_is_not_long_enough">Password must be at least 8 characters long</string>
+    <string name="password_not_enough_digits">Password must contain at least 1 digit</string>
+
+    <string name="waiting_for_auth">Waiting for auth</string>
 </resources>

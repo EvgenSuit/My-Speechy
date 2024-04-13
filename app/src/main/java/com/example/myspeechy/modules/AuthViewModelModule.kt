@@ -4,11 +4,11 @@ import android.content.Context
 import com.example.myspeechy.domain.auth.AccountDeletionService
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.auth.GoogleAuthService
-import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
-import com.example.myspeechy.useCases.DecrementMemberCountUseCase
-import com.example.myspeechy.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.useCases.LeavePrivateChatUseCase
-import com.example.myspeechy.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.domain.useCases.DecrementMemberCountUseCase
+import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
@@ -26,7 +26,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @InstallIn(ActivityRetainedComponent::class)
 object AuthViewModelModule {
     @Provides
-    fun provideAuthService(@ApplicationContext context: Context): AuthService {
+    fun provideAuthService(): AuthService {
         return AuthService(Firebase.auth, Firebase.database.reference,
             Firebase.firestore,
             Firebase.storage.reference,
@@ -34,18 +34,17 @@ object AuthViewModelModule {
             LeavePrivateChatUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
             CheckIfIsAdminUseCase(Firebase.auth.currentUser?.uid, Firebase.database.reference),
             DeletePublicChatUseCase(Firebase.database.reference, DecrementMemberCountUseCase(Firebase.database.reference)),
-            context.cacheDir.path
         )
     }
     @Provides
-    fun provideAccountDeletionService(@ApplicationContext context: Context): AccountDeletionService {
-        return AccountDeletionService(provideAuthService(context))
+    fun provideAccountDeletionService(): AccountDeletionService {
+        return AccountDeletionService(provideAuthService(), Firebase.auth)
     }
 
     @Provides
     fun provideGoogleAuthService(@ApplicationContext context: Context): GoogleAuthService {
         return lazy {
-            GoogleAuthService(context, Identity.getSignInClient(context), provideAuthService(context))
+            GoogleAuthService(context.applicationInfo, Identity.getSignInClient(context), provideAuthService())
         }.value
     }
 }

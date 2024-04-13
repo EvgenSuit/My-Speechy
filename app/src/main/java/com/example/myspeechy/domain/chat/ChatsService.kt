@@ -1,12 +1,12 @@
 package com.example.myspeechy.domain.chat
 
 import com.example.myspeechy.data.chat.Chat
-import com.example.myspeechy.useCases.CheckIfIsAdminUseCase
-import com.example.myspeechy.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.useCases.FormatDateUseCase
-import com.example.myspeechy.useCases.JoinPublicChatUseCase
-import com.example.myspeechy.useCases.LeavePrivateChatUseCase
-import com.example.myspeechy.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.CheckIfIsAdminUseCase
+import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.domain.useCases.FormatDateUseCase
+import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
+import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot

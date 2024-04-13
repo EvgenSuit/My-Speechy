@@ -2,6 +2,7 @@ package com.example.myspeechy
 
 import android.content.Context
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -25,10 +26,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,48 +43,59 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.myspeechy.screens.AuthScreen
+import com.example.myspeechy.screens.auth.AuthScreen
 import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationStatsScreen
+import com.example.myspeechy.screens.auth.AccountDeletionScreen
+import com.example.myspeechy.screens.auth.ErrorScreen
 import com.example.myspeechy.screens.chat.ChatsScreen
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 
 val Context.navBarDataStore: DataStore<Preferences> by preferencesDataStore("NavBar")
 val showNavBarDataStore = booleanPreferencesKey("showNavBar")
 val Context.authDataStore: DataStore<Preferences> by preferencesDataStore("Auth")
 val loggedOutDataStore = booleanPreferencesKey("loggedOut")
+val errorKey = stringPreferencesKey("error")
 
 open class NavScreens(val route: String, val icon: ImageVector, val label: String) {
     data object Main: NavScreens("main", Icons.Filled.Home, "Main")
     data object Stats: NavScreens("stats", Icons.Filled.Info, "Stats")
     data object ChatsScreen: NavScreens("chats", Icons.Filled.Face, "Chats")
 }
+open class OtherScreens(val route: String) {
+    data object Auth: OtherScreens("auth")
+    data object Error: OtherScreens("error")
+    data object AccountDelete: OtherScreens("accountDelete")
+}
 val screens = listOf(NavScreens.Main, NavScreens.Stats, NavScreens.ChatsScreen)
 
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
-    var startDestination by rememberSaveable {
-        mutableStateOf(if (Firebase.auth.currentUser == null) "auth" else NavScreens.Main.route)
-    }
+    val currUser = Firebase.auth.currentUser
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currDestination = navBackStackEntry?.destination
-    var showNavBar by rememberSaveable { mutableStateOf(false) }
+    val startDestination by rememberSaveable {
+        mutableStateOf(if (currUser == null) OtherScreens.Auth.route else NavScreens.Main.route)
+    }
+    var showNavBar by rememberSaveable {
+        mutableStateOf(false)
+    }
     val context = LocalContext.current
+    var error by rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    val animationDuration = 400
     LaunchedEffect(Unit) {
-        context.navBarDataStore.edit { navBar ->
-            navBar[showNavBarDataStore] = startDestination != "auth"
-        }
         context.navBarDataStore.data.collectLatest {
             showNavBar = it[showNavBarDataStore] ?: false
         }
@@ -91,14 +103,14 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
     LaunchedEffect(Unit) {
         context.authDataStore.data.collectLatest {
             val loggedOut = it[loggedOutDataStore] ?: false
-            if (loggedOut && startDestination != "auth") {
-                context.navBarDataStore.edit { navBar ->
-                    navBar[showNavBarDataStore] = false
-                }
-                startDestination = "auth"
-                navController.navigate("auth") { popUpTo(0) }
-            } else if (!loggedOut && startDestination != NavScreens.Main.route) {
-                startDestination = NavScreens.Main.route
+            val currRoute = navBackStackEntry?.destination?.route
+            //if logged out and not in auth, navigate to auth
+            if (loggedOut && currRoute != OtherScreens.Auth.route) {
+                navController.navigate(OtherScreens.Auth.route) { popUpTo(OtherScreens.Auth.route) }
+            }
+            error = it[errorKey]
+            if (!error.isNullOrEmpty() && currRoute != OtherScreens.Auth.route && currRoute != OtherScreens.AccountDelete.route) {
+                navController.navigate(OtherScreens.Error.route) {popUpTo(OtherScreens.Error.route) }
             }
         }
     }
@@ -111,16 +123,18 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
             ){
                 BottomNavigation {
                     screens.forEach { screen ->
-                        val selected = currDestination?.route == screen.route
+                        val selected = navBackStackEntry?.destination?.route == screen.route
                         BottomNavigationItem(
                             selected = selected,
-                            onClick = { navController.navigate(screen.route) {
+                            onClick = { if (showNavBar) {
+                                navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
                                     launchSingleTop = true
                                     restoreState = true
-                                } },
+                                }
+                            } },
                             icon = { Icon(
                                     screen.icon,
                                 tint = MaterialTheme.colorScheme.primary,
@@ -137,7 +151,6 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                                 .background(MaterialTheme.colorScheme.background)
                                 .offset(y = if (!selected) 10.dp else 0.dp)
                                 .weight(1f)
-
                         )
                     }
                 }
@@ -154,28 +167,47 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                 ) {
                     composable(NavScreens.Main.route,
                         enterTransition = { slideIntoContainer(
-                            animationSpec = tween(500),
+                            animationSpec = tween(animationDuration),
                             towards = AnimatedContentTransitionScope
                                 .SlideDirection.End)}) {
                         MainScreen()
                     }
                     composable(NavScreens.Stats.route,
                         enterTransition = {slideIntoContainer(
-                            animationSpec = tween(700),
+                            animationSpec = tween(animationDuration),
                             towards = AnimatedContentTransitionScope
                                 .SlideDirection.End)}) {
                         MeditationStatsScreen()
                     }
                     composable(NavScreens.ChatsScreen.route,
                         enterTransition = { slideIntoContainer(
-                            animationSpec = tween(700),
+                            animationSpec = tween(animationDuration),
                             towards = AnimatedContentTransitionScope
                                 .SlideDirection.End)}) {
-                        ChatsScreen()
+                        ChatsScreen {
+                            navController.navigate("accountDelete") {popUpTo(0)}
+                        }
                     }
-                    composable("auth") {
+                    composable(OtherScreens.Auth.route) {
                         AuthScreen(onNavigateToMain = {
-                            //navController.navigate(NavScreens.Main.route) { popUpTo(0) }
+                            navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route)}
+                        })
+                    }
+                    composable(OtherScreens.Error.route,
+                        enterTransition = { slideIntoContainer(
+                            animationSpec = tween(animationDuration),
+                            towards = AnimatedContentTransitionScope
+                                .SlideDirection.Up)}) {
+                        if (!error.isNullOrEmpty()) {
+                            ErrorScreen(error = error!!, onTryAgain = {
+                                navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route) }
+                            })  { Firebase.auth.signOut() }
+                        }
+                    }
+                    composable(OtherScreens.AccountDelete.route) {
+                        BackHandler(true) {}
+                        AccountDeletionScreen(onGoBack = {
+                            navController.navigate(NavScreens.Main.route) {popUpTo(NavScreens.Main.route)}
                         })
                     }
                 }

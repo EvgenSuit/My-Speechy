@@ -3,10 +3,10 @@ package com.example.myspeechy.domain.chat
 import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
-import com.example.myspeechy.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.useCases.FormatDateUseCase
-import com.example.myspeechy.useCases.JoinPublicChatUseCase
-import com.example.myspeechy.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
+import com.example.myspeechy.domain.useCases.FormatDateUseCase
+import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
+import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
@@ -23,8 +23,7 @@ class PublicChatServiceImpl(
     private val database: DatabaseReference,
     private val leavePublicChatUseCase: LeavePublicChatUseCase,
     private val deletePublicChatUseCase: DeletePublicChatUseCase,
-    private val joinPublicChatUseCase: JoinPublicChatUseCase,
-    private val formatDateUseCase: FormatDateUseCase
+    private val joinPublicChatUseCase: JoinPublicChatUseCase
 ): RootChatService {
     private val chatsRef = database.child("public_chats")
     private val membersRef = database.child("members")
@@ -230,10 +229,10 @@ class PublicChatServiceImpl(
             .setValue(chat.copy(lastMessage = if (chat.lastMessage.length > 40)
                 chat.lastMessage.substring(0, 40) else chat.lastMessage)).await()
     }
-    fun changePublicChat(chatId: String, chat: Chat) {
+    suspend fun changePublicChat(chatId: String, chat: Chat) {
         database.child("public_chats")
             .child(chatId)
-            .setValue(chat)
+            .setValue(chat).await()
     }
 
     suspend fun joinChat(chatId: String) {
@@ -247,6 +246,4 @@ class PublicChatServiceImpl(
     suspend fun leavePublicChat(chatId: String, revokeMembership: Boolean) {
         leavePublicChatUseCase(chatId, revokeMembership)
     }
-
-    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }

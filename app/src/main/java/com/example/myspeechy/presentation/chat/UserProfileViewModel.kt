@@ -1,17 +1,17 @@
 package com.example.myspeechy.presentation.chat
 
-import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
 import com.example.myspeechy.data.chat.User
+import com.example.myspeechy.domain.Result
 import com.example.myspeechy.domain.chat.DirectoryManager
 import com.example.myspeechy.domain.chat.ImageCompressor
-import com.example.myspeechy.domain.chat.PictureStorageError
-import com.example.myspeechy.domain.chat.UserProfileServiceImpl
-import com.google.firebase.database.getValue
+import com.example.myspeechy.domain.chat.UserProfileService
+import com.example.myspeechy.domain.error.PictureStorageError
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,18 +21,17 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
-import javax.inject.Named
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
-    private val userProfileServiceImpl: UserProfileServiceImpl,
+    private val userProfileService: UserProfileService,
     filesDirPath: String,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val _uiState = MutableStateFlow(UserProfileUiState())
     val uiState = _uiState.asStateFlow()
     val userId: String = checkNotNull(savedStateHandle["userId"])
-    val currUserId = userProfileServiceImpl.userId
+    val currUserId = userProfileService.userId
     private val normalQualityPicDir = "${filesDirPath}/profilePics/${userId}/normalQuality/"
     private val lowQualityPicDir = "${filesDirPath}/profilePics/${userId}/lowQuality/"
     val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
@@ -44,7 +43,7 @@ class UserProfileViewModel @Inject constructor(
         if (removeListeners) updateErrorMessage("")
     }
     private fun listenForUser(remove: Boolean) {
-        userProfileServiceImpl.userListener(userId, {updateErrorMessage(it)}, {user ->
+        userProfileService.userListener(userId, {updateErrorMessage(it)}, { user ->
              _uiState.update { it.copy(user = user.getValue(User::class.java)) }
         }, remove)
     }
@@ -52,7 +51,7 @@ class UserProfileViewModel @Inject constructor(
     //Listen for only normal quality image
     private fun listenForUserPicture(remove: Boolean) {
         updatePictureState(PictureState.DOWNLOADING)
-        userProfileServiceImpl.userPictureListener(userId,
+        userProfileService.userPictureListener(userId,
             normalQualityPicRef,
             dir = normalQualityPicDir,
             onCancelled = {updateErrorMessage(it)},
@@ -76,7 +75,7 @@ class UserProfileViewModel @Inject constructor(
 
     fun writePicture(imgBytes: ByteArray) {
         try {
-            updateErrorMessage()
+            updateErrorMessage("")
             viewModelScope.launch {
                 for (lowQuality in listOf(true, false)) {
                     if (_uiState.value.errorMessage != "Couldn't compress picture. Perhaps it's too big") {
@@ -90,8 +89,8 @@ class UserProfileViewModel @Inject constructor(
                             }
                             uploadUserPicture(lowQuality)
                         } else {
-                            if (!_uiState.value.loggingOut) {
-                                updateErrorMessage()
+                            if (_uiState.value.authResult !is Result.InProgress) {
+                                updateErrorMessage("")
                                 delay(1) //without it the launched effect in the screen doesn't work
                                 updateErrorMessage("Couldn't compress picture. Perhaps it's too big")
                             }
@@ -109,10 +108,10 @@ class UserProfileViewModel @Inject constructor(
             val nameIsSame = _uiState.value.user?.name == newName
             val infoIsSame = _uiState.value.user?.info == newInfo
             if (!nameIsSame) {
-                userProfileServiceImpl.changeUsername(newName)
+                userProfileService.changeUsername(newName)
             }
             if (!infoIsSame) {
-                userProfileServiceImpl.changeUserInfo(newInfo)
+                userProfileService.changeUserInfo(newInfo)
             }
         } catch (e: Exception) {
             updateErrorMessage(e.message!!)
@@ -122,7 +121,7 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 updatePictureState(PictureState.UPLOADING)
-                userProfileServiceImpl.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef, lowQuality)
+                userProfileService.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef, lowQuality)
                 updatePictureState(PictureState.IDLE)
                 updateStorageMessage("")
             } catch (e: Exception) {
@@ -135,7 +134,7 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 listOf(true, false).forEach {lowQuality ->
-                    userProfileServiceImpl.removeUserPicture(lowQuality)
+                    userProfileService.removeUserPicture(lowQuality)
                     if (lowQuality) File(lowQualityPicDir).deleteRecursively()
                     else File(normalQualityPicDir).deleteRecursively()
                     _uiState.update { it.copy(storageMessage = PictureStorageError.USING_DEFAULT_PROFILE_PICTURE.name) }
@@ -147,26 +146,35 @@ class UserProfileViewModel @Inject constructor(
     }
     fun logout() {
         try {
-            _uiState.update { it.copy(loggingOut = true, deletingAccount = false) }
-            userProfileServiceImpl.logout()
+            viewModelScope.launch {
+                updateResult(Result.InProgress)
+                userProfileService.logout()
+            }
         } catch (e: Exception) {
-            updateErrorMessage(e.message!!)
+            updateResult(Result.Error(e.message!!))
         }
     }
     fun deleteAccount() {
         _uiState.update { it.copy(
-            deletingAccount = false,
+            accountDeletionResult = Result.Idle,
             chatAlertDialogDataClass = AlertDialogDataClass(
             title = "Are you sure?",
             text = "Account will be deleted along with all your progress, conversations and chats of which you're an admin",
             onConfirm = {
-                _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = true, userManagementError = "") }
+                _uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), accountDeletionResult = Result.InProgress, userManagementError = "") }
             },
-            onDismiss = {_uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), deletingAccount = false) }}))
+            onDismiss = {_uiState.update { it.copy(chatAlertDialogDataClass = AlertDialogDataClass(), accountDeletionResult = Result.Idle) }}))
         }
     }
-    private fun updateErrorMessage(e: String = "") {
-        _uiState.update { it.copy(errorMessage = e) }
+    private fun updateResult(result: Result) {
+        if (Firebase.auth.currentUser != null) {
+            _uiState.update { it.copy(authResult = result) }
+        }
+    }
+    private fun updateErrorMessage(m: String) {
+        if (Firebase.auth.currentUser != null) {
+            _uiState.update { it.copy(errorMessage = m) }
+            }
     }
     private fun updateStorageMessage(e: String) {
         _uiState.update { it.copy(storageMessage = e.formatStorageErrorMessage(),
@@ -178,13 +186,13 @@ class UserProfileViewModel @Inject constructor(
 
     data class UserProfileUiState(
         val user: User? = User(),
-        val loggingOut: Boolean = false,
-        val deletingAccount: Boolean = false,
+        val accountDeletionResult: Result = Result.Idle,
         val recomposePic: String = "",
         val chatAlertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
         val userManagementError: String = "",
         val storageMessage: String = "",
         val pictureState: PictureState = PictureState.DOWNLOADING,
+        val authResult: Result = Result.Idle,
         val errorMessage: String = ""
     )
 }

@@ -1,17 +1,15 @@
 package com.example.myspeechy.domain.chat
 
-import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
-import com.example.myspeechy.useCases.FormatDateUseCase
-import com.example.myspeechy.useCases.LeavePrivateChatUseCase
+import com.example.myspeechy.domain.error.PictureStorageError
+import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -23,8 +21,7 @@ class PrivateChatServiceImpl(
     auth: FirebaseAuth,
     storage: StorageReference,
     private val database: DatabaseReference,
-    private val leavePrivateChatUseCase: LeavePrivateChatUseCase,
-    private val formatDateUseCase: FormatDateUseCase
+    private val leavePrivateChatUseCase: LeavePrivateChatUseCase
 ): RootChatService {
     override val userId = auth.currentUser?.uid
     override val messagesRef = database.child("messages")
@@ -194,5 +191,4 @@ class PrivateChatServiceImpl(
             ref.addValueEventListener(isMemberOfChatListener!!)
         }
     }
-    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
 }

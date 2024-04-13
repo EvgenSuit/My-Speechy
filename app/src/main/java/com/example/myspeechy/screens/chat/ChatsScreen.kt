@@ -1,6 +1,5 @@
 package com.example.myspeechy.screens.chat
 
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -55,7 +54,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -109,21 +107,25 @@ import com.example.myspeechy.navBarDataStore
 import com.example.myspeechy.screens
 import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.presentation.chat.ChatsViewModel
-import com.example.myspeechy.screens.AccountDeletionScreen
+import com.example.myspeechy.screens.auth.AccountDeletionScreen
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.delay
 import java.io.File
 
-
 @Composable
 fun ChatsScreen(
-    navController: NavHostController = rememberNavController()) {
+    navController: NavHostController = rememberNavController(),
+    onDeleteScreenNavigate: () -> Unit) {
     val context = LocalContext.current
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val destination = navBackStackEntry?.destination
     val showNavBar = navController.currentBackStackEntryAsState().value?.destination
         ?.route in screens.map { it.route }
     LaunchedEffect(showNavBar) {
-        context.navBarDataStore.edit { navBar ->
-            navBar[showNavBarDataStore] = showNavBar
+        if (destination != null) {
+            context.navBarDataStore.edit { navBar ->
+                navBar[showNavBarDataStore] = showNavBar
+            }
         }
     }
     NavHost(navController = navController, startDestination = NavScreens.ChatsScreen.route,
@@ -148,16 +150,8 @@ fun ChatsScreen(
             composable("userProfile/{userId}",
                 arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
                 UserProfileScreen({ navController.navigateUp() },
-                    onAccountDelete = {
-                        navController.navigate("accountDelete") {popUpTo(0)}
-                    })
+                    onAccountDelete = onDeleteScreenNavigate)
             }
-        composable("accountDelete") {
-            BackHandler(true) {}
-            AccountDeletionScreen(onGoBack = {userId ->
-                navController.navigate("userProfile/$userId") {popUpTo(0)}
-            })
-        }
     }
 }
 
@@ -328,6 +322,7 @@ fun ChatSearch(
         keyboardActions = KeyboardActions(
             onDone = { focusManager.clearFocus() }
         ),
+        placeholder = {Text("Search for public chats")},
         textStyle = TextStyle(textAlign = TextAlign.Center,
             fontSize = 18.sp),
         suffix = {
