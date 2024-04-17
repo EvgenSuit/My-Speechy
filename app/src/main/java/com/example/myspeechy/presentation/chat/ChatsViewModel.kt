@@ -159,7 +159,7 @@ class ChatsViewModel @Inject constructor(
         val picDir = "${filesDirPath}/profilePics/${id}/"
         val picPath = "$picDir/lowQuality/$id.jpg"
         try {
-            privateChatServiceImpl.chatProfilePictureListener(id, filesDirPath, { updateChatsErrorMessage(it) }, {
+            privateChatServiceImpl.chatProfilePictureListener(id, filesDirPath, { updateChatsErrorMessage(it.message) }, {
                 updateStorageErrorMessage(it)
                 File(picDir).deleteRecursively()
             }, {

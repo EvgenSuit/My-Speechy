@@ -1,11 +1,8 @@
 package com.example.myspeechy.screens.chat
 
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
@@ -61,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,6 +74,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -84,82 +85,30 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
-import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
-import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.CreateOrChangePublicChatForm
+import com.example.myspeechy.components.CustomAlertDialog
 import com.example.myspeechy.data.chat.Chat
-import com.example.myspeechy.navBarDataStore
-import com.example.myspeechy.screens
-import com.example.myspeechy.showNavBarDataStore
 import com.example.myspeechy.presentation.chat.ChatsViewModel
-import com.example.myspeechy.screens.auth.AccountDeletionScreen
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.delay
 import java.io.File
-
 @Composable
-fun ChatsScreen(
-    navController: NavHostController = rememberNavController(),
-    onDeleteScreenNavigate: () -> Unit) {
-    val context = LocalContext.current
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val destination = navBackStackEntry?.destination
-    val showNavBar = navController.currentBackStackEntryAsState().value?.destination
-        ?.route in screens.map { it.route }
-    LaunchedEffect(showNavBar) {
-        if (destination != null) {
-            context.navBarDataStore.edit { navBar ->
-                navBar[showNavBarDataStore] = showNavBar
-            }
-        }
-    }
-    NavHost(navController = navController, startDestination = NavScreens.ChatsScreen.route,
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            modifier = Modifier.fillMaxSize()
-        ) {
-            composable(NavScreens.ChatsScreen.route) {
-                ChatsComposable(navController)
-            }
-            composable("chats/{type}/{chatId}",
-                arguments = listOf(
-                    navArgument("type") {type = NavType.StringType},
-                    navArgument("chatId") {type = NavType.StringType}),
-            ) {backStackEntry ->
-                if (backStackEntry.arguments!!.getString("type") == "public") {
-                    PublicChatScreen(navController)
-                } else {
-                    PrivateChatScreen(navController)
-                }
-            }
-            composable("userProfile/{userId}",
-                arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
-                UserProfileScreen({ navController.navigateUp() },
-                    onAccountDelete = onDeleteScreenNavigate)
-            }
-    }
-}
-
-@Composable
-fun ChatsComposable(navController: NavHostController,
+fun ChatsScreen(navController: NavHostController,
                     viewModel: ChatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val yourChats = stringResource(R.string.your_chats)
+    val allGroups = stringResource(R.string.all_groups)
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
     val interactionSource = remember { MutableInteractionSource() }
     val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
@@ -218,12 +167,13 @@ fun ChatsComposable(navController: NavHostController,
                     }
                     TabRow(selectedTabIndex = chatScreenPartSelected,
                         modifier = Modifier.blur(if (showSearchedChats) 10.dp else 0.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)) {
-                        listOf("Your chats", "All groups").forEachIndexed { index, s ->
+                        listOf(yourChats, allGroups).forEachIndexed { index, s ->
                             Tab(
                                 text = {Text(s, overflow = TextOverflow.Ellipsis)},
                                 selected = index == chatScreenPartSelected,
                                 onClick = { chatScreenPartSelected = index
-                                isFormExpanded = false})
+                                isFormExpanded = false},
+                                modifier = Modifier.semantics { contentDescription = s })
                         }
                     }
                     AnimatedContent(targetState = chatScreenPartSelected, label = "") { targetState ->
@@ -243,7 +193,9 @@ fun ChatsComposable(navController: NavHostController,
                                 viewModel.leaveChat(type, chatId) })
                     }
                     if (uiState.alertDialogDataClass.title.isNotEmpty()) {
-                        ChatAlertDialog(alertDialogDataClass = uiState.alertDialogDataClass)
+                        CustomAlertDialog(
+                            coroutineScope,
+                            alertDialogDataClass = uiState.alertDialogDataClass)
                     }
                 }
                 AnimatedVisibility(chatScreenPartSelected == 1,
@@ -283,7 +235,7 @@ fun ChatsComposable(navController: NavHostController,
                                 focusManager.clearFocus(true)
                                 isFormExpanded = true
                             }) {
-                                Icon(Icons.Filled.Add, contentDescription = null)
+                                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_public_chat))
                             }
                         }
                     }
@@ -305,6 +257,7 @@ fun ChatSearch(
     interactionSource: MutableInteractionSource,
     onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
     val focusManager = LocalFocusManager.current
+    val description = stringResource(R.string.search_for_public_chats)
     val corner = dimensionResource(R.dimen.common_corner_size)
     var chatSearchTitle by remember { mutableStateOf("") }
     LaunchedEffect(chatSearchTitle) {
@@ -322,7 +275,7 @@ fun ChatSearch(
         keyboardActions = KeyboardActions(
             onDone = { focusManager.clearFocus() }
         ),
-        placeholder = {Text("Search for public chats")},
+        placeholder = {Text(description)},
         textStyle = TextStyle(textAlign = TextAlign.Center,
             fontSize = 18.sp),
         suffix = {
@@ -342,6 +295,7 @@ fun ChatSearch(
         modifier = modifier
             .fillMaxWidth(0.85f)
             .height(70.dp)
+            .semantics { contentDescription = description }
     )
 }
 
@@ -405,6 +359,8 @@ fun UserChats(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
+                                        onClickLabel = currChat?.title,
+                                        onLongClickLabel = "Long click: ${currChat?.title}",
                                         onClick = {
                                             if (currChat != null) {
                                                 onNavigateToChat(Pair(currChat.type, chatId))
@@ -438,12 +394,14 @@ fun LeaveChatBox(
     onClick: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val description = stringResource(R.string.leave_chat)
     Box {
         DropdownMenu(expanded = true,
             properties = PopupProperties(focusable = false),
             onDismissRequest = onDismiss) {
             DropdownMenuItem(text = { Text("Leave chat") },
-                onClick = onClick)
+                onClick = onClick,
+                modifier = Modifier.semantics { contentDescription = description })
         }
     }
 }

@@ -1,10 +1,8 @@
 package com.example.myspeechy.domain.auth
 
-import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.ApplicationInfo
-import android.util.Log
 import androidx.core.util.PatternsCompat
 import com.example.myspeechy.data.chat.User
 import com.example.myspeechy.domain.InputFormatCheckResult
@@ -125,7 +123,6 @@ class AuthService(private val auth: FirebaseAuth,
                     val isAdmin = checkIfIsAdminUseCase?.let { it(id) }
                     if (isAdmin == true) deletePublicChatUseCase?.let { it(id) }
                     leavePublicChatUseCase?.let { it(id, isAdmin == false) }
-                    println(id)
                 }
             }
         }

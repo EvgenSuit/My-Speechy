@@ -100,9 +100,9 @@ class DeletePublicChatUseCase(private val database: DatabaseReference,
     private val decrementMemberCountUseCase: DecrementMemberCountUseCase
 ) {
     suspend operator fun invoke(chatId: String) {
-        removeChat(chatId)
         removeMessages(chatId)
         decrementMemberCountUseCase(chatId, true)
+        removeChat(chatId)
         removeMembers(chatId)
         revokeAdminPermissions(chatId)
     }

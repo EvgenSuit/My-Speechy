@@ -48,23 +48,25 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
     private fun clearDataStore() {
         runBlocking {
             dataStoreManager.editError("")
             dataStoreManager.showNavBar(false)
+            dataStoreManager.onDataLoad(false)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         listenForAuthState()
-        clearDataStore()
         createNotificationChannel()
+        clearDataStore()
         setContent {
             MySpeechyTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     MySpeechyApp()
                 }

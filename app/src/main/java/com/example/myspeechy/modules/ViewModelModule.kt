@@ -29,6 +29,7 @@ import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.loadData
 import com.example.myspeechy.navBarDataStore
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
@@ -67,7 +68,7 @@ object ViewModelModule {
 
     @Provides
     fun provideDataStoreManager(@ApplicationContext context: Context): DataStoreManager {
-        return DataStoreManager(context.authDataStore, context.navBarDataStore)
+        return DataStoreManager(context.authDataStore, context.navBarDataStore, context.loadData)
     }
     @Provides
     fun provideMeditationStatsRepository(db: MeditationStatsDb): MeditationStatsRepository {

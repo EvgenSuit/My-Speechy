@@ -2,32 +2,28 @@ package com.example.myspeechy
 
 import androidx.activity.compose.setContent
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.testing.TestNavHostController
-import com.example.myspeechy.screens.auth.AuthScreen
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlin.math.log
 
 @HiltAndroidTest
 class AuthScreenUITests {
-    private val wrongEmail = "somerandomemail@gmail.com"
-    private val wrongPassword = "Wrongpassword85"
 
     @get:Rule
     val composeTestRule = createAndroidComposeRule(MainActivity::class.java)
@@ -39,12 +35,11 @@ class AuthScreenUITests {
     @OptIn(ExperimentalTestApi::class)
     @Before
     fun init() {
+        Firebase.auth.signOut()
         composeTestRule.activity.setContent {
             navController = TestNavHostController(LocalContext.current)
             navController.navigatorProvider.addNavigator(ComposeNavigator())
-            AuthScreen {
-                navController.navigate(NavScreens.Main.route)
-            }
+            MySpeechyApp(navController)
         }
         composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 5000)
         composeTestRule.waitForIdle()
@@ -52,7 +47,6 @@ class AuthScreenUITests {
 
     @Test
     fun invalidInputFormat_authUnavailable() {
-
         with(composeTestRule) {
             val logIn = getString(R.string.log_in)
             val signUp = getString(R.string.sign_up)
@@ -98,8 +92,8 @@ class AuthScreenUITests {
             val logIn = getString(R.string.log_in)
             val signUp = getString(R.string.sign_up)
             val waiting = getString(R.string.waiting_for_auth)
-            onEmailInput(wrongEmail)
-            onPasswordInput(wrongPassword)
+            onEmailInput("somerandomemail@gmail.com")
+            onPasswordInput("Wrongpassword86")
             onClickButtonWithLabel(getString(R.string.log_in))
             waitForIdle()
             onNode(hasStateDescription(waiting)).assertIsDisplayed()
@@ -113,4 +107,25 @@ class AuthScreenUITests {
         }
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun signInCorrectCredentials_authSucceeded() {
+        with(composeTestRule) {
+            val logIn = getString(R.string.log_in)
+            val signUp = getString(R.string.sign_up)
+            val waiting = getString(R.string.waiting_for_auth)
+
+            onEmailInput("some@gmail.com")
+            onPasswordInput("Geny2005")
+            onClickButtonWithLabel(getString(R.string.log_in))
+            waitForIdle()
+            onNode(hasStateDescription(waiting)).assertIsDisplayed()
+            waitForIdle()
+            onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
+            onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
+            waitUntilExactlyOneExists(hasTestTag("loadScreen"), 3000)
+            assertEquals(NavScreens.Main.route, navController.currentBackStackEntry?.destination?.route)
+            waitUntilExactlyOneExists(hasTestTag("mainScreenContent"), 3000)
+        }
+    }
 }

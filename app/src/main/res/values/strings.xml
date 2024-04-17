@@ -18,4 +18,21 @@
     <string name="password_not_enough_digits">Password must contain at least 1 digit</string>
 
     <string name="waiting_for_auth">Waiting for auth</string>
+
+    <string name="your_chats">Your chats</string>
+    <string name="all_groups">All groups</string>
+    <string name="add_public_chat">Add public chat</string>
+    <string name="create_or_change_chat_form">Create or change public chat</string>
+    <string name="create_or_change_chat_button">Create or change chat button</string>
+
+    <string name="title">Title</string>
+    <string name="description">Description</string>
+
+    <string name="search_for_public_chats">Search for public chats</string>
+    <string name="leave_chat">Leave chat</string>
+    <string name="custom_alert_dialog">Custom alert dialog</string>
+    <string name="custom_alert_dialog_confirm">Confirm</string>
+    <string name="custom_alert_dialog_cancel">Cancel</string>
+    <string name="load_screen">Load screen</string>
+    <string name="main_screen_content">Main screen content</string>
 </resources>

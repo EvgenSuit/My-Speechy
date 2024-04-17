@@ -1,6 +1,5 @@
 package com.example.myspeechy.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -51,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +65,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -82,6 +83,7 @@ import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -322,8 +324,10 @@ fun CreateOrChangePublicChatForm(
     chat: Chat? = null,
     onClose: () -> Unit,
     onCreateOrChange: (Pair<String, String>) -> Unit) {
-    val placeholders = Pair("Title", "Description")
+    val placeholders = Pair(stringResource(R.string.title), stringResource(R.string.description))
     val corner = dimensionResource(R.dimen.common_corner_size)
+    val semanticDescription = stringResource(R.string.create_or_change_chat_form)
+    val buttonDescription = stringResource(R.string.create_or_change_chat_button)
     var title by remember { mutableStateOf(chat?.title ?: "") }
     var description by remember { mutableStateOf(chat?.description ?: "") }
     var isTitleBlank by remember { mutableStateOf(false) }
@@ -338,7 +342,8 @@ fun CreateOrChangePublicChatForm(
             )
             .background(MaterialTheme.colorScheme.background)
             .padding(20.dp)
-            .verticalScroll(rememberScrollState())) {
+            .verticalScroll(rememberScrollState())
+            .semantics { contentDescription = semanticDescription }) {
         Row(horizontalArrangement = Arrangement.SpaceEvenly) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Clear, contentDescription = null,
@@ -355,9 +360,15 @@ fun CreateOrChangePublicChatForm(
                 .padding(top = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            CommonTextField(value = title, isError = isTitleBlank, onChange = { title = it
-                                                      isTitleBlank = false}, placeholders = placeholders)
-            CommonTextField(value = description, onChange = {description = it}, last = true, placeholders = placeholders)
+            CommonTextField(value = title, isError = isTitleBlank,
+                onChange = {
+                    title = it
+                    isTitleBlank = false
+                           }, placeholders = placeholders,
+                modifier = Modifier.semantics { contentDescription = placeholders.first })
+            CommonTextField(value = description, onChange = {description = it}, last = true,
+                placeholders = placeholders,
+                modifier = Modifier.semantics { contentDescription = placeholders.second })
             OutlinedButton(onClick = {
                 if (title.isNotBlank()) {
                     onCreateOrChange(Pair(title, description))
@@ -365,7 +376,8 @@ fun CreateOrChangePublicChatForm(
             },
                 Modifier
                     .padding(top = 15.dp)
-                    .size(200.dp, 50.dp),
+                    .size(200.dp, 50.dp)
+                    .semantics { contentDescription = buttonDescription },
                 colors = ButtonDefaults.buttonColors(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.primary
@@ -384,7 +396,8 @@ fun CommonTextField(value: String,
                     isError: Boolean = false,
                     onChange: (String) -> Unit,
                     last: Boolean=false,
-                    placeholders: Pair<String, String>) {
+                    placeholders: Pair<String, String>,
+                    modifier: Modifier = Modifier) {
     val focusManager = LocalFocusManager.current
     val corner = dimensionResource(R.dimen.common_corner_size)
     val descriptionMaxChar = integerResource(R.integer.max_description_length)
@@ -415,13 +428,18 @@ fun CommonTextField(value: String,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.End)},
         textStyle = TextStyle(fontSize = 22.sp),
-        modifier = Modifier.fillMaxWidth())
+        modifier = modifier
+            .fillMaxWidth())
 }
 
 @Composable
-fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
-    val coroutineScope = rememberCoroutineScope()
-        AlertDialog(
+fun CustomAlertDialog(
+    coroutineScope: CoroutineScope,
+    alertDialogDataClass: AlertDialogDataClass) {
+    val description = stringResource(R.string.custom_alert_dialog)
+    val confirm = stringResource(R.string.custom_alert_dialog_confirm)
+    val cancel = stringResource(R.string.custom_alert_dialog_cancel)
+    AlertDialog(
             title = {Text(alertDialogDataClass.title)},
             text = {Text(alertDialogDataClass.text, color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 16.sp, textAlign = TextAlign.Center)},
@@ -431,15 +449,17 @@ fun ChatAlertDialog(alertDialogDataClass: AlertDialogDataClass) {
                     coroutineScope.launch {
                         alertDialogDataClass.onConfirm()
                     }
-                }) {
+                }, modifier = Modifier.semantics { contentDescription = confirm }) {
                     Text("Confirm")
                 }
             },
             dismissButton = {
-                TextButton(onClick = alertDialogDataClass.onDismiss) {
+                TextButton(onClick = alertDialogDataClass.onDismiss,
+                    modifier = Modifier.semantics { contentDescription = cancel }) {
                     Text("Cancel")
                 }
-            })
+            },
+        modifier = Modifier.semantics { contentDescription = description })
 }
 
 data class AlertDialogDataClass(val title: String = "",

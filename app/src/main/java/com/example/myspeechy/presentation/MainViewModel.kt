@@ -43,6 +43,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             dataStoreManager.editError("")
             dataStoreManager.showNavBar(false)
+            dataStoreManager.onDataLoad(false)
             delay(500) //show logo
             val lessonList = lessonRepository.selectAllLessons().first().groupBy { it.unit }
                 .values.toList().flatten()
@@ -52,22 +53,18 @@ class MainViewModel @Inject constructor(
                     viewModelScope.launch {
                         dataStoreManager.editError(errorCode.name)
                         dataStoreManager.showNavBar(false)
+                        dataStoreManager.onDataLoad(false)
                     }
                 }
             },
-                { updateResult(Result.Error(it))
-                viewModelScope.launch {
-                    dataStoreManager.showNavBar(false)
-                }
-                }) { data ->
+                { updateResult(Result.Error(it)) }) { data ->
                 //If error listening, the lesson list doesn't get changed
                 var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
                 viewModelScope.launch {
                     newLessonList = handleAvailability(newLessonList)
-                    if (uiState.value.result !is Result.Success) {
-                        dataStoreManager.editError("")
-                        dataStoreManager.showNavBar(true)
-                    }
+                    dataStoreManager.editError("")
+                    dataStoreManager.showNavBar(true)
+                    dataStoreManager.onDataLoad(true)
                     _uiState.update {
                         UiState(newLessonList.map { lesson ->
                             lessonServiceImpl.convertToLessonItem(lesson)

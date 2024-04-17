@@ -53,20 +53,20 @@ interface RootChatService {
         }
     }
     fun chatEventListener(
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit): ValueEventListener {
         return object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 onDataReceived(snapshot)
             }
             override fun onCancelled(error: DatabaseError) {
-                onCancelled(error.message)
+                onCancelled(error)
             }
         }
     }
     fun chatListener(
         id: String,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean)
 
@@ -79,7 +79,7 @@ interface RootChatService {
         onCancelled: (String) -> Unit,
         remove: Boolean)
     fun usernameListener(id: String?,
-                         onCancelled: (String) -> Unit,
+                         onCancelled: (DatabaseError) -> Unit,
                          onDataReceived: (DataSnapshot) -> Unit,
                          remove: Boolean)
     fun picListener(id: String,

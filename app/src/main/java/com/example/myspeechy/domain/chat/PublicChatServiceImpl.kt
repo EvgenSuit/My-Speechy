@@ -1,10 +1,8 @@
 package com.example.myspeechy.domain.chat
 
-import android.util.Log
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
 import com.google.firebase.auth.FirebaseAuth
@@ -13,7 +11,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 
@@ -71,7 +68,7 @@ class PublicChatServiceImpl(
         }
     }
     fun checkIfIsMemberOfChat(chatId: String, remove: Boolean,
-                              onCancelled: (String) -> Unit,
+                              onCancelled: (DatabaseError) -> Unit,
                               isMember: (Boolean) -> Unit) {
         val ref = membersRef.child(chatId).child(userId)
         if (remove && isMemberOfChatListener != null) {
@@ -83,7 +80,7 @@ class PublicChatServiceImpl(
     }
     fun checkIfChatIsEmpty(chatId: String,
                            remove: Boolean,
-                           onCancelled: (String) -> Unit,
+                           onCancelled: (DatabaseError) -> Unit,
                            isEmpty: (Boolean) -> Unit) {
         val ref = messagesRef.child(chatId)
         if (remove && messagesStateListener != null) {
@@ -95,7 +92,7 @@ class PublicChatServiceImpl(
     }
     override fun chatListener(
         id: String,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean
     ) {
@@ -129,7 +126,7 @@ class PublicChatServiceImpl(
 
     override fun usernameListener(
         id: String?,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean) {
         if (id == null) return
@@ -145,7 +142,7 @@ class PublicChatServiceImpl(
 
     fun memberCountListener(
         id: String?,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean) {
         if (id == null) return
@@ -177,7 +174,7 @@ class PublicChatServiceImpl(
 
     fun usersProfilePicListener(id: String,
                                 filesDir: String,
-                                onCancelled: (String) -> Unit,
+                                onCancelled: (DatabaseError) -> Unit,
                                 onStorageFailure: (String) -> Unit,
                                 onPicReceived: () -> Unit,
                                 remove: Boolean) {
@@ -195,7 +192,7 @@ class PublicChatServiceImpl(
         }
     }
     fun listenForAdmin(chatId: String,
-                       onCancelled: (String) -> Unit,
+                       onCancelled: (DatabaseError) -> Unit,
                        onDataReceived: (DataSnapshot) -> Unit,
                        remove: Boolean) {
         val ref = database.child("admins").child(chatId)
