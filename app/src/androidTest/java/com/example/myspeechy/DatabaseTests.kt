@@ -1,8 +1,8 @@
 package com.example.myspeechy
 
-import com.example.myspeechy.data.Lesson
-import com.example.myspeechy.data.LessonDb
-import com.example.myspeechy.data.LessonRepository
+import com.example.myspeechy.data.lesson.Lesson
+import com.example.myspeechy.data.lesson.LessonDb
+import com.example.myspeechy.data.lesson.LessonRepository
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first

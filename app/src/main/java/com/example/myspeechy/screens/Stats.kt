@@ -19,7 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,7 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.myspeechy.utils.MeditationStatsViewModel
+import com.example.myspeechy.presentation.lesson.meditation.MeditationStatsViewModel
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -41,15 +40,12 @@ import com.patrykandpatrick.vico.core.chart.draw.ChartDrawContext
 import com.patrykandpatrick.vico.core.context.MeasureContext
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 import com.patrykandpatrick.vico.core.entry.entryOf
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
     var moveColors by remember {
         mutableStateOf(false)
     }
@@ -57,10 +53,7 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
         animationSpec = tween(4000)
     )
     LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            delay(10)
-            moveColors = true
-        }
+        moveColors = true
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -75,13 +68,16 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
             )) {
         Text("Meditation time in minutes",
             style = MaterialTheme.typography.titleLarge)
-        AnimatedVisibility(moveColors,
-            enter = fadeIn(tween(200))
+        AnimatedVisibility(moveColors && uiState.statsMap.isNotEmpty(),
+            enter = fadeIn(tween(1000))
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = 30.dp)) {
                 MeditationStatsChart(uiState.statsMap)
             }
+        }
+        if (uiState.statsMap.isEmpty()) {
+            Text("No stats here yet")
         }
     }
 }
