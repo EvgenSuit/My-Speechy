@@ -69,9 +69,9 @@ import androidx.navigation.NavHostController
 import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
 import com.example.myspeechy.components.BottomRow
-import com.example.myspeechy.components.ChatAlertDialog
 import com.example.myspeechy.components.ChatPictureComposable
 import com.example.myspeechy.components.CreateOrChangePublicChatForm
+import com.example.myspeechy.components.CustomAlertDialog
 import com.example.myspeechy.components.EditMessageForm
 import com.example.myspeechy.components.JoinButton
 import com.example.myspeechy.components.MessagesColumn
@@ -97,6 +97,7 @@ fun PublicChatScreen(navController: NavHostController,
     val membersListState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     val firstVisibleMessage by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.firstOrNull() } }
     val lastVisibleMemberIndex by remember { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     val lastVisibleMessageIndex by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
@@ -138,15 +139,14 @@ fun PublicChatScreen(navController: NavHostController,
         }
     }
     LaunchedEffect(uiState.errorMessage) {
-        if (uiState.errorMessage.isNotEmpty()) {
-            Toasty.error(context, uiState.errorMessage, Toasty.LENGTH_SHORT, true)
+        if (uiState.errorMessage.isNotEmpty() && uiState.chat.title.isNotEmpty()) {
+            Toasty.error(context, uiState.errorMessage, Toasty.LENGTH_SHORT, true).show()
         }
     }
     LaunchedEffect(canScroll) {
         if (canScroll) delay(300)
         showScrollDownButton = canScroll
     }
-
     var showChangeChatInfoForm by remember(drawerState.isClosed) { mutableStateOf(false) }
     var textFieldState by remember {
         mutableStateOf(TextFieldValue())
@@ -184,6 +184,7 @@ fun PublicChatScreen(navController: NavHostController,
                 PublicChatTopRow(
                     title = if (uiState.chat.title.isEmpty() && uiState.chatLoaded) "Deleted chat" else uiState.chat.title,
                     membersSize = uiState.memberCount,
+                    isChatNull = uiState.chat.title.isEmpty(),
                     onSideDrawerShow = { coroutineScope.launch {
                         drawerState.apply { if (isClosed) open() else close() }
                     } },
@@ -291,7 +292,9 @@ fun PublicChatScreen(navController: NavHostController,
         }
     }
     if (uiState.joined && uiState.alertDialogDataClass.title.isNotEmpty()) {
-        ChatAlertDialog(uiState.alertDialogDataClass)
+        CustomAlertDialog(
+            coroutineScope,
+            uiState.alertDialogDataClass)
     }
 }
 
@@ -433,6 +436,7 @@ fun MembersColumn(
 fun PublicChatTopRow(
     title: String,
     membersSize: Int?,
+    isChatNull: Boolean,
     onSideDrawerShow: () -> Unit,
     onNavigateUp: () -> Unit) {
     Row(
@@ -451,7 +455,7 @@ fun PublicChatTopRow(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1)
-            if (membersSize != null && title.isNotEmpty()) {
+            if (membersSize != null && !isChatNull) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)) {
                     Text(membersSize.toString(),
                         color = MaterialTheme.colorScheme.onBackground)
@@ -461,11 +465,13 @@ fun PublicChatTopRow(
                 }
             }
         }
-        IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.2f)) {
-            Icon(Icons.Filled.Menu,
-                tint = MaterialTheme.colorScheme.onBackground,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp))
+        if (!isChatNull) {
+            IconButton(onClick = onSideDrawerShow, modifier = Modifier.weight(0.2f)) {
+                Icon(Icons.Filled.Menu,
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    contentDescription = null,
+                    modifier = Modifier.size(50.dp))
+            }
         }
     }
 }

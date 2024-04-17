@@ -82,6 +82,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
+            //TODO change for meditation only
             .blur(if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) 20.dp else 0.dp)
     ) {
         Row(modifier = Modifier.padding(bottom = 30.dp)) {
@@ -104,6 +105,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
                 modifier = Modifier.wrapContentSize(Alignment.Center))
         }
     }
+    // TODO display only for meditation
     if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
         DialogBox(title, categoryToDialogText(lessonItem.category) +

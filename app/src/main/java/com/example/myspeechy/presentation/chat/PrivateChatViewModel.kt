@@ -46,7 +46,7 @@ class PrivateChatViewModel @Inject constructor(
         }
     }
     private fun checkIfChatIsEmpty(remove: Boolean) {
-        chatServiceImpl.checkIfChatIsEmpty(chatId, remove, {updateErrorMessage(it)}) {isEmpty ->
+        chatServiceImpl.checkIfChatIsEmpty(chatId, remove, {updateErrorMessage(it.message)}) {isEmpty ->
             _uiState.update { it.copy(messagesState = if (isEmpty) MessagesState.EMPTY else MessagesState.IDLE) }
         }
     }
@@ -70,7 +70,7 @@ class PrivateChatViewModel @Inject constructor(
 
     private fun listenForUsername(id: String?, remove: Boolean) {
         chatServiceImpl.usernameListener(id, {
-            updateErrorMessage(it)                                 
+            updateErrorMessage(it.message)
         }, {username ->
             val name = username.getValue(String::class.java)
             _uiState.update {
@@ -84,7 +84,7 @@ class PrivateChatViewModel @Inject constructor(
 
     private fun listenForProfilePic(remove: Boolean) {
         chatServiceImpl.chatProfilePictureListener(otherUserId, filesDirPath, {
-            updateErrorMessage(it)
+            updateErrorMessage(it.message)
         }, { m ->
             updateStorageErrorMessage(m)
             val errorMessage = _uiState.value.storageErrorMessage
@@ -141,7 +141,7 @@ class PrivateChatViewModel @Inject constructor(
         }
     }
     private fun listenForCurrentChat(remove: Boolean) {
-        chatServiceImpl.chatListener(chatId, {updateErrorMessage(it)}, {chat ->
+        chatServiceImpl.chatListener(chatId, {updateErrorMessage(it.message)}, {chat ->
             val value = chat.getValue(Chat::class.java)
             if (value != null) {
                 _uiState.update {

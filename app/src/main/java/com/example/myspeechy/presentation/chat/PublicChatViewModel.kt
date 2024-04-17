@@ -11,6 +11,7 @@ import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.data.chat.MessagesState
 import com.example.myspeechy.domain.chat.PublicChatServiceImpl
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,18 +45,22 @@ class PublicChatViewModel @Inject constructor(
         }
     }
     private fun listenForMemberCount(remove: Boolean) {
-        chatServiceImpl.memberCountListener(chatId, {updateErrorMessage(it)}, {count ->
+        chatServiceImpl.memberCountListener(chatId, {updateErrorMessage(it.message)}, {count ->
             _uiState.update { it.copy(memberCount = count.getValue(Int::class.java)) }
         }, remove)
     }
     private fun checkIfChatIsEmpty(remove: Boolean) {
         chatServiceImpl.checkIfChatIsEmpty(chatId, remove,
-            {updateErrorMessage(it)}) {isEmpty ->
+            {
+                if (it.code == DatabaseError.PERMISSION_DENIED) {
+                    _uiState.update { it.copy(messagesState = MessagesState.EMPTY) }
+                }
+                updateErrorMessage(it.message)}) {isEmpty ->
             _uiState.update { it.copy(messagesState = if (isEmpty) MessagesState.EMPTY else MessagesState.IDLE) }
         }
     }
     private fun checkIfIsMemberOfChat(remove: Boolean) {
-        chatServiceImpl.checkIfIsMemberOfChat(chatId, remove, {updateErrorMessage(it)}) {isMember ->
+        chatServiceImpl.checkIfIsMemberOfChat(chatId, remove, {updateErrorMessage(it.message)}) {isMember ->
             println(isMember)
             _uiState.update { it.copy(joined = isMember) }
         }
@@ -151,14 +156,14 @@ class PublicChatViewModel @Inject constructor(
     private fun listenForProfilePic(id: String, remove: Boolean) {
             val picDir = "${filesDirPath}/profilePics/${id}/"
             val picPath = "$picDir/lowQuality/$id.jpg"
-            chatServiceImpl.usersProfilePicListener(id, filesDirPath, {updateErrorMessage(it)}, {updateStorageErrorMessage(it)
+            chatServiceImpl.usersProfilePicListener(id, filesDirPath, {updateErrorMessage(it.message)}, {updateStorageErrorMessage(it)
                 File(picDir).deleteRecursively() }, {
                 _uiState.update { it.copy(picPaths = it.picPaths.toMutableMap().apply { this[id] = picPath },
                     picsRecomposeIds = it.picsRecomposeIds.toMutableMap().apply { this[id] = UUID.randomUUID().toString() }) }
             }, remove)
     }
     private fun listenForUsername(id: String, remove: Boolean) {
-        chatServiceImpl.usernameListener(id, {updateErrorMessage(it)}, {username ->
+        chatServiceImpl.usernameListener(id, {updateErrorMessage(it.message)}, {username ->
             val name = username.getValue(String::class.java)
             _uiState.update { it.copy(members =
                 it.members.mapValues { (k, v) -> if (k == id) name else v},
@@ -167,14 +172,14 @@ class PublicChatViewModel @Inject constructor(
         }, remove)
     }
     private fun listenForCurrentChat(remove: Boolean) {
-            chatServiceImpl.chatListener(chatId, {updateErrorMessage(it)}, { chat ->
+            chatServiceImpl.chatListener(chatId, {updateErrorMessage(it.message)}, { chat ->
                 _uiState.update {
                     it.copy(chat = chat.getValue(Chat::class.java) ?: Chat(), chatLoaded = true)
                 }
             }, remove)
     }
     private fun listenForAdmin(remove: Boolean) {
-        chatServiceImpl.listenForAdmin(chatId, {updateErrorMessage(it)}, {snapshot ->
+        chatServiceImpl.listenForAdmin(chatId, {updateErrorMessage(it.message)}, {snapshot ->
             val value = snapshot.getValue(String::class.java)
              _uiState.update { it.copy(isAdmin = (value == userId), admin = value) }
         }, remove)

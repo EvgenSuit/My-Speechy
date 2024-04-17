@@ -1,7 +1,6 @@
 package com.example.myspeechy.domain.lesson
 
 import android.content.res.AssetManager
-import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem

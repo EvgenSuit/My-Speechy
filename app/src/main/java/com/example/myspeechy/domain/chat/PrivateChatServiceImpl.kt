@@ -37,7 +37,7 @@ class PrivateChatServiceImpl(
     private var messagesStateListener: ValueEventListener? = null
     override fun chatListener(
         id: String,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean) {
         if (userId == null) return
@@ -70,7 +70,7 @@ class PrivateChatServiceImpl(
 
     override fun usernameListener(
         id: String?,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean
     ) {
@@ -120,7 +120,7 @@ class PrivateChatServiceImpl(
 
     fun chatProfilePictureListener(id: String,
                                    filesDir: String,
-                                   onCancelled: (String) -> Unit,
+                                   onCancelled: (DatabaseError) -> Unit,
                                    onStorageFailure: (String) -> Unit,
                                    onPicReceived: () -> Unit,
                                    remove: Boolean) {
@@ -161,7 +161,7 @@ class PrivateChatServiceImpl(
     }
     fun checkIfChatIsEmpty(chatId: String,
                            remove: Boolean,
-                           onCancelled: (String) -> Unit,
+                           onCancelled: (DatabaseError) -> Unit,
                            isEmpty: (Boolean) -> Unit) {
         val ref = messagesRef.child(chatId)
         if (remove && messagesStateListener != null) {

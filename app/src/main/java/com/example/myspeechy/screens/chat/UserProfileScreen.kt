@@ -61,7 +61,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.myspeechy.R
 import com.example.myspeechy.components.BackButton
-import com.example.myspeechy.components.ChatAlertDialog
+import com.example.myspeechy.components.CustomAlertDialog
 import com.example.myspeechy.components.CommonTextField
 import com.example.myspeechy.domain.Result
 import com.example.myspeechy.presentation.chat.PictureState
@@ -216,7 +216,9 @@ fun UserProfileScreen(
                 }
             }
             if (uiState.chatAlertDialogDataClass.title.isNotEmpty()) {
-                ChatAlertDialog(alertDialogDataClass = uiState.chatAlertDialogDataClass)
+                CustomAlertDialog(
+                    coroutineScope,
+                    alertDialogDataClass = uiState.chatAlertDialogDataClass)
             }
         }
         if (uiState.authResult is Result.InProgress) {

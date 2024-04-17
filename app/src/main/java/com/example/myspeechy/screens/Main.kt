@@ -1,10 +1,8 @@
 package com.example.myspeechy.screens
 
-import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,32 +32,21 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.myspeechy.NavScreens
 import com.example.myspeechy.R
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.domain.Result
-import com.example.myspeechy.navBarDataStore
 import com.example.myspeechy.presentation.MainViewModel
-import com.example.myspeechy.screens
-import com.example.myspeechy.screens.lesson.MeditationLessonItem
-import com.example.myspeechy.screens.lesson.ReadingLessonItem
-import com.example.myspeechy.screens.lesson.RegularLessonItem
-import com.example.myspeechy.showNavBarDataStore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import es.dmoral.toasty.Toasty
 
@@ -68,70 +55,34 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
                viewModel: MainViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val destination = navBackStackEntry?.destination
-    val showNavBar = navController.currentBackStackEntryAsState().value?.destination
-        ?.route in screens.map { it.route }
-    LaunchedEffect(showNavBar) {
-        if (destination != null) {
-            context.navBarDataStore.edit { navBar ->
-               navBar[showNavBarDataStore] = showNavBar
-            }
-        }
-    }
     LaunchedEffect(uiState.result) {
         if (uiState.result is Result.Error && uiState.result.error != FirebaseFirestoreException.Code.NOT_FOUND.name) {
             Toasty.error(context, uiState.result.error, Toast.LENGTH_SHORT, true).show()
         }
     }
-    if (uiState.result is Result.Success) {
-        NavHost(navController = navController, startDestination = NavScreens.Main.route,
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            modifier = Modifier.fillMaxSize()) {
-            composable(NavScreens.Main.route) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Image(painter = painterResource(id = R.drawable.main_page_background_medium),
-                        contentDescription = null,
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    if (uiState.lessonItems.isNotEmpty()) {
-                        UnitColumn(
-                            lessonItems = uiState.lessonItems,
-                            navController
-                        ) { viewModel.getStringType(it) }
-                    }
+        if (uiState.result is Result.Success) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .testTag(stringResource(R.string.main_screen_content))) {
+                Image(painter = painterResource(id = R.drawable.main_page_background_medium),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (uiState.lessonItems.isNotEmpty()) {
+                    UnitColumn(
+                        lessonItems = uiState.lessonItems,
+                        navController
+                    ) { viewModel.getStringType(it) }
                 }
             }
-            composable(
-                "regularLessonItem/{regularLessonItemId}",
-                arguments = listOf(navArgument("regularLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                RegularLessonItem()
-                { navController.navigateUp() }
-            }
-            composable(
-                "readingLessonItem/{readingLessonItemId}",
-                arguments = listOf(navArgument("readingLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                ReadingLessonItem()
-                { navController.navigateUp() }
-            }
-            composable(
-                "meditationLessonItem/{meditationLessonItemId}",
-                arguments = listOf(navArgument("meditationLessonItemId")
-                { type = NavType.IntType })
-            ) {
-                MeditationLessonItem()
-                { navController.navigateUp() }
-            }
-        }
-    } else if (uiState.result is Result.InProgress) {
+                }
+    if (uiState.result is Result.InProgress) {
         // TODO Show app logo instead
-        Column(Modifier.fillMaxSize(),
+        Column(
+            Modifier
+                .fillMaxSize()
+                .testTag(stringResource(R.string.load_screen)),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(120.dp, Alignment.CenterVertically)) {
             Text("My Speechy Logo",
