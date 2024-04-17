@@ -38,13 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.myspeechy.R
-import com.example.myspeechy.data.LessonItemUiState
+import com.example.myspeechy.data.lesson.LessonItemUiState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -81,6 +82,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
+            //TODO change for meditation only
             .blur(if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) 20.dp else 0.dp)
     ) {
         Row(modifier = Modifier.padding(bottom = 30.dp)) {
@@ -103,6 +105,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
                 modifier = Modifier.wrapContentSize(Alignment.Center))
         }
     }
+    // TODO display only for meditation
     if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
         DialogBox(title, categoryToDialogText(lessonItem.category) +
@@ -118,6 +121,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
 @Composable
 fun DialogBox(title: String, text: String,
               onDismiss: () -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -126,7 +130,7 @@ fun DialogBox(title: String, text: String,
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(corner)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

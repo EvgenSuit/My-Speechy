@@ -43,5 +43,8 @@ val Typography = Typography(
     headlineMedium = TextStyle(
         fontWeight = FontWeight.ExtraBold,
         fontSize = 35.sp
+    ),
+    headlineSmall = TextStyle(
+        fontSize = 22.sp
     )
 )

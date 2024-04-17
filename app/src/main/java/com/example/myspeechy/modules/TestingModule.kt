@@ -2,8 +2,8 @@ package com.example.myspeechy.modules
 
 import android.content.Context
 import androidx.room.Room
-import com.example.myspeechy.data.LessonDb
-import com.example.myspeechy.data.LessonRepository
+import com.example.myspeechy.data.lesson.LessonDb
+import com.example.myspeechy.data.lesson.LessonRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

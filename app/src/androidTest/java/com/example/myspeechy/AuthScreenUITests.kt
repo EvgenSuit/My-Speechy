@@ -1,57 +1,131 @@
 package com.example.myspeechy
 
+import androidx.activity.compose.setContent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
+import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.testing.TestNavHostController
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 @HiltAndroidTest
 class AuthScreenUITests {
+
     @get:Rule
     val composeTestRule = createAndroidComposeRule(MainActivity::class.java)
 
     @get:Rule
-    val hiltRule = HiltAndroidRule(this)
+    val hiltRule = HiltAndroidRule(this )
+    private lateinit var navController: TestNavHostController
 
     @OptIn(ExperimentalTestApi::class)
-    @Test
-    fun authScreenUncorrectTest() {
+    @Before
+    fun init() {
+        Firebase.auth.signOut()
+        composeTestRule.activity.setContent {
+            navController = TestNavHostController(LocalContext.current)
+            navController.navigatorProvider.addNavigator(ComposeNavigator())
+            MySpeechyApp(navController)
+        }
         composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 5000)
-        composeTestRule.onNodeWithText("Email").performTextInput("uncorrect format")
-        composeTestRule.onNodeWithText("Wrong email format").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Log In").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Sign Up").assertIsNotEnabled()
+        composeTestRule.waitForIdle()
+    }
 
-        composeTestRule.onNodeWithText("Password").performTextInput(" ")
-        composeTestRule.onNodeWithText("Wrong password format").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Log In").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Sign Up").assertIsNotEnabled()
+    @Test
+    fun invalidInputFormat_authUnavailable() {
+        with(composeTestRule) {
+            val logIn = getString(R.string.log_in)
+            val signUp = getString(R.string.sign_up)
+            onEmailInput("e")
+            onEmailInput("")
+            assertTextIsDisplayed(getString(R.string.email_is_empty))
+            onEmailInput("incorrect format")
+            assertTextIsDisplayed(getString(R.string.email_not_valid))
 
+            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
+            onNode(hasClickLabel(signUp)).assertIsNotEnabled()
+
+            onPasswordInput("e")
+            onPasswordInput("")
+            assertTextIsDisplayed(getString(R.string.password_is_empty))
+            onPasswordInput("Okvn")
+            assertTextIsDisplayed(getString(R.string.password_is_not_long_enough))
+            onPasswordInput("fjkkdvnbd")
+            assertTextIsDisplayed(getString(R.string.password_not_enough_digits))
+            onPasswordInput("okvndfdkf2")
+            assertTextIsDisplayed(getString(R.string.password_is_not_mixed_case))
+            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
+            onNode(hasClickLabel(signUp)).assertIsNotEnabled()
+        }
+    }
+
+    @Test
+    fun validInputFormat_authAvailable() {
+        with(composeTestRule) {
+            val logIn = getString(R.string.log_in)
+            val signUp = getString(R.string.sign_up)
+            onEmailInput("email@gmail.com")
+            onPasswordInput("Fjfrkj434bg")
+            onNode(hasClickLabel(logIn)).assertIsEnabled()
+            onNode(hasClickLabel(signUp)).assertIsEnabled()
+        }
     }
 
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun authScreenCorrectTest() {
-        composeTestRule.waitUntilExactlyOneExists(hasText("My Speechy"), 3000)
-        composeTestRule.onNodeWithText("Email").performTextInput("some@gmail.com")
-        composeTestRule.onNodeWithText("Wrong email format").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Log In").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Sign Up").assertIsNotEnabled()
+    fun signInWrongCredentials_authFailed() {
+        with(composeTestRule) {
+            val logIn = getString(R.string.log_in)
+            val signUp = getString(R.string.sign_up)
+            val waiting = getString(R.string.waiting_for_auth)
+            onEmailInput("somerandomemail@gmail.com")
+            onPasswordInput("Wrongpassword86")
+            onClickButtonWithLabel(getString(R.string.log_in))
+            waitForIdle()
+            onNode(hasStateDescription(waiting)).assertIsDisplayed()
+            waitForIdle()
+            onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
+            onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
+            waitUntilExactlyOneExists(hasClickLabel(logIn))
 
-        composeTestRule.onNodeWithText("Password").performTextInput("SomePassword2")
-        composeTestRule.onNodeWithText("Wrong password format").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Log In").assertIsEnabled()
-        composeTestRule.onNodeWithText("Sign Up").assertIsEnabled()
-        composeTestRule.onNodeWithText("Log In").performClick()
-        composeTestRule.waitUntilExactlyOneExists(hasText("Unit 1"), 3000)
+            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
+            onNode(hasClickLabel(signUp)).assertIsNotEnabled()
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun signInCorrectCredentials_authSucceeded() {
+        with(composeTestRule) {
+            val logIn = getString(R.string.log_in)
+            val signUp = getString(R.string.sign_up)
+            val waiting = getString(R.string.waiting_for_auth)
+
+            onEmailInput("some@gmail.com")
+            onPasswordInput("Geny2005")
+            onClickButtonWithLabel(getString(R.string.log_in))
+            waitForIdle()
+            onNode(hasStateDescription(waiting)).assertIsDisplayed()
+            waitForIdle()
+            onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
+            onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
+            waitUntilExactlyOneExists(hasTestTag("loadScreen"), 3000)
+            assertEquals(NavScreens.Main.route, navController.currentBackStackEntry?.destination?.route)
+            waitUntilExactlyOneExists(hasTestTag("mainScreenContent"), 3000)
+        }
     }
 }

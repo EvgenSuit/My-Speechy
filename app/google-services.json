@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "291702741636",
+    "firebase_url": "https://my-speechy-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "my-speechy",
     "storage_bucket": "my-speechy.appspot.com"
   },
@@ -14,11 +15,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "291702741636-5no8m3468q8ltrsp2jh3g61nikf8tctv.apps.googleusercontent.com",
+          "client_id": "291702741636-2ie8goq2iqpu4531v2inui9nn38d7ejv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.myspeechy",
-            "certificate_hash": "5d586aac5a51d16ce75a6441c1d25eee65b556a9"
+            "certificate_hash": "de8b8b1935ce4a8c99dafa1ad625ee414652cf0f"
+          }
+        },
+        {
+          "client_id": "291702741636-cuatd1qua2he91ahr5bhvf4tdp18538p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myspeechy",
+            "certificate_hash": "9cdc1c3a35f71c086cb82aa5d1dee09bda421877"
           }
         },
         {
