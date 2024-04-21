@@ -1,16 +1,23 @@
 package com.example.myspeechy.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myspeechy.R
 
@@ -35,5 +42,28 @@ fun TryAgainOrLogoutButton(tryAgain: Boolean,
         Text(if (tryAgain) "Try again" else "Log out",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground)
+    }
+}
+
+
+@Composable
+fun ScrollDownButton(onClick: () -> Unit) {
+    val corner = dimensionResource(R.dimen.common_corner_size)
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.inversePrimary),
+                RoundedCornerShape(corner)
+            )
+            .size(dimensionResource(R.dimen.scroll_down_button_size))
+            .clip(RoundedCornerShape(corner))
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))
+    ) {
+        Icon(
+            Icons.Filled.KeyboardArrowDown,
+            tint = MaterialTheme.colorScheme.onSurface,
+            contentDescription = null
+        )
     }
 }

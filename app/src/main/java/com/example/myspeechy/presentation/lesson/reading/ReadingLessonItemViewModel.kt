@@ -9,6 +9,8 @@ import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.lesson.ReadingLessonItemState
 import com.example.myspeechy.domain.lesson.ReadingLessonServiceImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,6 +75,8 @@ class ReadingLessonItemViewModel @Inject constructor(
     }
 
     fun markAsComplete() {
-        lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+        CoroutineScope(Dispatchers.Main).launch {
+            lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+        }
     }
 }

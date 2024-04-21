@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.tasks.await
 
 interface LessonService {
     val lessonServiceHelpers: LessonServiceHelpers
@@ -39,10 +40,10 @@ interface LessonService {
     fun loadImgFromAsset(lessonItem: LessonItem, imgs: List<String>, dir: String, assetManager: AssetManager): Map<String, ImageBitmap> {
         return mapOf()
     }
-    fun markAsComplete(lessonItem: LessonItem) {
+    suspend fun markAsComplete(lessonItem: LessonItem) {
         if (userId != null) {
             Firebase.firestore.collection("users").document(userId!!).collection("lessons")
-                .document(lessonItem.id.toString()).set(mapOf("id" to lessonItem.id))
+                .document(lessonItem.id.toString()).set(mapOf("id" to lessonItem.id)).await()
         }
     }
     fun trackRemoteProgress(onListenError: (errorCode: FirebaseFirestoreException.Code) -> Unit,

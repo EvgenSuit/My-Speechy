@@ -26,6 +26,10 @@ class ChatsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChatsUiState())
     val uiState = _uiState.asStateFlow()
     val userId = chatsService.userId
+
+    init {
+        Log.d("CHATS VIEW MODEL", "HERE")
+    }
     fun startOrStopListening(removeListeners: Boolean) {
         viewModelScope.launch {
             try {

@@ -30,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -492,24 +491,6 @@ fun ChatPictureComposable(picRef: File) {
             modifier = Modifier
                 .size(chatPicSize)
                 .clip(CircleShape))
-    }
-}
-
-@Composable
-fun ScrollDownButton(onClick: () -> Unit) {
-    val corner = dimensionResource(R.dimen.common_corner_size)
-    IconButton(onClick = onClick,
-        modifier = Modifier
-            .border(
-                BorderStroke(1.dp, MaterialTheme.colorScheme.inversePrimary),
-                RoundedCornerShape(corner)
-            )
-            .size(dimensionResource(R.dimen.scroll_down_button_size))
-            .clip(RoundedCornerShape(corner))
-            .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))) {
-        Icon(Icons.Filled.KeyboardArrowDown,
-            tint = MaterialTheme.colorScheme.onSurface,
-            contentDescription = null)
     }
 }
 

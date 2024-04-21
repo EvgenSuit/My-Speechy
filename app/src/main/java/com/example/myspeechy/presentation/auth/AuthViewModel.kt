@@ -10,6 +10,8 @@ import com.example.myspeechy.domain.auth.GoogleAuthService
 import com.example.myspeechy.domain.InputFormatCheckResult
 import com.example.myspeechy.domain.error.EmailError
 import com.example.myspeechy.domain.error.PasswordError
+import com.example.myspeechy.domain.useCases.ValidateEmailUseCase
+import com.example.myspeechy.domain.useCases.ValidatePasswordUseCase
 import com.example.myspeechy.presentation.UiText
 import com.google.firebase.auth.FirebaseAuthException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,34 +24,16 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val authService: AuthService,
     private val googleAuthService: GoogleAuthService? = null,
+    private val validateEmailUseCase: ValidateEmailUseCase,
+    private val validatePasswordUseCase: ValidatePasswordUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState = _uiState.asStateFlow()
     private var _exceptionState = MutableStateFlow(PasswordValidatorState())
     val exceptionState = _exceptionState.asStateFlow()
 
-    private fun validateEmailOnInput(value: String): UiText =
-        when(val res = authService.validateEmail(value)) {
-            is InputFormatCheckResult.Error -> {
-                when (res.error) {
-                    EmailError.IS_NOT_VALID -> UiText.StringResource(R.string.email_not_valid)
-                    EmailError.IS_EMPTY -> UiText.StringResource(R.string.email_is_empty)
-                }
-            }
-            is InputFormatCheckResult.Success -> { UiText.StringResource.DynamicString("") }
-    }
-    private fun validatePasswordOnInput(value: String): UiText =
-        when(val res = authService.validatePassword(value)) {
-            is InputFormatCheckResult.Error -> {
-                when (res.error) {
-                    PasswordError.IS_EMPTY -> UiText.StringResource(R.string.password_is_empty)
-                    PasswordError.IS_NOT_MIXED_CASE -> UiText.StringResource(R.string.password_is_not_mixed_case)
-                    PasswordError.IS_NOT_LONG_ENOUGH -> UiText.StringResource(R.string.password_is_not_long_enough)
-                    PasswordError.NOT_ENOUGH_DIGITS -> UiText.StringResource(R.string.password_not_enough_digits)
-                }
-            }
-            is InputFormatCheckResult.Success -> { UiText.StringResource.DynamicString("") }
-        }
+    private fun validateEmailOnInput(value: String): UiText = validateEmailUseCase(value)
+    private fun validatePasswordOnInput(value: String): UiText = validatePasswordUseCase(value)
 
     fun onEmailChanged(value: String) {
         _exceptionState.update { it.copy(emailErrorMessage = validateEmailOnInput(value)) }
@@ -96,7 +80,7 @@ class AuthViewModel @Inject constructor(
             updateAuthResult(Result.InProgress)
             googleAuthService?.signIn()
         } catch (e: Exception) {
-            updateAuthResult(Result.Error(e.message!!))
+            updateAuthResult(Result.Error("${e.message!!}. Make sure to add your Google account to this device"))
             null
         }
     }

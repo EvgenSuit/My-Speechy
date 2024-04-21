@@ -1,9 +1,9 @@
 package com.example.myspeechy.domain.chat
 
 import com.example.myspeechy.data.chat.Chat
+import com.example.myspeechy.domain.DateFormatter
 import com.example.myspeechy.domain.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
@@ -25,7 +25,6 @@ class ChatsServiceImpl(
     private val joinPublicChatUseCase: JoinPublicChatUseCase,
     private val checkIfIsAdminUseCase: CheckIfIsAdminUseCase,
     private val deletePublicChatUseCase: DeletePublicChatUseCase,
-    private val formatDateUseCase: FormatDateUseCase
 ) {
     private var publicChatsStateListener: ChildEventListener? = null
     private var allPublicChatsListener: ChildEventListener? = null
@@ -232,5 +231,5 @@ class ChatsServiceImpl(
     suspend fun leavePublicChat(chatId: String, revokeMembership: Boolean) {
         leavePublicChatUseCase(chatId, revokeMembership)
     }
-    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
+    fun formatDate(timestamp: Long) = DateFormatter.convertFromTimestamp(timestamp)
 }

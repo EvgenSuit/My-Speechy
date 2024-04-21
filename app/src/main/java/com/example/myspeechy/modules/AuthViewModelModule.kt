@@ -1,6 +1,7 @@
 package com.example.myspeechy.modules
 
 import android.content.Context
+import android.content.pm.PackageManager
 import com.example.myspeechy.domain.auth.AccountDeletionService
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.auth.GoogleAuthService
@@ -9,7 +10,10 @@ import com.example.myspeechy.domain.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.ValidateEmailUseCase
+import com.example.myspeechy.domain.useCases.ValidatePasswordUseCase
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.ktx.firestore
@@ -22,6 +26,8 @@ import dagger.hilt.android.components.ActivityRetainedComponent
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 
+
+//ActivityRetainedComponent allows for testing
 @Module
 @InstallIn(ActivityRetainedComponent::class)
 object AuthViewModelModule {
@@ -42,9 +48,22 @@ object AuthViewModelModule {
     }
 
     @Provides
+    fun provideFirebaseAuth(): FirebaseAuth = Firebase.auth
+    @Provides
+    fun provideValidateEmailUseCase(): ValidateEmailUseCase = ValidateEmailUseCase(
+        provideAuthService()
+    )
+    @Provides
+    fun provideValidatePasswordUseCase(): ValidatePasswordUseCase = ValidatePasswordUseCase(
+        provideAuthService()
+    )
+
+    @Provides
     fun provideGoogleAuthService(@ApplicationContext context: Context): GoogleAuthService {
         return lazy {
-            GoogleAuthService(context.applicationInfo, Identity.getSignInClient(context), provideAuthService())
+            GoogleAuthService(
+                context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA),
+                Identity.getSignInClient(context), provideAuthService())
         }.value
     }
 }

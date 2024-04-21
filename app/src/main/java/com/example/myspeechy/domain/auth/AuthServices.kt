@@ -5,6 +5,7 @@ import android.content.IntentSender
 import android.content.pm.ApplicationInfo
 import androidx.core.util.PatternsCompat
 import com.example.myspeechy.data.chat.User
+import com.example.myspeechy.data.thoughtTrack.ThoughtTrack
 import com.example.myspeechy.domain.InputFormatCheckResult
 import com.example.myspeechy.domain.error.EmailError
 import com.example.myspeechy.domain.error.PasswordError
@@ -143,7 +144,7 @@ class AuthService(private val auth: FirebaseAuth,
         //TODO implement batched deletion in the future
         if (firestoreRef == null) return
         val userRef = firestoreRef.collection("users").document(userId)
-        for (coll in listOf("lessons", "meditation")) {
+        for (coll in listOf("lessons", "meditation", "thoughtTracks")) {
             val itemsRef = userRef.collection(coll)
             val docs = itemsRef.get().await().documents
             if (docs.isNotEmpty()) {

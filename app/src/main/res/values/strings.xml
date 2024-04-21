@@ -35,4 +35,8 @@
     <string name="custom_alert_dialog_cancel">Cancel</string>
     <string name="load_screen">Load screen</string>
     <string name="main_screen_content">Main screen content</string>
+
+    <string name="thought_tracker">Thought tracker</string>
+    <string name="write_down_thought_tracker_experience">Write down any experience you have had</string>
+    <string name="done">Done</string>
 </resources>
