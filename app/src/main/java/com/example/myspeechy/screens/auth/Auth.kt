@@ -21,10 +21,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,6 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +56,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -145,7 +149,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
             Toasty.success(context, uiState.result.data, Toast.LENGTH_SHORT, true).show()
             onNavigateToMain()
         } else if (uiState.result is Result.Error) {
-            Toasty.error(context, uiState.result.error, Toast.LENGTH_SHORT, true).show()
+            Toasty.error(context, uiState.result.error, Toast.LENGTH_LONG, true).show()
         }
     }
     Box(modifier = modifier
@@ -187,7 +191,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
                    modifier = Modifier.clickable(onClickLabel = stringResource(R.string.password_auth_field_click_label),
                        onClick = {}),
                    onValueChange = {viewModel.onPasswordChanged(it)})
-
                if (!passwordError.isNullOrEmpty()) {
                    ErrorMessage(passwordError!!)
                }
@@ -276,7 +279,7 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(85.dp)
+            .size(105.dp, 85.dp)
             .padding(top = 25.dp)
             .imePadding()
     ) {
@@ -304,51 +307,51 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
 fun AuthTextField(value:String, label: String,
                   exceptionMessage: String,
                   modifier: Modifier,
+                  colors: TextFieldColors? = null,
                   onValueChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
-     Column {
-         OutlinedTextField(value = value,
-             placeholder = {Text(label,
-                 fontFamily = kalamFamily,
-                 color = Color.Black,
-                 fontSize = 24.sp)},
-             keyboardActions = KeyboardActions(
-                 onDone = {if (label == "Email") {
-                     focusManager.moveFocus(FocusDirection.Next)
-                 }else {
-                     focusManager.clearFocus()
-                 }
-                 }
-             ),
-             onValueChange = {
-                 if (it.isNotBlank() || value.isNotBlank()) onValueChange(it)
-             },
-             singleLine = true,
-             isError = exceptionMessage.isNotEmpty(),
-             colors = OutlinedTextFieldDefaults.colors(
-                 unfocusedContainerColor = Color.White,
-                 focusedContainerColor = Color.White,
-                 focusedTextColor = Color.Black,
-                 unfocusedTextColor = Color.Black,
-                 unfocusedBorderColor  = Color.White,
-                 focusedBorderColor = Color.White,
-                 errorContainerColor = Color.White,
-                 errorBorderColor = Color.Red,
-                 errorTextColor = Color.Black
-             ),
-             shape = RoundedCornerShape(10.dp),
-             modifier = modifier
-                 .padding(top = dimensionResource(id = R.dimen.padding_auth_text_fields))
-                 .advancedShadow(
-                     alpha = 0.5f,
-                     cornersRadius = 10.dp,
-                     shadowBlurRadius = 10.dp,
-                     offsetY = 4.dp
-                 )
-                 .height(60.dp)
-         )
-
-     }
+    OutlinedTextField(value = value,
+         placeholder = {Text(label,
+             fontFamily = kalamFamily,
+             color = Color.Black,
+             fontSize = 24.sp)},
+        keyboardOptions = KeyboardOptions(imeAction = if (label == "Email") ImeAction.Next
+        else ImeAction.Done),
+         keyboardActions = KeyboardActions(
+             onDone = {if (label == "Email") {
+                 focusManager.moveFocus(FocusDirection.Next)
+             }else {
+                 focusManager.clearFocus()
+             }
+             }
+         ),
+         onValueChange = {
+             if (it.isNotBlank() || value.isNotBlank()) onValueChange(it)
+         },
+         singleLine = true,
+         isError = exceptionMessage.isNotEmpty(),
+         colors = colors ?: OutlinedTextFieldDefaults.colors(
+             unfocusedContainerColor = Color.White,
+             focusedContainerColor = Color.White,
+             focusedTextColor = Color.Black,
+             unfocusedTextColor = Color.Black,
+             unfocusedBorderColor  = Color.White,
+             focusedBorderColor = Color.White,
+             errorContainerColor = Color.White,
+             errorBorderColor = Color.Red,
+             errorTextColor = Color.Black
+         ),
+         shape = RoundedCornerShape(10.dp),
+         modifier = modifier
+             .padding(top = dimensionResource(id = R.dimen.padding_auth_text_fields))
+             .advancedShadow(
+                 alpha = 0.5f,
+                 cornersRadius = 10.dp,
+                 shadowBlurRadius = 10.dp,
+                 offsetY = 4.dp
+             )
+             .height(60.dp)
+     )
 }
 
 @Composable

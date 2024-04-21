@@ -13,6 +13,8 @@ import com.example.myspeechy.domain.MeditationNotificationServiceImpl
 import com.example.myspeechy.domain.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.domain.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,6 +146,8 @@ class MeditationLessonItemViewModel @Inject constructor(
     }
 
     fun markAsComplete() {
-        lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+        CoroutineScope(Dispatchers.Main).launch {
+            lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
+        }
     }
 }

@@ -3,8 +3,8 @@ package com.example.myspeechy.domain.chat
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import com.example.myspeechy.data.chat.Message
+import com.example.myspeechy.domain.DateFormatter
 import com.example.myspeechy.domain.error.PictureStorageError
-import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -24,8 +24,6 @@ interface RootChatService {
     val messagesRef: DatabaseReference
     val picsRef: StorageReference?
     val usersRef: DatabaseReference?
-    val formatDateUseCase: FormatDateUseCase
-        get() = FormatDateUseCase()
     fun messagesChildListener(onAdded: (Map<String, Message>) -> Unit,
                               onChanged: (Map<String, Message>) -> Unit,
                               onRemoved: (Map<String, Message>) -> Unit,
@@ -143,7 +141,7 @@ interface RootChatService {
             Files.createDirectories(Paths.get(picDir))
         }
     }
-    fun formatDate(timestamp: Long) = formatDateUseCase(timestamp)
+    fun formatDate(timestamp: Long) = DateFormatter.convertFromTimestamp(timestamp)
     //scroll to bottom if the message before the last one is 100% visible at the time of receiving a new one
     suspend fun scrollToBottom(messages: Map<String, Message>, listState: LazyListState, firstVisibleItem: LazyListItemInfo) {
         val viewportHeight = listState.layoutInfo.viewportEndOffset

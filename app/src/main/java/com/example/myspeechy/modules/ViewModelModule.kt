@@ -25,7 +25,6 @@ import com.example.myspeechy.domain.meditation.MeditationStatsServiceImpl
 import com.example.myspeechy.domain.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.domain.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
-import com.example.myspeechy.domain.useCases.FormatDateUseCase
 import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
@@ -110,8 +109,7 @@ object ViewModelModule {
             provideLeavePublicChatUseCase(),
             provideJoinPublicChatUseCase(),
             provideCheckIfIsAdminUseCase(),
-            provideDeletePublicChatUseCase(),
-            FormatDateUseCase()
+            provideDeletePublicChatUseCase()
         )
     }
     @Provides

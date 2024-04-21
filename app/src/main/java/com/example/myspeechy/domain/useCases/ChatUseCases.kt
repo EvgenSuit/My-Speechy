@@ -3,11 +3,6 @@ package com.example.myspeechy.domain.useCases
 import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.google.firebase.database.DatabaseReference
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.util.Locale
 
 class LeavePrivateChatUseCase(
     private val userId: String?,
@@ -127,16 +122,3 @@ class DeletePublicChatUseCase(private val database: DatabaseReference,
             .removeValue().await()
     }
 }
-
-class FormatDateUseCase {
-    operator fun invoke(timestamp: Long): String {
-        var targetDateFormat = ""
-        val currentDate = LocalDateTime.now()
-        val messageDateFormatted = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
-        if (currentDate.year != messageDateFormatted.year) targetDateFormat += "yyyy."
-        if (currentDate.dayOfMonth != messageDateFormatted.dayOfMonth) targetDateFormat += "MMM dd "
-        targetDateFormat += "HH:mm"
-        return SimpleDateFormat(targetDateFormat, Locale.getDefault()).format(timestamp)
-    }
-}
-

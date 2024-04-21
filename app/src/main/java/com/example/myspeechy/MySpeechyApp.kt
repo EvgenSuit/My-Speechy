@@ -1,9 +1,7 @@
 package com.example.myspeechy
 
 import android.content.Context
-import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -13,20 +11,19 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,10 +36,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -58,6 +54,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.myspeechy.domain.AnimationConfig
 import com.example.myspeechy.screens.auth.AuthScreen
 import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationStatsScreen
@@ -70,6 +67,8 @@ import com.example.myspeechy.screens.chat.UserProfileScreen
 import com.example.myspeechy.screens.lesson.MeditationLessonItem
 import com.example.myspeechy.screens.lesson.ReadingLessonItem
 import com.example.myspeechy.screens.lesson.RegularLessonItem
+import com.example.myspeechy.screens.thoughtTracker.ThoughtTrackerItemScreen
+import com.example.myspeechy.screens.thoughtTracker.ThoughtTrackerScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
@@ -82,8 +81,11 @@ val errorKey = stringPreferencesKey("error")
 val Context.loadData: DataStore<Preferences> by preferencesDataStore("loadingData")
 val isDataLoaded = booleanPreferencesKey("isDataLoaded")
 
+
+// TODO change icons
 open class NavScreens(val route: String, val icon: ImageVector, val label: String) {
     data object Main: NavScreens("main", Icons.Filled.Home, "Main")
+    data object ThoughtTracker: NavScreens("thoughtTracker", Icons.Filled.Star, "ThoughtTracker")
     data object Stats: NavScreens("stats", Icons.Filled.Info, "Stats")
     data object ChatsScreen: NavScreens("chats", Icons.Filled.Face, "Chats")
 }
@@ -92,7 +94,7 @@ open class OtherScreens(val route: String) {
     data object Error: OtherScreens("error")
     data object AccountDelete: OtherScreens("accountDelete")
 }
-val screens = listOf(NavScreens.Main, NavScreens.Stats, NavScreens.ChatsScreen)
+val screens = listOf(NavScreens.Main, NavScreens.ThoughtTracker, NavScreens.Stats, NavScreens.ChatsScreen)
 
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
@@ -128,17 +130,19 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
         context.authDataStore.data.collectLatest {
             val loggedOut = it[loggedOutDataStore] ?: false
             val currRoute = navBackStackEntry?.destination?.route
-            //if logged out and not in auth, navigate to auth
+            //if logged out and not in auth, navigate there
             if (loggedOut && currRoute != OtherScreens.Auth.route) {
-                navController.navigate(OtherScreens.Auth.route) { popUpTo(OtherScreens.Auth.route) }
+                navController.navigate(OtherScreens.Auth.route) { popUpTo(OtherScreens.Auth.route)}
             }
-            if (currRoute != OtherScreens.Auth.route && currRoute != OtherScreens.AccountDelete.route
-                ) {
+            if (currRoute != OtherScreens.Auth.route && currRoute != OtherScreens.AccountDelete.route) {
                 // if error was not null or empty, but now it is means there's no error anymore and we can navigate to Main
                 if (!error.isNullOrEmpty() && it[errorKey].isNullOrEmpty()) {
                     // use popUpTo(NavScreens.Main.route) to not reinitialize view model
                     // if already navigated to Main before
-                    navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route) }
+                    navController.navigate(NavScreens.Main.route) {
+                        popUpTo(NavScreens.Main.route)
+                        launchSingleTop = true
+                    }
                 }
                 error = it[errorKey]
                 if (!error.isNullOrEmpty()) {
@@ -153,7 +157,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
             AnimatedVisibility(showNavBar,
                 enter = slideInVertically()
                         + expandVertically(expandFrom = Alignment.Top) + fadeIn(initialAlpha = 0.3f),
-                exit = shrinkVertically()
+                exit = shrinkVertically(tween(AnimationConfig.BOTTOM_NAV_BAR_SHRINK_DURATION))
             ) {
                 BottomNavBar(
                     showNavBar = showNavBar,
@@ -176,6 +180,9 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     composable(NavScreens.Main.route) {
                         MainScreen(navController)
                     }
+                    composable(NavScreens.ThoughtTracker.route) {
+                        ThoughtTrackerScreen(navController)
+                    }
                     composable(NavScreens.Stats.route) {
                         MeditationStatsScreen()
                     }
@@ -184,7 +191,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     }
                     composable(OtherScreens.Auth.route) {
                         AuthScreen(onNavigateToMain = {
-                            navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route)}
+                            navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route) }
                         })
                     }
                     composable(OtherScreens.Error.route) {
@@ -197,7 +204,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     composable(OtherScreens.AccountDelete.route) {
                         BackHandler(true) {}
                         AccountDeletionScreen(onGoBack = {
-                            navController.navigate(NavScreens.Main.route) {popUpTo(NavScreens.Main.route)}
+                            navController.navigate(NavScreens.ChatsScreen.route) { popUpTo(0) }
                         })
                     }
                     composable(
@@ -220,10 +227,13 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                         arguments = listOf(navArgument("meditationLessonItemId")
                         { type = NavType.IntType })
                     ) {
-                        Box {
-                            MeditationLessonItem()
-                            { navController.navigateUp() }
-                        }
+                        MeditationLessonItem()
+                        { navController.navigateUp() }
+                    }
+                    composable("${NavScreens.ThoughtTracker.route}/{timestamp}",
+                        arguments = listOf(navArgument("timestamp")
+                        { type = NavType.LongType })) {
+                        ThoughtTrackerItemScreen { navController.navigateUp() }
                     }
                     composable("chats/{type}/{chatId}",
                         arguments = listOf(
@@ -239,7 +249,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     composable("userProfile/{userId}",
                         arguments = listOf(navArgument("userId") {type = NavType.StringType})) {
                         UserProfileScreen({ navController.navigateUp() },
-                            onAccountDelete = {navController.navigate("accountDelete") {popUpTo(0)}})
+                            onAccountDelete = {navController.navigate("accountDelete")})
                     }
 
                 }
@@ -271,17 +281,14 @@ fun BottomNavBar(
                     screen.icon,
                     tint = MaterialTheme.colorScheme.primary,
                     contentDescription = null,
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = Modifier
+                        .size(if (selected) dimensionResource(R.dimen.selected_bottom_bar_icon_size) else
+                            dimensionResource(R.dimen.unselected_bottom_bar_icon_size))
                 ) },
-                label = { if (selected) Text(
-                    screen.label,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 20.sp
-                ) else Text("") },
+
                 selectedContentColor = Color.White,
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.background)
-                    .offset(y = if (!selected) 10.dp else 0.dp)
                     .weight(1f)
                     .semantics {
                         contentDescription = screen.label

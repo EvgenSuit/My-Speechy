@@ -11,7 +11,6 @@ import com.example.myspeechy.presentation.auth.AccountDeletionViewModel
 import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.DocumentSnapshot
@@ -159,7 +158,7 @@ class AccountDeletionUnitTests {
         runBlocking {
             viewModel.deleteUser()
         }
-        assertTrue(viewModel.uiState.value.result.error.isEmpty())
+        assertTrue(viewModel.uiState.value.deletionResult.error.isEmpty())
         for (quality in listOf("normalQuality", "lowQuality")) {
             verify { mockedStorage.child("profilePics").child(userId).child(quality).child("$userId.jpg").delete() }
         }
