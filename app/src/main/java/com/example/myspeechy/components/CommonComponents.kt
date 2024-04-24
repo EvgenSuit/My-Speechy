@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myspeechy.R
@@ -24,9 +27,11 @@ import com.example.myspeechy.R
 @Composable
 fun BackButton(
     onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
+    val description = stringResource(R.string.back_button)
+    IconButton(onClick = onClick,
+        modifier = Modifier.semantics { contentDescription = description }) {
         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.onBackground,
             contentDescription = null,
             modifier = Modifier.size(dimensionResource(R.dimen.back_button_size)))
     }

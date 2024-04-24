@@ -15,6 +15,7 @@ val kalamFamily = FontFamily(Font(R.font.kalam_regular))
 val lalezarFamily = FontFamily(Font(R.font.lalezar_regular))
 val lemonadaFamily = FontFamily(Font(R.font.lemonada_regular))
 val garamondFamily = FontFamily(Font(R.font.garamond))
+val comfortaaFamily = FontFamily(Font(R.font.comfortaa))
 
 val Typography = Typography(
     bodyLarge = TextStyle(
@@ -46,5 +47,9 @@ val Typography = Typography(
     ),
     headlineSmall = TextStyle(
         fontSize = 22.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = comfortaaFamily,
+        fontSize = 25.sp
     )
 )

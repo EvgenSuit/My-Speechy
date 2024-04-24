@@ -64,12 +64,9 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
         if (uiState.result is Result.Success) {
             Box(modifier = Modifier
                 .fillMaxSize()
-                .testTag(stringResource(R.string.main_screen_content))) {
-                Image(painter = painterResource(id = R.drawable.main_page_background_medium),
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize()
-                )
+                .testTag(stringResource(R.string.main_screen_content))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+            ) {
                 if (uiState.lessonItems.isNotEmpty()) {
                     UnitColumn(
                         lessonItems = uiState.lessonItems,
@@ -79,16 +76,14 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
             }
                 }
     if (uiState.result is Result.InProgress) {
-        // TODO Show app logo instead
-        Column(
-            Modifier
-                .fillMaxSize()
-                .testTag(stringResource(R.string.load_screen)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(120.dp, Alignment.CenterVertically)) {
-            Text("My Speechy Logo",
-                fontSize = 30.sp,
-                color = MaterialTheme.colorScheme.onBackground)
+        Box(contentAlignment = Alignment.Center,
+            modifier = Modifier
+            .fillMaxSize()
+            .testTag(stringResource(R.string.load_screen))) {
+            Text("My Speechy",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    color = MaterialTheme.colorScheme.onBackground
+                ))
         }
     }
 }
@@ -131,7 +126,7 @@ fun LessonItemComposable(lessonItem: LessonItem,
                          navController: NavController,
                          isAvailable: Boolean,
                          getStringType: (String) -> Int) {
-    val itemType = when(getStringType(lessonItem.category)) {
+    val itemType = when(lessonItem.category.ordinal) {
         3 -> "meditationLessonItem"
         5 -> "readingLessonItem"
         else -> "regularLessonItem"
@@ -155,7 +150,7 @@ fun LessonItemComposable(lessonItem: LessonItem,
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(lessonItem.category,
+            Text(lessonItem.category.name.lowercase(),
                 fontSize = 20.sp,)
             Spacer(modifier = Modifier.weight(0.2f))
             Text(lessonItem.title,

@@ -4,25 +4,24 @@ import android.content.res.AssetManager
 import androidx.compose.ui.graphics.ImageBitmap
 import com.example.myspeechy.data.lesson.Lesson
 import com.example.myspeechy.data.lesson.LessonItem
+import com.example.myspeechy.helpers.LessonCategories
 import com.example.myspeechy.helpers.LessonServiceHelpers
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
 interface LessonService {
     val lessonServiceHelpers: LessonServiceHelpers
         get() = LessonServiceHelpers()
     val userId: String?
-        get() = Firebase.auth.currentUser?.uid
+    val usersRef: CollectionReference
 
     fun convertToLessonItem(lesson: Lesson): LessonItem {
         return LessonItem(
             lesson.id,
             lesson.unit,
-            lessonServiceHelpers.categoryMapper(lesson.category),
+            LessonCategories.entries[lesson.category],
             lesson.title,
             lesson.text,
             lesson.isComplete == 1,
@@ -42,7 +41,7 @@ interface LessonService {
     }
     suspend fun markAsComplete(lessonItem: LessonItem) {
         if (userId != null) {
-            Firebase.firestore.collection("users").document(userId!!).collection("lessons")
+            usersRef.document(userId!!).collection("lessons")
                 .document(lessonItem.id.toString()).set(mapOf("id" to lessonItem.id)).await()
         }
     }
@@ -51,7 +50,12 @@ interface LessonService {
                             onDataReceived: (List<Int>) -> Unit) {}
 }
 
-class RegularLessonServiceImpl: LessonService {
+class RegularLessonServiceImpl(
+    ref: CollectionReference,
+    auth: FirebaseAuth
+): LessonService {
+    override val userId = auth.currentUser?.uid
+    override val usersRef = ref
     override fun parseImgFromText(lessonItem: LessonItem, imgs: List<String>): List<String> {
         val textSplit = lessonItem.text.split("\n")
         val newText = mutableListOf<String>()
@@ -80,12 +84,15 @@ class RegularLessonServiceImpl: LessonService {
     }
 }
 
-class MainLessonServiceImpl(private val firestoreRef: FirebaseFirestore): LessonService {
+class MainLessonServiceImpl(private val firestoreRef: CollectionReference,
+    auth: FirebaseAuth): LessonService {
+    override val userId = auth.currentUser?.uid
+    override val usersRef = firestoreRef
     override fun trackRemoteProgress(onListenError: (errorCode: FirebaseFirestoreException.Code) -> Unit,
                                      onOtherError: (String) -> Unit,
         onDataReceived: (List<Int>) -> Unit) {
         if (userId == null) return
-        val docRef = firestoreRef.collection("users").document(userId!!).collection("lessons")
+        val docRef = firestoreRef.document(userId).collection("lessons")
         docRef.addSnapshotListener{snapshot, e ->
             if (e != null) {
                 onListenError(e.code)
@@ -113,6 +120,18 @@ class MainLessonServiceImpl(private val firestoreRef: FirebaseFirestore): Lesson
     }
 }
 
-class ReadingLessonServiceImpl: LessonService
+class ReadingLessonServiceImpl(
+    ref: CollectionReference,
+    auth: FirebaseAuth
+): LessonService {
+    override val userId = auth.currentUser?.uid
+    override val usersRef = ref
+}
 
-class MeditationLessonServiceImpl: LessonService
+class MeditationLessonServiceImpl(
+    usersReference: CollectionReference,
+    auth: FirebaseAuth
+): LessonService {
+    override val userId = auth.currentUser?.uid
+    override val usersRef = usersReference
+}

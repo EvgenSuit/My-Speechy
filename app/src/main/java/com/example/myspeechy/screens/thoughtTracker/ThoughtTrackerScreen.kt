@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -45,22 +47,24 @@ fun ThoughtTrackerScreen(navController: NavHostController,
                          viewModel: ThoughtTrackerViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val circularProgressIndicatorDescription = stringResource(R.string.circular_progress_indicator)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.listenForDateChange(false)
         viewModel.listenForTracks(false)
+        viewModel.listenForDateChange(false)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        viewModel.listenForDateChange(true)
         viewModel.listenForTracks(true)
+        viewModel.listenForDateChange(true)
     }
     LaunchedEffect(viewModel) {
         viewModel.tracksFetchResultFlow.collect { result ->
             if (result.error.isNotEmpty()) {
-                Toasty.error(context, result.error, Toast.LENGTH_SHORT, true).show()
+                Toasty.error(context, result.error, Toast.LENGTH_LONG, true).show()
             }
         }
     }
-    Column(Modifier
+    Column(
+        Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(dimensionResource(R.dimen.thought_tracker_page_padding)),
@@ -76,7 +80,7 @@ fun ThoughtTrackerScreen(navController: NavHostController,
             } else if (result is Result.InProgress) {
                 Box(modifier = Modifier.fillMaxHeight(),
                     contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(Modifier.semantics { contentDescription = circularProgressIndicatorDescription})
                 }
             }
         }
@@ -98,21 +102,22 @@ fun ThoughtTrackBox(date: String,
         modifier = Modifier.fillMaxWidth(0.9f)
     ) {
         Text(date,
-            style = MaterialTheme.typography.bodyMedium
-                .copy(color = MaterialTheme.colorScheme.onBackground))
+            style = MaterialTheme.typography.labelMedium
+                .copy(color = MaterialTheme.colorScheme.onBackground),
+            modifier = Modifier.padding(7.dp))
     }
 }
 
 @Composable
 fun TracksColumn(tracks: List<ThoughtTrackItem>,
-                 onFormatDate: (Long) -> String,
-                 onNavigateToItem: (Long) -> Unit) {
+                 onFormatDate: (String) -> String,
+                 onNavigateToItem: (String) -> Unit) {
     LazyColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(5.dp),
         modifier = Modifier.fillMaxSize()) {
         itemsIndexed(tracks) {i, item ->
-            ThoughtTrackBox(onFormatDate(item.timestamp)) { onNavigateToItem(item.timestamp) }
+            ThoughtTrackBox(onFormatDate(item.date)) { onNavigateToItem(item.date) }
         }
     }
 }

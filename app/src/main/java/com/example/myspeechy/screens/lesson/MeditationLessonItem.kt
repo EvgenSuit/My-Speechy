@@ -1,21 +1,23 @@
 package com.example.myspeechy.screens.lesson
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Ease
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,22 +43,37 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myspeechy.R
 import com.example.myspeechy.components.LessonItemWrapper
+import com.example.myspeechy.domain.AnimationConfig
+import com.example.myspeechy.domain.meditation.MeditationConfig
 import com.example.myspeechy.presentation.lesson.meditation.MeditationLessonItemViewModel
+import es.dmoral.toasty.Toasty
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.time.Duration.Companion.seconds
 
-    @Composable
+@Composable
 fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewModel(),
                          onNavigateUp: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     val passedTime = uiState.passedTime
+    val context = LocalContext.current
+    val breathingAnimationDuration = AnimationConfig.MEDITATION_BREATHING_ANIMATION_DURATION
+    LaunchedEffect(Unit) {
+        viewModel.saveResultFlow.collectLatest {res ->
+            if (res.error.isNotEmpty()) {
+                Toasty.error(context, res.error, Toast.LENGTH_SHORT, true).show()
+            }
+        }
+    }
     LessonItemWrapper(
             uiState = uiState,
             onNavigateUp = onNavigateUp,
@@ -65,21 +82,22 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
             val paused = uiState.paused
             AnimatedVisibility(
                 started,
-                enter = expandVertically(tween(600)),
-                exit = shrinkVertically(tween(600))
+                enter = expandVertically(tween(AnimationConfig.MEDITATION_TIMESCROLLER_ANIMATION_DURATION)),
+                exit = shrinkVertically(tween(AnimationConfig.MEDITATION_TIMESCROLLER_ANIMATION_DURATION))
             ) {
-                Text(
-                    if (uiState.breathingIn) "Breath In" else "Breath out",
-                    fontSize = animateIntAsState(
-                        if (uiState.breathingIn) 85 else 45,
-                        animationSpec = tween(uiState.breathingInterval.toInt(), easing = Ease),
-                        label = "").value.sp, color = Color.White,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 85.sp,
-                    modifier = Modifier
-                        .height(IntrinsicSize.Max)
-                        .padding(top = 100.dp, bottom = 100.dp)
-                )
+                AnimatedContent(uiState.breathingIn,
+                    transitionSpec = {
+                        fadeIn(tween(breathingAnimationDuration)) togetherWith fadeOut(tween(breathingAnimationDuration))
+                    }) { breathingIn ->
+                    Text(
+                        if (breathingIn) "Breath In" else "Breath out",
+                        fontSize = 45.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .padding(top = 100.dp, bottom = 100.dp)
+                    )
+                }
             }
         if (started) {
             Text(
@@ -87,52 +105,37 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
                 color = Color.White, fontSize = 35.sp
             )
         }
-            Row(
-                horizontalArrangement = if (started) Arrangement.SpaceBetween else Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                ElevatedButton(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .size(150.dp, 60.dp)
-                        .background(Color.Transparent),
-                    onClick = {
-                        if (started) viewModel.cancel() else {
-                            viewModel.start()
-                        }
-                    }
-                ) {
-                    Text(
-                        if (started) "Cancel" else "Start",
-                        fontSize = 23.sp
-                    )
-                }
-                AnimatedVisibility(
-                    visible = started,
-                    enter = slideInHorizontally(animationSpec = tween(600)),
-                    exit = shrinkHorizontally(animationSpec = tween(600))
-                ) {
-                    ElevatedButton(
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(150.dp, 60.dp),
-                        onClick = {
-                            if (paused) viewModel.resume() else viewModel.pause()
-                        }
-                    ) {
-                        Text(
-                            if (paused) "Resume" else "Stop",
-                            fontSize = 23.sp
-                        )
-                    }
-                }
-            }
             TimeScroller(
                 started,
                 viewModel::setMeditationTime
             )
+        Spacer(modifier = Modifier.height(40.dp))
+        AnimatedContent(started,
+            modifier = Modifier.absolutePadding(top = 20.dp)) { started ->
+            if (!started) {
+                ControlButton(stringResource(R.string.start_button)) {
+                    viewModel.start()
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                ) {
+                    ControlButton(if (paused) stringResource(R.string.resume_button)
+                    else stringResource(R.string.pause_button)) {
+                        if (paused) viewModel.resume() else viewModel.pause()
+                    }
+                    Spacer(Modifier.weight(1f))
+                    ControlButton(stringResource(R.string.cancel_button)) {
+                        viewModel.cancel()
+                    }
+                }
+
+            }
+            }
         }
+
 }
 
 @Composable
@@ -143,62 +146,85 @@ fun TimeScroller(
     var selectedItemIndex by remember {
         mutableIntStateOf(0)
     }
+    val timescrollerTextAnimationDuration = AnimationConfig.MEDITATION_TIMESCROLLER_TEXT_ANIMATION_DURATION
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val minMeditationPoint = MeditationConfig.MIN_MEDITATION_POINT
+    val maxMeditationPoint = MeditationConfig.MAX_MEDITATION_POINT
+    val stepSize = MeditationConfig.STEP_SIZE
     val corner = dimensionResource(R.dimen.common_corner_size)
     LaunchedEffect(started) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
             .collect { list ->
                 selectedItemIndex = if (list[list.size/2].index < 13) list[list.size/2].index else selectedItemIndex
-                onSetTime(selectedItemIndex*5)
+                onSetTime(selectedItemIndex*stepSize)
             }
     }
     AnimatedVisibility(visible = !started,
-            enter = expandVertically(tween(600)),
-            exit = shrinkVertically(tween(600))
+            enter = expandVertically(tween(AnimationConfig.MEDITATION_TIMESCROLLER_ANIMATION_DURATION)),
+            exit = shrinkVertically(tween(AnimationConfig.MEDITATION_TIMESCROLLER_ANIMATION_DURATION))
         ) {
         Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(corner))
-                        .background(Color.White.copy(0.2f))
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clip(RoundedCornerShape(corner))
+                .background(Color.White.copy(0.2f))
                 ) {
                     Text("Minutes", style = MaterialTheme.typography.bodyMedium)
                     LazyRow(
                         state = listState,
-                        horizontalArrangement = Arrangement.spacedBy(60.dp),
+                        horizontalArrangement = Arrangement.spacedBy(50.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .height(120.dp)
                             .padding(5.dp)
                             .testTag("TimeScroller")
                     ) {
-                        items((0..13).toList()) {
-                            if (it != 0 && it != 13) {
-                                Text(
-                                    "${it * 5}",
-                                    fontSize = animateIntAsState(
-                                        targetValue = if (it == selectedItemIndex) 70 else 38,
-                                        animationSpec = tween(200, easing = Ease),
-                                        label = "textSize"
-                                    ).value.sp,
-                                    color = Color.White, modifier = Modifier
-                                        .padding(
-                                            start = if (it == 1) (LocalConfiguration.current.screenWidthDp / 2).dp else 0.dp,
-                                            end = if (it == 12) (LocalConfiguration.current.screenWidthDp / 2).dp else 0.dp
-                                        )
-                                )
-                            }
-                                Spacer(modifier = Modifier.width(60.dp))
-
-                                if (it != 0 && it != 12 && it != 13) {
+                        items((minMeditationPoint..maxMeditationPoint).toList()) {
+                            val fontSize = if (it == selectedItemIndex) 70 else 38
+                            Row(horizontalArrangement = Arrangement.spacedBy(50.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                if (it != 0 && it != maxMeditationPoint) {
+                                    Text(
+                                        "${it * stepSize}",
+                                        fontSize = animateIntAsState(
+                                            targetValue = fontSize,
+                                            animationSpec = tween(timescrollerTextAnimationDuration, easing = Ease),
+                                            label = "textSize"
+                                        ).value.sp,
+                                        color = Color.White, modifier = Modifier
+                                            .padding(
+                                                start = if (it == minMeditationPoint+1) (screenWidth / 2).dp else 0.dp,
+                                                end = if (it == maxMeditationPoint-1) (screenWidth / 2).dp else 0.dp
+                                            )
+                                    )
+                                }
+                                if (it != 0 && it != maxMeditationPoint-1 && it != maxMeditationPoint) {
                                     Divider(
                                         modifier = Modifier
                                             .fillMaxHeight()
                                             .width(1.dp)
                                     )
                                 }
-
+                            }
                         }
                     }
-                }
-            }
+        }
+    }
+}
+
+@Composable
+fun ControlButton(text: String,
+                      onClick: () -> Unit) {
+    ElevatedButton(
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier
+            .size(150.dp, 60.dp)
+            .background(Color.Transparent),
+        onClick = onClick
+    ) {
+        Text(
+            text,
+            fontSize = 23.sp
+        )
+    }
 }

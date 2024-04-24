@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,7 +38,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -50,9 +50,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -90,12 +93,8 @@ fun ThoughtTrackerItemScreen(
         mutableStateOf(uiState.track.thoughts)
     }
     val isReadOnly by rememberSaveable(questionsMap, text, uiState.trackFetchResult) {
-        mutableStateOf(uiState.trackFetchResult is Result.Success &&
-                (questionsMap.values.all { it != -1 } &&
-                uiState.track.thoughts != null || !uiState.isDateEqualToCurrent))
-    }
-    LaunchedEffect(Unit) {
-        viewModel.listenForDateChange()
+        mutableStateOf(uiState.trackFetchResult is Result.Success && questionsMap.values.all { it != -1 } &&
+                uiState.track.thoughts != null)
     }
     LaunchedEffect(viewModel) {
         viewModel.trackFetchResultFlow.collect { result ->
@@ -124,7 +123,7 @@ fun ThoughtTrackerItemScreen(
                 Modifier
                     .align(Alignment.Start)
                     .padding(top = mainPadding / 2, start = mainPadding / 2)) {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     BackButton(onClick = {
                         //if in text section go back to questions.
                         //go back to main screen if there
@@ -132,10 +131,10 @@ fun ThoughtTrackerItemScreen(
                             isQuestionsColumnVisible = true
                         } else onNavigateUp()
                     })
-                    if (isReadOnly && uiState.currentTimestamp != 0L) {
+                    if (isReadOnly) {
                         Box(contentAlignment = Alignment.Center,
                             modifier = Modifier.weight(1f)) {
-                            Text(DateFormatter.convertFromTimestampThoughtTracker(uiState.currentTimestamp),
+                            Text(uiState.currentDate,
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     color = MaterialTheme.colorScheme.onBackground
                                 ),
@@ -160,7 +159,9 @@ fun ThoughtTrackerItemScreen(
                             onTextChange = { if (it.length <= maxThoughtTextLength) text = it }) {
                             scope.launch {
                                 viewModel.saveData(questionsMap, text ?: "")
-                                onNavigateUp()
+                                if (uiState.saveResult is Result.Success) {
+                                    onNavigateUp()
+                                }
                             }
                         }
                     } else {
@@ -173,11 +174,6 @@ fun ThoughtTrackerItemScreen(
                 }
             }
         }
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.listenForDateChange()
-        }
-    }
 }
 
 @Composable
@@ -201,23 +197,24 @@ fun ReadOnlyTracker(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxHeight = this.maxHeight
         LazyColumn(state = listState,
-            verticalArrangement = Arrangement.spacedBy(padding)) {
+            verticalArrangement = Arrangement.spacedBy(padding),
+            horizontalAlignment = Alignment.CenterHorizontally) {
             item {
-                Box {
-                    QuestionsColumn(isReadOnly = true,
-                        questionsMap = questionsMap,
-                        onScoreChange = {},
-                        onLastItemClick = {},
-                        modifier = Modifier.height(maxHeight))
-                    AnimatedVisibility(!areThoughtsVisible && text.isNotEmpty() && !isBottomBarVisible,
-                        modifier = Modifier.align(Alignment.BottomCenter)) {
-                        ScrollDownButton {
-                            scope.launch {
-                                listState.animateScrollToItem(1, scrollOffset = -screenHeight/2)
-                            }
-                        }
-                    }
-                }
+               Box {
+                   QuestionsColumn(isReadOnly = true,
+                       questionsMap = questionsMap,
+                       onScoreChange = {},
+                       onLastItemClick = {},
+                       modifier = Modifier.height(maxHeight))
+                   AnimatedVisibility(!areThoughtsVisible && text.isNotEmpty() && !isBottomBarVisible,
+                       modifier = Modifier.align(Alignment.BottomCenter)) {
+                       ScrollDownButton {
+                           scope.launch {
+                               listState.animateScrollToItem(1, scrollOffset = -screenHeight/2)
+                           }
+                       }
+                   }
+               }
             }
             if (text.isNotEmpty()) {
                 item {
@@ -240,7 +237,7 @@ fun EditableTracker(
     saveResult: Result,
     questionsMap: Map<String, Int>,
     text: String,
-    onQuestionMapEdit: (LinkedHashMap<String, Int>) -> Unit,
+    onQuestionMapEdit: (Map<String, Int>) -> Unit,
     onLastItemClick: () -> Unit,
     onTextChange: (String) -> Unit,
     onDoneClick: () -> Unit) {
@@ -250,8 +247,7 @@ fun EditableTracker(
                 isReadOnly = false,
                 questionsMap = questionsMap,
                 onScoreChange = {
-                    onQuestionMapEdit(questionsMap.toMutableMap().apply { this[it.first] = it.second }
-                    as LinkedHashMap<String, Int>)
+                    onQuestionMapEdit(questionsMap.toMutableMap().apply { this[it.first] = it.second })
                 },
                 onLastItemClick = onLastItemClick)
         } else {
@@ -273,15 +269,15 @@ fun ThoughtsColumn(
     onTextChange: (String) -> Unit,
     onDoneClick: () -> Unit,
     modifier: Modifier = Modifier) {
-    val modifier1 = modifier
-        .fillMaxWidth()
-        .imePadding()
-    Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.thoughts_padding)),
+    val description = stringResource(R.string.thoughts_column)
+    val textFieldDescription = stringResource(R.string.thoughts_text_field)
+    Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.thoughts_padding)+40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = if (!isReadOnly) modifier1
-            .verticalScroll(rememberScrollState())
-            .fillMaxHeight()
-        else modifier1
+        modifier = modifier
+            .fillMaxWidth()
+            .imePadding()
+            .semantics { contentDescription = description }
+            .run { if (!isReadOnly) this.verticalScroll(rememberScrollState()) else this }
     ) {
         if (!isReadOnly) Text(stringResource(R.string.write_down_thought_tracker_experience),
             style = MaterialTheme.typography.titleLarge.copy(
@@ -300,6 +296,8 @@ fun ThoughtsColumn(
             shape = RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)),
             modifier = Modifier
                 .fillMaxWidth()
+                .semantics { contentDescription = textFieldDescription }
+                .imePadding()
         )
         if (!isReadOnly) {
             ElevatedButton(onClick = onDoneClick,
@@ -324,10 +322,14 @@ fun QuestionsColumn(
     onScoreChange: (Pair<String, Int>) -> Unit,
     onLastItemClick: () -> Unit,
     modifier: Modifier = Modifier) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val description = stringResource(R.string.questions_column)
     LazyColumn(
+        state = listState,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.questions_padding)),
-        modifier = modifier) {
+        modifier = modifier.semantics { contentDescription = description }) {
         itemsIndexed(questionsMap.keys.toList()) {questionIndex, q ->
             AnimatedVisibility(visible = questionIndex <= questionsMap.values.filter { it != -1 }.size,
                 enter = slideInVertically { -it }) {
@@ -343,22 +345,25 @@ fun QuestionsColumn(
                         horizontalArrangement = Arrangement.spacedBy(15.dp,
                             Alignment.CenterHorizontally)) {
                         items((0..3).toList()) {i ->
+                            //onPrimary: color for selected buttons
                             val containerColor = if (score != null && i <= score && score != -1) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onBackground
+                            else MaterialTheme.colorScheme.primary
                             ElevatedButton(
                                 enabled = !isReadOnly,
                                 onClick = {
-                                onScoreChange(Pair(q, i))
-                                // using questionsMap.size-1 since onScoreChange is not able
-                                // to apply change to the map in time. so when a click is performed
-                                // and the size of complete buttons is say 3 out of 4, it means
-                                // the last incomplete item was just clicked
-                                if (questionsMap.values.filter { it != -1 }.size >= questionsMap.size-1) onLastItemClick() },
+                                   scope.launch {
+                                       onScoreChange(Pair(q, i))
+                                       //scroll down to account for a case where some items become invisible
+                                       listState.animateScrollToItem(questionsMap.size)
+                                       if (questionIndex == 3 || questionsMap.values.all { it != -1 }) onLastItemClick()
+                                   } },
                                 shape = CircleShape,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = containerColor,
                                     disabledContainerColor = containerColor.copy(0.7f)),
-                                modifier = Modifier.size(dimensionResource(R.dimen.thought_tracker_ball_size))
+                                modifier = Modifier
+                                    .size(dimensionResource(R.dimen.thought_tracker_ball_size))
+                                    .testTag("Question button: $questionIndex $i")
                             ) {}
                         }
                     }

@@ -9,10 +9,13 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.lifecycleScope
 import com.example.myspeechy.data.DataStoreManager
+import com.example.myspeechy.data.authDataStore
+import com.example.myspeechy.data.loggedOutDataStore
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.chat.DirectoryManager
 import com.example.myspeechy.ui.theme.MySpeechyTheme
@@ -23,10 +26,13 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var darkTheme = mutableStateOf(false)
+
     @Inject
     lateinit var authService: AuthService
     @Inject
     lateinit var dataStoreManager: DataStoreManager
+
     private fun createNotificationChannel() {
         val name = "Meditation"
         val importance = NotificationManager.IMPORTANCE_DEFAULT
@@ -56,14 +62,22 @@ class MainActivity : ComponentActivity() {
             dataStoreManager.onDataLoad(false)
         }
     }
+    private fun collectThemeMode() {
+        lifecycleScope.launch {
+            dataStoreManager.collectThemeMode {
+                darkTheme.value = it
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         listenForAuthState()
         createNotificationChannel()
         clearDataStore()
+        collectThemeMode()
         setContent {
-            MySpeechyTheme(darkTheme = true) {
+            MySpeechyTheme(darkTheme = darkTheme.value) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

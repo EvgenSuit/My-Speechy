@@ -16,8 +16,13 @@
     <string name="password_is_not_mixed_case">Password must contain mixed letters</string>
     <string name="password_is_not_long_enough">Password must be at least 8 characters long</string>
     <string name="password_not_enough_digits">Password must contain at least 1 digit</string>
-
     <string name="waiting_for_auth">Waiting for auth</string>
+
+    <string name="back_button">Back button</string>
+    <string name="start_button">Start</string>
+    <string name="pause_button">Pause</string>
+    <string name="resume_button">Resume</string>
+    <string name="cancel_button">Cancel</string>
 
     <string name="your_chats">Your chats</string>
     <string name="all_groups">All groups</string>
@@ -36,7 +41,14 @@
     <string name="load_screen">Load screen</string>
     <string name="main_screen_content">Main screen content</string>
 
+    <string name="questions_column">Questions column</string>
+    <string name="thoughts_column">Thoughts column</string>
+    <string name="thoughts_text_field">Thoughts text field</string>
+
     <string name="thought_tracker">Thought tracker</string>
     <string name="write_down_thought_tracker_experience">Write down any experience you have had</string>
     <string name="done">Done</string>
+    <string name="circular_progress_indicator">Circular progress indicator</string>
+
+    <string name="toggle_theme">Toggle theme</string>
 </resources>

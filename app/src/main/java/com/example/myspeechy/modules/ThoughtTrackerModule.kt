@@ -2,7 +2,7 @@ package com.example.myspeechy.modules
 
 import com.example.myspeechy.domain.thoughtTracker.ThoughtTrackerItemService
 import com.example.myspeechy.domain.thoughtTracker.ThoughtTrackerService
-import com.example.myspeechy.domain.useCases.GetCurrentDateInTimestampUseCase
+import com.example.myspeechy.domain.useCases.GetCurrentDateUseCase
 import com.example.myspeechy.domain.useCases.IsDateEqualToCurrentUseCase
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
@@ -20,8 +20,8 @@ object ThoughtTrackerModule {
     fun provideIsDateDifferentFromCurrentUseCase(): IsDateEqualToCurrentUseCase =
         IsDateEqualToCurrentUseCase()
     @Provides
-    fun provideGetCurrentDateInTimestampUseCase(): GetCurrentDateInTimestampUseCase =
-        GetCurrentDateInTimestampUseCase()
+    fun provideGetCurrentDateInTimestampUseCase(): GetCurrentDateUseCase =
+        GetCurrentDateUseCase()
     @Provides
     fun provideThoughtTrackerService(): ThoughtTrackerService =
         ThoughtTrackerService(Firebase.firestore.collection("users"), Firebase.auth)

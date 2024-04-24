@@ -17,18 +17,18 @@ interface NotificationService{
     fun sendMeditationNotification(passedTime: String)
     fun cancelNotification()
 }
-object NotificationRepository {
+/*object NotificationRepository {
     val canceled: MutableStateFlow<Boolean> = MutableStateFlow(false)
-}
+}*/
 
 class MeditationNotificationServiceImpl(private val context: Context):
     NotificationService {
         private val id: Int = 1
-    private val notificationControllId: Int = 2
+    private val notificationControlId: Int = 2
     override fun sendMeditationNotification(passedTime: String) {
         val cancelPendingIntent = PendingIntent.getBroadcast(
             context,
-            notificationControllId,
+            notificationControlId,
             Intent(context, MeditationNotificationOnCancelReceiver::class.java),
             PendingIntent.FLAG_IMMUTABLE)
         val notificationBuilder = NotificationCompat.Builder(context, "1")

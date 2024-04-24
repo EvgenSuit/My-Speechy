@@ -32,7 +32,7 @@ class RegularLessonItemViewModel @Inject constructor(
                     val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
                    if (lessonItem.containsImages) {
                        //Load images
-                       val dir = "imgs/unit${lessonItem.unit}/${lessonItem.category.lowercase()}/"
+                       val dir = "imgs/unit${lessonItem.unit}/${lessonItem.category.name.lowercase()}/"
                        val imgs = assetManager.list(dir)!!.toList()
                        val textSplit = lessonServiceImpl.parseImgFromText(lessonItem, imgs)
                        val imgsMap = lessonServiceImpl.loadImgFromAsset(lessonItem, imgs, dir, assetManager)

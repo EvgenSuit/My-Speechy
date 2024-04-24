@@ -6,6 +6,16 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 
+enum class LessonCategories {
+    PHYSICAL,
+    BREATHING,
+    PSYCHOLOGICAL,
+    MEDITATION,
+    MINDFULNESS,
+    READING,
+    NONE,
+}
+
 class LessonServiceHelpers {
         fun categoryMapper(category: Int): String {
             return when(category) {

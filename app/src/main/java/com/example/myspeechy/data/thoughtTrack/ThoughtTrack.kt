@@ -13,4 +13,5 @@ data class ThoughtTrack(
     val thoughts: String? = null)
 
 @Keep
-data class ThoughtTrackItem(val timestamp: Long = 0)
+data class ThoughtTrackItem(
+    val date: String = "")

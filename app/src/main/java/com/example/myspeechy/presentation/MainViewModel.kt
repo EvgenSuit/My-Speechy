@@ -70,8 +70,7 @@ class MainViewModel @Inject constructor(
                     _uiState.update {
                         UiState(newLessonList.map { lesson ->
                             lessonServiceImpl.convertToLessonItem(lesson)
-                        },
-                            result = Result.Success(FirebaseFirestoreException.Code.OK.name))
+                        }, result = Result.Success(FirebaseFirestoreException.Code.OK.name))
                     }
                 }
             }
