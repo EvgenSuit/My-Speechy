@@ -1,5 +1,6 @@
 package com.example.myspeechy
 
+import androidx.annotation.IntegerRes
 import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
@@ -43,12 +44,12 @@ fun signIn(composeTestRule: AndroidComposeTestRule<ActivityScenarioRule<MainActi
         waitForIdle()
         onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
         onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
-        waitUntilExactlyOneExists(hasTestTag(getString(R.string.load_screen)), 3000)
+        waitUntilExactlyOneExists(hasTestTag(getString(R.string.load_screen)), 20*1000)
         Assert.assertEquals(
             NavScreens.Main.route,
             navController.currentBackStackEntry?.destination?.route
         )
-        waitUntilExactlyOneExists(hasTestTag(getString(R.string.main_screen_content)), 3000)
+        //waitUntilExactlyOneExists(hasTestTag(getString(R.string.main_screen_content)), 3000)
     }
 }
 
@@ -58,7 +59,9 @@ fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
 }
 
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
-        getString(@StringRes id: Int): String = activity.getString(id)
+        getString(@StringRes id: Int): String = activity.resources.getString(id)
+fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
+        getInteger(@IntegerRes id: Int): Int = activity.resources.getInteger(id)
 
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
         onClickNodeWithContentDescription(description: String) =

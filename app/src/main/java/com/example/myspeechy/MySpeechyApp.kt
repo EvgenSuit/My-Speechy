@@ -1,6 +1,5 @@
 package com.example.myspeechy
 
-import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -23,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -37,14 +37,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -54,10 +50,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.myspeechy.data.authDataStore
+import com.example.myspeechy.data.errorKey
+import com.example.myspeechy.data.isDataLoaded
+import com.example.myspeechy.data.loadData
+import com.example.myspeechy.data.loggedOutDataStore
+import com.example.myspeechy.data.navBarDataStore
+import com.example.myspeechy.data.showNavBarDataStore
 import com.example.myspeechy.domain.AnimationConfig
 import com.example.myspeechy.screens.auth.AuthScreen
 import com.example.myspeechy.screens.MainScreen
 import com.example.myspeechy.screens.MeditationStatsScreen
+import com.example.myspeechy.screens.SettingsScreen
 import com.example.myspeechy.screens.auth.AccountDeletionScreen
 import com.example.myspeechy.screens.auth.ErrorScreen
 import com.example.myspeechy.screens.chat.ChatsScreen
@@ -73,28 +77,22 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
 
-val Context.navBarDataStore: DataStore<Preferences> by preferencesDataStore("NavBar")
-val showNavBarDataStore = booleanPreferencesKey("showNavBar")
-val Context.authDataStore: DataStore<Preferences> by preferencesDataStore("Auth")
-val loggedOutDataStore = booleanPreferencesKey("loggedOut")
-val errorKey = stringPreferencesKey("error")
-val Context.loadData: DataStore<Preferences> by preferencesDataStore("loadingData")
-val isDataLoaded = booleanPreferencesKey("isDataLoaded")
-
 
 // TODO change icons
-open class NavScreens(val route: String, val icon: ImageVector, val label: String) {
-    data object Main: NavScreens("main", Icons.Filled.Home, "Main")
-    data object ThoughtTracker: NavScreens("thoughtTracker", Icons.Filled.Star, "ThoughtTracker")
-    data object Stats: NavScreens("stats", Icons.Filled.Info, "Stats")
-    data object ChatsScreen: NavScreens("chats", Icons.Filled.Face, "Chats")
+open class NavScreens(val route: String, val icon: Int, val label: String) {
+    data object Main: NavScreens("main", R.drawable.house_icon, "Main")
+    data object ThoughtTracker: NavScreens("thoughtTracker", R.drawable.thoughts_icon, "ThoughtTracker")
+    data object Stats: NavScreens("stats", R.drawable.stats_icon, "Stats")
+    data object ChatsScreen: NavScreens("chats", R.drawable.chat_icon, "Chats")
+    data object SettingsScreen: NavScreens("settings", R.drawable.settings_icon, "Settings")
 }
 open class OtherScreens(val route: String) {
     data object Auth: OtherScreens("auth")
     data object Error: OtherScreens("error")
     data object AccountDelete: OtherScreens("accountDelete")
 }
-val screens = listOf(NavScreens.Main, NavScreens.ThoughtTracker, NavScreens.Stats, NavScreens.ChatsScreen)
+val screens = listOf(NavScreens.Main, NavScreens.ThoughtTracker,
+    NavScreens.Stats, NavScreens.ChatsScreen, NavScreens.SettingsScreen)
 
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
@@ -189,6 +187,9 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     composable(NavScreens.ChatsScreen.route) {
                         ChatsScreen(navController)
                     }
+                    composable(NavScreens.SettingsScreen.route) {
+                        SettingsScreen()
+                    }
                     composable(OtherScreens.Auth.route) {
                         AuthScreen(onNavigateToMain = {
                             navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route) }
@@ -204,7 +205,8 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                     composable(OtherScreens.AccountDelete.route) {
                         BackHandler(true) {}
                         AccountDeletionScreen(onGoBack = {
-                            navController.navigate(NavScreens.ChatsScreen.route) { popUpTo(0) }
+                            //navController.navigate(NavScreens.ChatsScreen.route) { popUpTo(0) }
+                            navController.navigateUp()
                         })
                     }
                     composable(
@@ -230,9 +232,9 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController()) {
                         MeditationLessonItem()
                         { navController.navigateUp() }
                     }
-                    composable("${NavScreens.ThoughtTracker.route}/{timestamp}",
-                        arguments = listOf(navArgument("timestamp")
-                        { type = NavType.LongType })) {
+                    composable("${NavScreens.ThoughtTracker.route}/{date}",
+                        arguments = listOf(navArgument("date")
+                        { type = NavType.StringType })) {
                         ThoughtTrackerItemScreen { navController.navigateUp() }
                     }
                     composable("chats/{type}/{chatId}",
@@ -278,7 +280,7 @@ fun BottomNavBar(
                         }
                 } },
                 icon = { Icon(
-                    screen.icon,
+                    painterResource(screen.icon),
                     tint = MaterialTheme.colorScheme.primary,
                     contentDescription = null,
                     modifier = Modifier

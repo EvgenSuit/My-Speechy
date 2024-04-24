@@ -3,29 +3,26 @@ package com.example.myspeechy.presentation.lesson.meditation
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myspeechy.data.DataStoreManager
 import com.example.myspeechy.data.lesson.LessonItem
 import com.example.myspeechy.data.lesson.LessonRepository
 import com.example.myspeechy.data.lesson.MeditationLessonItemState
-import com.example.myspeechy.data.meditation.MeditationStats
-import com.example.myspeechy.data.meditation.MeditationStatsRepository
-import com.example.myspeechy.domain.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.domain.MeditationNotificationServiceImpl
+import com.example.myspeechy.domain.Result
+import com.example.myspeechy.domain.lesson.MeditationLessonServiceImpl
 import com.example.myspeechy.domain.meditation.MeditationStatsServiceImpl
-import com.example.myspeechy.domain.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -33,106 +30,106 @@ import javax.inject.Inject
 class MeditationLessonItemViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: MeditationLessonServiceImpl,
-    private val meditationStatsRepository: MeditationStatsRepository,
     private val meditationStatsServiceImpl: MeditationStatsServiceImpl,
     private val meditationNotificationServiceImpl: MeditationNotificationServiceImpl,
+    private val dataStoreManager: DataStoreManager,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
-    private val id: Int = checkNotNull(savedStateHandle["meditationLessonItemId"])
+     val id: Int = checkNotNull(savedStateHandle["meditationLessonItemId"])
     private val _uiState = MutableStateFlow(MeditationLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
-    private val canceledThroughNotification = NotificationRepository.canceled.asStateFlow()
+    val saveResultFlow = _uiState.map { it.saveResult }
     private var job: Job = Job()
     private var breathingJob: Job = Job()
-    private var currentMeditationStats: MeditationStats? = null
+    private val breathingInterval: Long = 3000
 
     init {
         viewModelScope.launch {
             lessonRepository.selectLessonItem(id).collect {lesson ->
+                println(lesson)
                 val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
-                _uiState.update { MeditationLessonItemState(lessonItem) }
+                _uiState.update { it.copy(lessonItem = lessonItem) }
             }
         }
         viewModelScope.launch {
-            canceledThroughNotification.collect{isCancelled ->
-            if (isCancelled) cancel()}
+            dataStoreManager.collectMeditationNotificationStatus {isCancelled ->
+                if (isCancelled) cancel()
+            }
         }
     }
 
     fun start() {
-        NotificationRepository.canceled.value = false
-        _uiState.update {
-            it.copy(started = true)
+        viewModelScope.launch {
+            dataStoreManager.editMeditationNotificationStatus(false)
+            _uiState.update { it.copy(started = true, saveResult = Result.Idle) }
+            job = getMeditationJob()
+            breathingJob = getBreathingJob()
         }
-        job = getMeditationJob()
-        breathingJob = getBreathingJob()
     }
 
     fun pause() {
+        _uiState.update { it.copy(paused = true) }
         job.cancel()
         breathingJob.cancel()
-        _uiState.update {
-            it.copy(paused = true)
-        }
     }
 
     fun resume() {
-        _uiState.update {
-            it.copy(paused = false)
-        }
+        _uiState.update { it.copy(paused = false) }
         job = getMeditationJob()
         breathingJob = getBreathingJob()
     }
 
     fun cancel() {
-        job.cancel()
-        breathingJob.cancel()
-        meditationNotificationServiceImpl.cancelNotification()
-        _uiState.update {
-            MeditationLessonItemState(_uiState.value.lessonItem)
+        if (job.isCancelled && _uiState.value.paused) {
+            onJobCompletion()
+        } else {
+            job.cancel()
+            breathingJob.cancel()
         }
+        _uiState.update { MeditationLessonItemState(lessonItem = it.lessonItem,
+            saveResult = it.saveResult) }
     }
 
     private fun getMeditationJob(): Job {
         val job = viewModelScope.launch {
-            while(_uiState.value.passedTime*60*60 < _uiState.value.setTime*60*60) {
+            while(_uiState.value.passedTime < _uiState.value.setTime) {
                 delay(1000)
                 _uiState.update {
                     it.copy(passedTime = it.passedTime+1)
                 }
                 val seconds = _uiState.value.passedTime
-                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                if (seconds % 60 == 0) {
-                    val minutes = seconds / 60
-                    var totalMinutes = 1
-                    currentMeditationStats =
-                        meditationStatsRepository.getCurrentMeditationStats(date).first()
-                    if (currentMeditationStats == null) {
-                        meditationStatsRepository.insertMeditationStats(MeditationStats(date = date, minutes = minutes))
-                    } else {
-                        totalMinutes = currentMeditationStats!!.minutes + 1
-                        meditationStatsRepository.updateMeditationStats(MeditationStats(date = date, minutes = totalMinutes))
-                    }
-                    meditationStatsServiceImpl.updateStats(date, totalMinutes)
-                }
                 meditationNotificationServiceImpl.sendMeditationNotification(
                     seconds.toString()
                 )
             }
+            cancel()
         }
-        job.invokeOnCompletion { if (it == null) cancel()
-        else if (it is CancellationException) meditationNotificationServiceImpl.cancelNotification()
+        job.invokeOnCompletion {
+            if (!_uiState.value.paused) {
+                onJobCompletion()
+            }
         }
         return job
+    }
+
+    private fun onJobCompletion() {
+        meditationNotificationServiceImpl.cancelNotification()
+        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        runBlocking {
+            try {
+                meditationStatsServiceImpl.updateStats(date, _uiState.value.passedTime)
+                updateSaveResult(Result.Success(""))
+            } catch (e: Exception) {
+                updateSaveResult(Result.Error(e.message!!))
+            }
+        }
     }
 
     private fun getBreathingJob(): Job {
         val job = viewModelScope.launch {
             while(!_uiState.value.paused && _uiState.value.started) {
-                _uiState.update {
-                    it.copy(breathingIn = !it.breathingIn)
-                }
-                delay(_uiState.value.breathingInterval)
+                _uiState.update { it.copy(breathingIn = !it.breathingIn) }
+                delay(breathingInterval)
             }
         }
         job.invokeOnCompletion { if (it == null) breathingJob.cancel() }
@@ -146,8 +143,12 @@ class MeditationLessonItemViewModel @Inject constructor(
     }
 
     fun markAsComplete() {
-        CoroutineScope(Dispatchers.Main).launch {
+        viewModelScope.launch {
             lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
         }
+    }
+
+    private fun updateSaveResult(result: Result) {
+        _uiState.update { it.copy(saveResult = result) }
     }
 }

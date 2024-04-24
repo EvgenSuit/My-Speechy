@@ -243,7 +243,6 @@ fun DropdownMessageBox(
 }
 
 //This row contains input field and send button
-//Currently supports 10 max lines
 @Composable
 fun BottomRow(textFieldValue: TextFieldValue,
               modifier: Modifier,

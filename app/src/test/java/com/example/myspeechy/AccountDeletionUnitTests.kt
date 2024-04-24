@@ -2,11 +2,14 @@ package com.example.myspeechy
 
 import com.example.myspeechy.domain.auth.AccountDeletionService
 import com.example.myspeechy.domain.auth.AuthService
+import com.example.myspeechy.domain.auth.GoogleAuthService
 import com.example.myspeechy.domain.useCases.CheckIfIsAdminUseCase
 import com.example.myspeechy.domain.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.ValidateEmailUseCase
+import com.example.myspeechy.domain.useCases.ValidatePasswordUseCase
 import com.example.myspeechy.presentation.auth.AccountDeletionViewModel
 import com.example.myspeechy.presentation.chat.getOtherUserId
 import com.google.firebase.auth.FirebaseAuth
@@ -54,7 +57,11 @@ class AccountDeletionUnitTests {
             CheckIfIsAdminUseCase(userId, mockedRdb),
             DeletePublicChatUseCase(mockedRdb, decrementMemberCountUseCase)
         )
-        viewModel = AccountDeletionViewModel(AccountDeletionService(authService, mockedAuth))
+        viewModel = AccountDeletionViewModel(AccountDeletionService(authService, mockedAuth),
+            authService,
+            validateEmailUseCase = ValidateEmailUseCase(authService),
+            validatePasswordUseCase = ValidatePasswordUseCase(authService),
+            auth = mockedAuth)
     }
     fun mockFirestore() {
         val mockedLessons = mockk<QuerySnapshot>{

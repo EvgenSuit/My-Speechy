@@ -1,6 +1,8 @@
 package com.example.myspeechy.data.lesson
 
 import androidx.compose.ui.graphics.ImageBitmap
+import com.example.myspeechy.domain.Result
+import com.example.myspeechy.helpers.LessonCategories
 import kotlinx.coroutines.Job
 
 interface LessonItemUiState {
@@ -27,13 +29,14 @@ data class MeditationLessonItemState(
     val breathingIn: Boolean = false,
     val setTime: Int = 0,
     val passedTime: Int = 0,
-    val breathingInterval: Long = 3000
+    val isNotificationCancelled: Boolean = false,
+    val saveResult: Result = Result.Idle
 ): LessonItemUiState
 
 data class LessonItem(
     var id: Int = 0,
     val unit: Int = 1,
-    val category: String = "",
+    val category: LessonCategories = LessonCategories.NONE,
     val title: String = "",
     val text: String = "",
     val isComplete: Boolean = false,

@@ -3,6 +3,7 @@ package com.example.myspeechy
 import com.example.myspeechy.data.chat.Message
 import com.example.myspeechy.domain.chat.RootChatService
 import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.storage.StorageReference
 import io.mockk.every
@@ -24,10 +25,12 @@ private class FakeRootChildService(
 ) : RootChatService {
     override fun chatListener(
         id: String,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean
-    ) {}
+    ) {
+        TODO("Not yet implemented")
+    }
 
     override fun messagesListener(
         id: String,
@@ -39,9 +42,10 @@ private class FakeRootChildService(
         remove: Boolean
     ) {}
 
+
     override fun usernameListener(
         id: String?,
-        onCancelled: (String) -> Unit,
+        onCancelled: (DatabaseError) -> Unit,
         onDataReceived: (DataSnapshot) -> Unit,
         remove: Boolean
     ) {}

@@ -2,15 +2,18 @@ package com.example.myspeechy.modules
 
 import android.content.Context
 import android.content.res.AssetManager
-import android.widget.Toast
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import com.example.myspeechy.authDataStore
 import com.example.myspeechy.data.DataStoreManager
+import com.example.myspeechy.data.authDataStore
 import com.example.myspeechy.data.lesson.LessonDb
 import com.example.myspeechy.data.lesson.LessonRepository
+import com.example.myspeechy.data.loadData
 import com.example.myspeechy.data.meditation.MeditationStatsDb
 import com.example.myspeechy.data.meditation.MeditationStatsRepository
+import com.example.myspeechy.data.navBarDataStore
+import com.example.myspeechy.data.notificationsDataStore
+import com.example.myspeechy.data.themeDataStore
 import com.example.myspeechy.domain.MeditationNotificationServiceImpl
 import com.example.myspeechy.domain.auth.AuthService
 import com.example.myspeechy.domain.chat.ChatsServiceImpl
@@ -28,8 +31,6 @@ import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.domain.useCases.JoinPublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
-import com.example.myspeechy.loadData
-import com.example.myspeechy.navBarDataStore
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.ktx.firestore
@@ -40,7 +41,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ActivityRetainedComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
-import es.dmoral.toasty.Toasty
 import javax.inject.Named
 
 @Module
@@ -67,7 +67,9 @@ object ViewModelModule {
 
     @Provides
     fun provideDataStoreManager(@ApplicationContext context: Context): DataStoreManager {
-        return DataStoreManager(context.authDataStore, context.navBarDataStore, context.loadData)
+        return DataStoreManager(context.authDataStore, context.navBarDataStore, context.loadData,
+            context.themeDataStore,
+            context.notificationsDataStore)
     }
     @Provides
     fun provideMeditationStatsRepository(db: MeditationStatsDb): MeditationStatsRepository {
@@ -81,24 +83,30 @@ object ViewModelModule {
 
     @Provides
     fun provideMainLessonServiceImpl(): MainLessonServiceImpl {
-        return MainLessonServiceImpl(Firebase.firestore)
+        return MainLessonServiceImpl(Firebase.firestore.collection("users"),
+            Firebase.auth)
     }
     @Provides
     fun provideReadingLessonServiceImpl(): ReadingLessonServiceImpl {
-        return ReadingLessonServiceImpl()
+        return ReadingLessonServiceImpl(Firebase.firestore.collection("users"),
+            Firebase.auth)
     }
     @Provides
     fun provideRegularLessonServiceImpl(): RegularLessonServiceImpl {
-        return RegularLessonServiceImpl()
+        return RegularLessonServiceImpl(Firebase.firestore.collection("users"),
+            Firebase.auth)
     }
 
     @Provides
     fun provideMeditationLessonServiceImpl(): MeditationLessonServiceImpl {
-        return MeditationLessonServiceImpl()
+        return MeditationLessonServiceImpl(Firebase.firestore.collection("users"),
+            Firebase.auth)
     }
     @Provides
     fun provideMeditationStatsServiceImpl(): MeditationStatsServiceImpl {
-        return MeditationStatsServiceImpl()
+        return MeditationStatsServiceImpl(
+            Firebase.firestore,
+            Firebase.auth)
     }
     @Provides
     fun provideChatsServiceImpl(): ChatsServiceImpl {
@@ -155,9 +163,6 @@ object ViewModelModule {
     @Provides
     fun provideFilesDirPath(@ApplicationContext context: Context): String = context.cacheDir.path
 
-    @Provides
-    fun provideListenErrorToast(@ApplicationContext context: Context): Toast =
-        Toasty.error(context, "Error listening to remote data", Toast.LENGTH_LONG, true)
     @Provides
     fun provideMeditationNotificationServiceImpl(@ApplicationContext context: Context):
             MeditationNotificationServiceImpl = MeditationNotificationServiceImpl(context)

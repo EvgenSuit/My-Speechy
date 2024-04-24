@@ -2,6 +2,7 @@ package com.example.myspeechy.components
 
 import android.Manifest
 import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.myspeechy.R
 import com.example.myspeechy.data.lesson.LessonItemUiState
+import com.example.myspeechy.helpers.LessonCategories
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -82,12 +84,12 @@ fun <T: LessonItemUiState> LessonItemWrapper(
             .background(itemBackgroundGradient)
             .verticalScroll(rememberScrollState())
             .padding(10.dp)
-            //TODO change for meditation only
+            //show blur and dialog box only for item of the first unit
             .blur(if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) 20.dp else 0.dp)
     ) {
-        Row(modifier = Modifier.padding(bottom = 30.dp)) {
-            GoBackButton(onNavigateUp,
-                Modifier.align(Alignment.CenterVertically))
+        Row(modifier = Modifier.padding(bottom = 30.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            BackButton(onNavigateUp)
             Text(lessonItem.title, style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -105,8 +107,8 @@ fun <T: LessonItemUiState> LessonItemWrapper(
                 modifier = Modifier.wrapContentSize(Alignment.Center))
         }
     }
-    // TODO display only for meditation
-    if (lessonItem.unit == 1 && lessonItem.title.isNotEmpty() && !lessonItem.isComplete && showDialog) {
+    if (lessonItem.category == LessonCategories.MEDITATION && lessonItem.title.isNotEmpty()
+        && !lessonItem.isComplete && showDialog) {
         val title = "${lessonItem.category} exercise"
         DialogBox(title, categoryToDialogText(lessonItem.category) +
         if (Build.VERSION.SDK_INT > 32 && !notificationPermissionGranted) "Allow notifications in order for you to be able" +
@@ -128,7 +130,7 @@ fun DialogBox(title: String, text: String,
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.background,
             ),
             shape = RoundedCornerShape(corner)
         ) {
@@ -140,11 +142,13 @@ fun DialogBox(title: String, text: String,
                     .fillMaxSize()
             ) {
                 Text(title,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineMedium
+                        .copy(color = MaterialTheme.colorScheme.onBackground),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.wrapContentSize(Alignment.Center))
                 Text(text,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
+                        .copy(color = MaterialTheme.colorScheme.onBackground),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.wrapContentSize(Alignment.Center))
                 ElevatedButton(onClick = onDismiss,
@@ -152,32 +156,22 @@ fun DialogBox(title: String, text: String,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Green),
                     modifier = Modifier.defaultMinSize(100.dp)) {
-                    Text("OK", fontSize = 20.sp)
+                    Text("OK", fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }
     }
 }
 
-@Composable
-fun GoBackButton(onClick: () -> Unit,
-                 modifier: Modifier = Modifier) {
-    IconButton(onClick = onClick,
-        modifier = modifier
-            .testTag("GoBackToMain")) {
-        Icon(imageVector = Icons.Filled.ArrowBack,
-            tint = MaterialTheme.colorScheme.onPrimary,
-            contentDescription = null)
-    }
-}
 
-fun categoryToDialogText(category: String): String {
+fun categoryToDialogText(category: LessonCategories): String {
     return when(category) {
-        "Psychological" -> "This type of exercise is designed to help you fight your mental battles"
-        "Reading" -> "With this type of exercise you can practice your slow reading skills." +
+        LessonCategories.PSYCHOLOGICAL -> "This type of exercise is designed to help you fight your mental battles"
+        LessonCategories.READING -> "With this type of exercise you can practice your slow reading skills." +
                 "This is a useful way to manage stuttering. Use the slider at the bottom " +
                 "to control the speed"
-        "Meditation" -> "This type of exercise targets your ability to focus" +
+        LessonCategories.MEDITATION -> "This type of exercise targets your ability to focus" +
                 " and brings your mind at peace."
         else -> ""
     }

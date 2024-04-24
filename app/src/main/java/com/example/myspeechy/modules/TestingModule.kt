@@ -11,9 +11,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 
+
 @Module
 @InstallIn(SingletonComponent::class)
 object TestingModule {
+
     @Provides
     @Named("FakeLessonDb")
     fun provideInRoomFakeLessonDb(@ApplicationContext context: Context): LessonDb {
@@ -25,5 +27,23 @@ object TestingModule {
     fun provideInRoomFakeLessonRepository(@Named("FakeLessonDb") db: LessonDb): LessonRepository {
         return LessonRepository(db.lessonDao())
     }
-
 }
+
+/*
+@Module
+@TestInstallIn(components = [ActivityRetainedComponent::class],
+    replaces = [ThoughtTrackerModule::class])
+object FakeThoughtTrackerModule {
+    @Provides
+    fun provideIsDateDifferentFromCurrentUseCase(): IsDateEqualToCurrentUseCase =
+        IsDateEqualToCurrentUseCase(LocalDateTime.now().plusDays(1))
+    @Provides
+    fun provideGetCurrentDateInTimestampUseCase(): GetCurrentDateInTimestampUseCase =
+        GetCurrentDateInTimestampUseCase()
+    @Provides
+    fun provideThoughtTrackerService(): ThoughtTrackerService =
+        ThoughtTrackerService(Firebase.firestore.collection("users"), Firebase.auth)
+    @Provides
+    fun provideThoughtTrackerItemService(): ThoughtTrackerItemService =
+        ThoughtTrackerItemService(Firebase.firestore.collection("users"), Firebase.auth)
+}*/

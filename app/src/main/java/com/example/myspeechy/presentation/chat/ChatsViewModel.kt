@@ -1,13 +1,11 @@
 package com.example.myspeechy.presentation.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myspeechy.components.AlertDialogDataClass
 import com.example.myspeechy.data.chat.Chat
 import com.example.myspeechy.domain.chat.ChatsServiceImpl
 import com.example.myspeechy.domain.chat.PrivateChatServiceImpl
-import com.google.firebase.database.getValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,9 +25,6 @@ class ChatsViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     val userId = chatsService.userId
 
-    init {
-        Log.d("CHATS VIEW MODEL", "HERE")
-    }
     fun startOrStopListening(removeListeners: Boolean) {
         viewModelScope.launch {
             try {

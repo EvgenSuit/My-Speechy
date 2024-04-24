@@ -11,6 +11,8 @@ import com.example.myspeechy.domain.useCases.DecrementMemberCountUseCase
 import com.example.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.example.myspeechy.domain.useCases.LeavePublicChatUseCase
+import com.example.myspeechy.domain.useCases.ValidateEmailUseCase
+import com.example.myspeechy.domain.useCases.ValidatePasswordUseCase
 import com.example.myspeechy.presentation.auth.AccountDeletionViewModel
 import com.example.myspeechy.presentation.auth.AuthViewModel
 import com.example.myspeechy.presentation.chat.getOtherUserId
@@ -50,6 +52,7 @@ class FirebaseAuthTests {
     private var mockedFirestore = mockk<FirebaseFirestore>()
     private var mockedStorage = mockk<StorageReference>()
     private var mockedRdb = mockk<DatabaseReference>()
+    private lateinit var authViewModel: AuthViewModel
 
     @Before
     fun mockDependencies() {
@@ -57,6 +60,13 @@ class FirebaseAuthTests {
         mockRdb()
         mockFirestore()
         mockStorage(mockedStorage)
+    }
+    private fun mockViewModel() {
+        val authService = AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage)
+        authViewModel = AuthViewModel(authService,
+            validateEmailUseCase = ValidateEmailUseCase(authService),
+            validatePasswordUseCase = ValidatePasswordUseCase(authService)
+        )
     }
     fun mockAuth() {
         mockkStatic(GoogleAuthProvider::class)
@@ -107,8 +117,6 @@ class FirebaseAuthTests {
 
     @Test
     fun authenticate_correctInputFormat_authenticationPerformed() {
-        val authService = AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage)
-        val authViewModel = AuthViewModel(authService)
 
         authViewModel.onEmailChanged(emailToPass)
         authViewModel.onPasswordChanged(password)
@@ -127,9 +135,7 @@ class FirebaseAuthTests {
 
     @Test
     fun authenticate_wrongInputFormat_authenticationNotPerformed() {
-        val authService = AuthService(mockedAuth, mockedRdb , mockedFirestore, mockedStorage)
         val firestoreRef = mockedFirestore.collection("users").document(userId)
-        val authViewModel = AuthViewModel(authService)
 
         //test for different cases of input
         val incorrectEmailCases = listOf("", "some", "34546", "some@")
@@ -196,7 +202,7 @@ class FirebaseAuthTests {
             coEvery { createFirestoreUser() } returns Unit
         }
         val googleAuthService = GoogleAuthService(mockedAppInfo, mockedSignInClient, authService)
-        val authViewModel = AuthViewModel(authService, googleAuthService)
+        authViewModel = AuthViewModel(authService, googleAuthService, ValidateEmailUseCase(authService), ValidatePasswordUseCase(authService))
         runBlocking {
             authViewModel.googleSignIn()
             authViewModel.googleSignInWithIntent(mockedIntent)
@@ -218,7 +224,7 @@ class FirebaseAuthTests {
         val authService = spyk(AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage))
         coEvery { authService.createFirestoreUser() } returns Unit
         val googleAuthService = GoogleAuthService(mockedAppInfo, mockedSignInClient, authService)
-        val authViewModel = AuthViewModel(authService, googleAuthService)
+        val authViewModel = AuthViewModel(authService, googleAuthService, ValidateEmailUseCase(authService), ValidatePasswordUseCase(authService))
         runBlocking {
             authViewModel.googleSignIn()
             authViewModel.googleSignInWithIntent(mockedIntent)
