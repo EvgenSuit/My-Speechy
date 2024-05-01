@@ -4,13 +4,27 @@
     <option name="selectedTabId" value="Android Vitals" />
     <option name="tabSettings">
       <map>
+        <entry key="Android Vitals">
+          <value>
+            <InsightsFilterSettings>
+              <option name="connection">
+                <ConnectionSetting>
+                  <option name="appId" value="com.myspeechy.myspeechy" />
+                </ConnectionSetting>
+              </option>
+              <option name="signal" value="SIGNAL_UNSPECIFIED" />
+              <option name="timeIntervalDays" value="SEVEN_DAYS" />
+              <option name="visibilityType" value="ALL" />
+            </InsightsFilterSettings>
+          </value>
+        </entry>
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.myspeechy" />
-                  <option name="mobileSdkAppId" value="1:291702741636:android:fd3d6fbb66d0c64a01c0d1" />
+                  <option name="appId" value="com.myspeechy.myspeechy" />
+                  <option name="mobileSdkAppId" value="1:291702741636:android:500ce39d26f4008301c0d1" />
                   <option name="projectId" value="my-speechy" />
                   <option name="projectNumber" value="291702741636" />
                 </ConnectionSetting>

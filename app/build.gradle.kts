@@ -8,16 +8,23 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myspeechy"
+    namespace = "com.myspeechy.myspeechy"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.myspeechy"
+        applicationId = "com.myspeechy.myspeechy"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-        testInstrumentationRunner = "com.example.myspeechy.CustomTestRunner"
+        versionCode = 2
+        versionName = "2.0"
+        buildTypes {
+            release {
+                ndk {
+                    debugSymbolLevel = "FULL"
+                }
+            }
+        }
+        testInstrumentationRunner = "com.myspeechy.myspeechy.CustomTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -59,6 +66,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-admin:9.2.0")
     implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     val room_version = "2.6.1"

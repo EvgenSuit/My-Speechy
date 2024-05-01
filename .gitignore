@@ -14,3 +14,7 @@
 .cxx
 local.properties
 app/google-services.json
+app/src/main/res/google-play-imgs
+app/src/main/assets
+lib2/src/main/java/com/example/lib2/my-speechy-firebase-adminsdk-g7v3g-48589351f8.json
+app/release

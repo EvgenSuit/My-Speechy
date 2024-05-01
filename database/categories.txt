@@ -1,6 +1,0 @@
-physical - 0
-breathing - 1
-psychological - 2
-meditation - 3
-mindfulness - 4
-reading - 5

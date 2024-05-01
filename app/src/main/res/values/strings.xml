@@ -1,4 +1,6 @@
 <resources>
+    <string name="privacy_policy_link">https://github.com/EvgenSuit/PrivacyPolicies/blob/master/My%20Speechy%20Privacy%20Policy.md</string>
+    <string name="privacy_policy">Privacy policy</string>
     <string name="app_name">My Speechy</string>
     <string name="continue_with_google">Continue with Google</string>
     <string name="mark_as_complete">"Mark as complete"</string>
@@ -40,6 +42,7 @@
     <string name="custom_alert_dialog_cancel">Cancel</string>
     <string name="load_screen">Load screen</string>
     <string name="main_screen_content">Main screen content</string>
+    <string name="lesson_item">Lesson item</string>
 
     <string name="questions_column">Questions column</string>
     <string name="thoughts_column">Thoughts column</string>
