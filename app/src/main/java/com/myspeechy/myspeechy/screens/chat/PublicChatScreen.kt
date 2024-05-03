@@ -115,7 +115,6 @@ fun PublicChatScreen(navController: NavHostController,
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.startOrStopListening(false)
         //listen for the same messages and members as before if the app was previously in the background
-        viewModel.handleDynamicMessageLoading(isAppInBackground, lastVisibleMessageIndex)
         viewModel.handleDynamicMembersLoading(isAppInBackground, lastVisibleMemberIndex)
         isAppInBackground = false
     }

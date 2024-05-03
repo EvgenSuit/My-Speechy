@@ -66,7 +66,6 @@ android {
 }
 
 dependencies {
-    implementation("com.google.firebase:firebase-admin:9.2.0")
     implementation("androidx.lifecycle:lifecycle-process:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     val room_version = "2.6.1"

@@ -1,5 +1,6 @@
 package com.myspeechy.myspeechy.presentation.chat
 
+import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
@@ -105,67 +106,65 @@ class PrivateChatViewModel @Inject constructor(
     }
     private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
         if (!remove) {
-            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex) }
+            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex,
+                messagesState = MessagesState.LOADING) }
         }
-        if (_uiState.value.messagesState != MessagesState.EMPTY) {
-            if (!remove) {
-                _uiState.update { it.copy(messagesState = MessagesState.LOADING) }
-            }
-            chatServiceImpl.messagesListener(
-                chatId, topIndex,
-                onAdded = { m ->
-                    val id = m.keys.first()
-                    val savedMessage = _uiState.value.messages[id]
-                    if (savedMessage != null) {
-                        _uiState.update {
-                            it.copy(
-                                it.messages + mapOf(
-                                    id to m.values.first()
-                                        .copy(senderUsername = savedMessage.senderUsername)
-                                )
-                            )
-                        }
-                    } else {
-                        _uiState.update { it.copy(it.messages + m) }
-                    }
-                    _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
-                },
-                onChanged = { m ->
+        chatServiceImpl.messagesListener(
+            chatId, topIndex,
+            onAdded = { m ->
+                val id = m.keys.first()
+                val savedMessage = _uiState.value.messages[id]
+                if (savedMessage != null) {
                     _uiState.update {
                         it.copy(
-                            messages = it.messages.toMutableMap()
-                                .apply { this[m.keys.first()] = m.values.first() })
+                            it.messages + mapOf(
+                                id to m.values.first()
+                                    .copy(senderUsername = savedMessage.senderUsername)
+                            )
+                        )
                     }
-                },
-                onRemoved = { m ->
-                    _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
-                },
-                onCancelled = {
-                    updateErrorMessage(it)
-                },
-                remove
-            )
-        }
+                } else {
+                    _uiState.update { it.copy(it.messages + m) }
+                }
+                _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
+            },
+            onChanged = { m ->
+                _uiState.update {
+                    it.copy(
+                        messages = it.messages.toMutableMap()
+                            .apply { this[m.keys.first()] = m.values.first() })
+                }
+            },
+            onRemoved = { m ->
+                _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
+            },
+            onCancelled = {
+                updateErrorMessage(it)
+            },
+            remove
+        )
     }
     private fun listenForCurrentChat(remove: Boolean) {
-        chatServiceImpl.chatListener(chatId, {updateErrorMessage(it.message)}, {chat ->
+        chatServiceImpl.chatListener(chatId, {updateErrorMessage(it.message) }, { chat ->
             val value = chat.getValue(Chat::class.java)
-            if (value != null) {
-                _uiState.update {
-                    it.copy(chat = value, chatLoaded = true)
-                }
+            _uiState.update {
+                it.copy(chat = value ?: Chat(), chatLoaded = true)
             }
         }, remove)
+    }
+
+    private suspend fun joinChatOnMessageSend() {
+        val isMemberOfChat = _uiState.value.isMemberOfChat
+        val isOtherUserMemberOfChat = _uiState.value.isOtherUserMemberOfChat
+        if ((isMemberOfChat != null && !isMemberOfChat) ||
+            (isOtherUserMemberOfChat != null && !isOtherUserMemberOfChat)) {
+            chatServiceImpl.joinChat(chatId, isOtherUserMemberOfChat == false)
+        }
     }
     suspend fun sendMessage(text: String) {
         try {
             if (userId == null) return
-            val isMemberOfChat = _uiState.value.isMemberOfChat
-            val isOtherUserMemberOfChat = _uiState.value.isOtherUserMemberOfChat
-            if ((isMemberOfChat != null && !isMemberOfChat) ||
-                (isOtherUserMemberOfChat != null && !isOtherUserMemberOfChat)) {
-                chatServiceImpl.joinChat(chatId, isOtherUserMemberOfChat == false)
-            }
+            joinChatOnMessageSend()
             val currUsername = _uiState.value.currUsername
             if (currUsername != null) {
                 val timestamp = chatServiceImpl.sendMessage(chatId, currUsername, text)
@@ -179,12 +178,14 @@ class PrivateChatViewModel @Inject constructor(
     }
     suspend fun editMessage(message: Map<String, Message>) {
         try {
+            joinChatOnMessageSend()
             chatServiceImpl.editMessage(chatId, message)
             if (_uiState.value.messages.entries.last().key == message.keys.first()) {
                 chatServiceImpl.updateLastMessage(
                     chatId, _uiState.value.currUsername,
                     _uiState.value.otherUsername,
-                    _uiState.value.chat.copy(lastMessage = message.values.first().text)
+                    _uiState.value.chat.copy(lastMessage = message.values.first().text,
+                        timestamp = message.values.first().timestamp)
                 )
             }
         } catch (e: Exception) {
