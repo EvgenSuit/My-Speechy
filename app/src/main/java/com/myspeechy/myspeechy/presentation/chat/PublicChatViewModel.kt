@@ -61,7 +61,6 @@ class PublicChatViewModel @Inject constructor(
     }
     private fun checkIfIsMemberOfChat(remove: Boolean) {
         chatServiceImpl.checkIfIsMemberOfChat(chatId, remove, {updateErrorMessage(it.message)}) {isMember ->
-            println(isMember)
             _uiState.update { it.copy(joined = isMember) }
         }
     }
@@ -78,46 +77,46 @@ class PublicChatViewModel @Inject constructor(
 
     private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
         if (!remove) {
-            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex) }
-        }
-        if (_uiState.value.messagesState != MessagesState.EMPTY) {
-            if (!remove) {
-                _uiState.update { it.copy(messagesState = MessagesState.LOADING) }
+            _uiState.update {
+                it.copy(
+                    topMessageBatchIndex = it.topMessageBatchIndex + topIndex,
+                    messagesState = MessagesState.LOADING
+                )
             }
-            chatServiceImpl.messagesListener(
-                chatId, _uiState.value.topMessageBatchIndex,
-                onAdded = { m ->
-                    val id = m.keys.first()
-                    val savedMessage = _uiState.value.messages[id]
-                    val message = m.values.first()
-                    if (savedMessage != null) {
-                        _uiState.update {
-                            it.copy(
-                                it.messages + mapOf(id to message
-                                        .copy(senderUsername = savedMessage.senderUsername)))
-                        }
-                    } else {
-                        val newMessages = _uiState.value.messages + m
-                        _uiState.update {
-                            it.copy(newMessages.toSortedMap(compareBy { k -> newMessages[k]?.timestamp }))
-                        }
-                    }
-                    _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
-                },
-                onChanged = { m ->
+        }
+        chatServiceImpl.messagesListener(
+            chatId, _uiState.value.topMessageBatchIndex,
+            onAdded = { m ->
+                val id = m.keys.first()
+                val savedMessage = _uiState.value.messages[id]
+                val message = m.values.first()
+                if (savedMessage != null) {
                     _uiState.update {
                         it.copy(
-                            messages = it.messages.toMutableMap()
-                                .apply { this[m.keys.first()] = m.values.first() })
+                            it.messages + mapOf(id to message
+                                    .copy(senderUsername = savedMessage.senderUsername)))
                     }
-                },
-                onRemoved = { m ->
-                    _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
-                },
-                onCancelled = {updateErrorMessage(it)},
-                remove
-            )
-        }
+                } else {
+                    val newMessages = _uiState.value.messages + m
+                    _uiState.update {
+                        it.copy(newMessages.toSortedMap(compareBy { k -> newMessages[k]?.timestamp }))
+                    }
+                }
+                _uiState.update { it.copy(messagesState = MessagesState.IDLE) }
+            },
+            onChanged = { m ->
+                _uiState.update {
+                    it.copy(
+                        messages = it.messages.toMutableMap()
+                            .apply { this[m.keys.first()] = m.values.first() })
+                }
+            },
+            onRemoved = { m ->
+                _uiState.update { it.copy(messages = it.messages.filterKeys { key -> key != m.keys.first() }) }
+            },
+            onCancelled = {updateErrorMessage(it)},
+            remove
+        )
     }
     fun handleDynamicMembersLoading(loadOnResume: Boolean = false, lastVisibleItemIndex: Int?) {
         chatServiceImpl.handleDynamicMembersLoading(loadOnResume,

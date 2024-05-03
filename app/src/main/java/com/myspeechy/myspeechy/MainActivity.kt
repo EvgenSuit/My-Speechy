@@ -58,7 +58,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun clearDataStore() {
-        Log.d("LOADED", "clearing")
         runBlocking {
             dataStoreManager.editError("")
             dataStoreManager.showNavBar(false)
