@@ -1,3 +1,4 @@
+
 pluginManagement {
     repositories {
         google()
@@ -8,6 +9,9 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        flatDir {
+            dirs("app")
+        }
         google()
         mavenCentral()
         maven { url = uri("https://www.jitpack.io" ) }
@@ -16,4 +20,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "My Speechy"
 include(":app")
- 
