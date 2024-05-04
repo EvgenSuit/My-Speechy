@@ -123,19 +123,13 @@ fun LessonItemComposable(lessonItem: LessonItem,
                          navController: NavController,
                          isAvailable: Boolean) {
     val description = stringResource(R.string.lesson_item)
-    val itemType = when(lessonItem.category.ordinal) {
-        0 -> "regularLessonItem"
-        1 -> "meditationLessonItem"
-        2 -> "readingLessonItem"
-        else -> ""
-    }
     var titleFontSize by remember {
         mutableIntStateOf(30)
     }
     var readyToDraw by remember {
         mutableStateOf(false)
     }
-    ElevatedButton(onClick = {navController.navigate("${itemType}/${lessonItem.id}")},
+    ElevatedButton(onClick = {navController.navigate("${lessonItem.category}/${lessonItem.id}")},
         shape = RoundedCornerShape(10.dp),
         enabled = isAvailable,
         colors = ButtonDefaults.buttonColors(
@@ -145,7 +139,7 @@ fun LessonItemComposable(lessonItem: LessonItem,
         ),
         modifier = Modifier
             .size(300.dp, 200.dp)
-            .semantics { contentDescription = "$description: $itemType" }
+            .semantics { contentDescription = "$description: ${lessonItem.category}" }
     ) {
             Text(lessonItem.title,
                 style = MaterialTheme.typography.labelMedium

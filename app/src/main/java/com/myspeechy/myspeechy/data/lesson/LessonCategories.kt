@@ -4,5 +4,6 @@ enum class LessonCategories {
     PSYCHOLOGICAL,
     MEDITATION,
     READING,
+    THOUGHT_TRACKER,
     NONE,
 }

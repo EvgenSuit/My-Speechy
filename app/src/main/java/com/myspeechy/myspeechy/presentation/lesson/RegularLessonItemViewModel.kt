@@ -24,7 +24,7 @@ class RegularLessonItemViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: RegularLessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel() {
-        private val id: Int = checkNotNull(savedStateHandle["regularLessonItemId"])
+        private val id: Int = checkNotNull(savedStateHandle["id"])
         private val _uiState = MutableStateFlow(RegularLessonItemState(LessonItem()))
         val uiState = _uiState.asStateFlow()
         init {

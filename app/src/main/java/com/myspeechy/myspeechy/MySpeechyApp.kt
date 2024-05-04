@@ -48,6 +48,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.myspeechy.myspeechy.data.authDataStore
 import com.myspeechy.myspeechy.data.errorKey
+import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.loggedOutDataStore
 import com.myspeechy.myspeechy.data.navBarDataStore
 import com.myspeechy.myspeechy.data.showNavBarDataStore
@@ -198,23 +199,23 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                         })
                     }
                     composable(
-                        "regularLessonItem/{regularLessonItemId}",
-                        arguments = listOf(navArgument("regularLessonItemId")
+                        "${LessonCategories.PSYCHOLOGICAL}/{id}",
+                        arguments = listOf(navArgument("id")
                         { type = NavType.IntType })
                     ) {
                         RegularLessonItem { navController.navigateUp() }
                     }
                     composable(
-                        "readingLessonItem/{readingLessonItemId}",
-                        arguments = listOf(navArgument("readingLessonItemId")
+                        "${LessonCategories.READING}/{id}",
+                        arguments = listOf(navArgument("id")
                         { type = NavType.IntType })
                     ) {
                         ReadingLessonItem()
                         { navController.navigateUp() }
                     }
                     composable(
-                        "meditationLessonItem/{meditationLessonItemId}",
-                        arguments = listOf(navArgument("meditationLessonItemId")
+                        "${LessonCategories.MEDITATION}/{id}",
+                        arguments = listOf(navArgument("id")
                         { type = NavType.IntType })
                     ) {
                         MeditationLessonItem()
@@ -269,17 +270,16 @@ fun BottomNavBar(
                 } },
                 icon = { Icon(
                     painterResource(screen.icon),
-                    tint = MaterialTheme.colorScheme.primary,
                     contentDescription = null,
                     modifier = Modifier
                         .size(if (selected) dimensionResource(R.dimen.selected_bottom_bar_icon_size) else
                             dimensionResource(R.dimen.unselected_bottom_bar_icon_size))
                 ) },
-
-                selectedContentColor = Color.White,
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.outline,
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.background)
-                    .weight(1f)
+                    //.weight(1f)
                     .semantics {
                         contentDescription = screen.label
                     }

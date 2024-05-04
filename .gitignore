@@ -15,6 +15,6 @@
 local.properties
 app/google-services.json
 app/src/main/res/google-play-imgs
-app/src/main/assets
+app/src/main/assets/database/database.db
 accountDeletion/my-speechy-firebase-adminsdk-g7v3g-48589351f8.json
 app/release

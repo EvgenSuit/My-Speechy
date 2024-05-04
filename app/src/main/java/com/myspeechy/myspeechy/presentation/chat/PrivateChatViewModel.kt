@@ -106,8 +106,10 @@ class PrivateChatViewModel @Inject constructor(
     }
     private fun listenForMessages(topIndex: Int = 0, remove: Boolean) {
         if (!remove) {
-            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex,
-                messagesState = MessagesState.LOADING) }
+            _uiState.update { it.copy(topMessageBatchIndex = it.topMessageBatchIndex + topIndex) }
+        }
+        if (_uiState.value.messagesState == MessagesState.NOT_EMPTY) {
+            _uiState.update { it.copy(messagesState = MessagesState.LOADING) }
         }
         chatServiceImpl.messagesListener(
             chatId, topIndex,

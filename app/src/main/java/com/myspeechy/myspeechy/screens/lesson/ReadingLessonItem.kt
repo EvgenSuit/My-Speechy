@@ -65,7 +65,6 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val text = uiState.lessonItem.text
-    val job: Job? = viewModel.job
     var showControlBar by remember {
         mutableStateOf(true)
     }

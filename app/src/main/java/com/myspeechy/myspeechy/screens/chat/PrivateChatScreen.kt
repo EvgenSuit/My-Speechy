@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -79,7 +80,7 @@ fun PrivateChatScreen(navController: NavHostController,
     var messageToEdit by rememberSaveable {
         mutableStateOf(mapOf<String, Message>())
     }
-    val width = dimensionResource(R.dimen.max_width)
+    val otherUsername = uiState.otherUsername
     val chatPicSize = dimensionResource(R.dimen.chat_pic_size)
     val listState = rememberLazyListState()
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
@@ -159,7 +160,10 @@ fun PrivateChatScreen(navController: NavHostController,
                }
                Box(modifier = Modifier.fillMaxWidth(),
                    contentAlignment = Alignment.Center) {
-                   Text(uiState.otherUsername ?: "Deleted account",
+                   Text(
+                       if (otherUsername == null) "Deleted account"
+                       else if (otherUsername.isEmpty()) stringResource(R.string.empty_username)
+                       else otherUsername,
                        color = MaterialTheme.colorScheme.primary,
                        overflow = TextOverflow.Ellipsis,
                        maxLines = 1,
@@ -169,7 +173,9 @@ fun PrivateChatScreen(navController: NavHostController,
            }
            if (uiState.messagesState == MessagesState.LOADING || !uiState.chatLoaded) {
                Box(contentAlignment = if (!uiState.chatLoaded) Alignment.Center else Alignment.TopCenter,
-                   modifier = Modifier.align(Alignment.CenterHorizontally).apply { if (!uiState.chatLoaded) fillMaxHeight() }) {
+                   modifier = Modifier
+                       .align(Alignment.CenterHorizontally)
+                       .apply { if (!uiState.chatLoaded) fillMaxHeight() }) {
                    CircularProgressIndicator()
                }
            }

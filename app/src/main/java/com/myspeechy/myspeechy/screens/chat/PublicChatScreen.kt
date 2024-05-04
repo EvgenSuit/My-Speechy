@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -437,7 +438,9 @@ fun MembersColumn(
                             .padding(5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(username ?: "Deleted account", fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (username == null) "Deleted account"
+                            else if (username.isEmpty()) stringResource(R.string.empty_username)
+                            else username, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (userId == admin) {
                             Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
                         }

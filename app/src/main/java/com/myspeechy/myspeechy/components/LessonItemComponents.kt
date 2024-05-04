@@ -5,8 +5,8 @@ import android.os.Build
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -14,14 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
@@ -45,10 +47,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.myspeechy.myspeechy.R
-import com.myspeechy.myspeechy.data.lesson.Lesson
 import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.lesson.LessonItemUiState
-import java.util.Locale
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -94,7 +94,11 @@ fun <T: LessonItemUiState> LessonItemWrapper(
             .background(itemBackgroundGradient)
             .verticalScroll(scrollState)
             .padding(10.dp)
-            .blur(if (lessonItem.title.isNotEmpty() && !uiState.wasWelcomeDialogBoxShown && showDialog) 20.dp else 0.dp)
+            .blur(
+                if (lessonItem.title.isNotEmpty() && !uiState.wasWelcomeDialogBoxShown && showDialog) dimensionResource(
+                    R.dimen.blur
+                ) else 0.dp
+            )
     ) {
         Row(modifier = Modifier.padding(bottom = 30.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -140,43 +144,48 @@ fun DialogBox(title: String, text: String,
               onDismiss: () -> Unit) {
     val corner = dimensionResource(R.dimen.common_corner_size)
     Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.background,
-            ),
-            shape = RoundedCornerShape(corner)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(30.dp),
+            ElevatedCard(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxSize()
+                    .width(400.dp)
+                    .height(500.dp)
+                    .clip(RoundedCornerShape(corner))
+                    .verticalScroll(rememberScrollState())
+                    .wrapContentSize(Alignment.Center),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+                shape = RoundedCornerShape(corner)
             ) {
-                Text(title,
-                    style = MaterialTheme.typography.headlineMedium
-                        .copy(color = MaterialTheme.colorScheme.onBackground),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.wrapContentSize(Alignment.Center))
-                Text(text,
-                    style = MaterialTheme.typography.bodyMedium
-                        .copy(color = MaterialTheme.colorScheme.onBackground),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.wrapContentSize(Alignment.Center))
-                ElevatedButton(onClick = onDismiss,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Green),
-                    modifier = Modifier.defaultMinSize(100.dp)) {
-                    Text("OK", fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onBackground)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(30.dp),
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxSize()
+                ) {
+                    Text(title,
+                        style = MaterialTheme.typography.headlineMedium
+                            .copy(color = MaterialTheme.colorScheme.onBackground),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(text,
+                        style = MaterialTheme.typography.bodyMedium
+                            .copy(color = MaterialTheme.colorScheme.onBackground),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    ElevatedButton(onClick = onDismiss,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Green),
+                        modifier = Modifier.defaultMinSize(100.dp)) {
+                        Text("OK", fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onBackground)
+                    }
                 }
             }
         }
-    }
 }
 
 

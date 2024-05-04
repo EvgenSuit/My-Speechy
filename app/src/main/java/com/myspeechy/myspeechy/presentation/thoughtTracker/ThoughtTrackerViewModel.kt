@@ -1,8 +1,9 @@
 package com.myspeechy.myspeechy.presentation.thoughtTracker
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myspeechy.myspeechy.data.DataStoreManager
+import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.thoughtTrack.ThoughtTrackItem
 import com.myspeechy.myspeechy.domain.DateFormatter
 import com.myspeechy.myspeechy.domain.Result
@@ -23,13 +24,22 @@ import javax.inject.Inject
 class ThoughtTrackerViewModel @Inject constructor(
     private val thoughtTrackerService: ThoughtTrackerService,
     private val isDateEqualToCurrentUseCase: IsDateEqualToCurrentUseCase,
-    private val getCurrentDateUseCase: GetCurrentDateUseCase
+    private val getCurrentDateUseCase: GetCurrentDateUseCase,
+    private val dataStoreManager: DataStoreManager,
 ): ViewModel() {
     private val _uiState = MutableStateFlow(ThoughtTrackerUiState())
     val uiState = _uiState.asStateFlow()
     private var dateListeningJob: Job? = null
     private var sourceTrackItems: List<ThoughtTrackItem> = mutableListOf()
     val tracksFetchResultFlow = _uiState.map { it.result }
+
+    init {
+        viewModelScope.launch {
+            dataStoreManager.collectWelcomeDialogBoxShow { set ->
+                _uiState.update { it.copy(wasWelcomeDialogShown = set.contains(LessonCategories.THOUGHT_TRACKER.name)) }
+            }
+        }
+    }
 
     fun listenForTracks(remove: Boolean) {
         if (!remove) {
@@ -78,8 +88,13 @@ class ThoughtTrackerViewModel @Inject constructor(
         }
     }
 
+    fun onDialogDismiss() = viewModelScope.launch {
+        dataStoreManager.editWelcomeDialogBoxShown(LessonCategories.THOUGHT_TRACKER)
+    }
+
     fun formatDate(date: String): String = DateFormatter.convertFromUtcThoughtTracker(date)
 
     data class ThoughtTrackerUiState(val trackItems: List<ThoughtTrackItem> = listOf(),
+                                     val wasWelcomeDialogShown: Boolean = true,
                                      val result: Result = Result.Idle)
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -27,12 +26,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -40,6 +39,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
 import com.myspeechy.myspeechy.NavScreens
 import com.myspeechy.myspeechy.R
+import com.myspeechy.myspeechy.components.DialogBox
 import com.myspeechy.myspeechy.data.thoughtTrack.ThoughtTrackItem
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.thoughtTracker.ThoughtTrackerViewModel
@@ -51,7 +51,6 @@ fun ThoughtTrackerScreen(navController: NavHostController,
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val circularProgressIndicatorDescription = stringResource(R.string.circular_progress_indicator)
-    val width = dimensionResource(R.dimen.thought_tracker_width)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.listenForTracks(false)
         viewModel.listenForDateChange(false)
@@ -68,16 +67,22 @@ fun ThoughtTrackerScreen(navController: NavHostController,
             }
         }
     }
+    if (!uiState.wasWelcomeDialogShown) {
+        DialogBox(title = stringResource(R.string.thought_tracker), text = stringResource(R.string.thought_tracker_description),
+            viewModel::onDialogDismiss)
+    }
     BoxWithConstraints(
         contentAlignment = Alignment.TopCenter,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .blur(if (!uiState.wasWelcomeDialogShown) dimensionResource(R.dimen.blur) else 0.dp)
     ) {
         val maxHeight = this.maxHeight
         Column(
             Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .let { if (maxHeight > 400.dp) it.padding(dimensionResource(R.dimen.thought_tracker_page_padding)) else it},
+                .let { if (maxHeight > 400.dp) it.padding(dimensionResource(R.dimen.thought_tracker_page_padding)) else it },
             horizontalAlignment = Alignment.CenterHorizontally) {
             ThoughtTrackerTitle()
             if (maxHeight > 400.dp) Spacer(Modifier.height(100.dp))

@@ -26,6 +26,7 @@
     <string name="resume_button">Resume</string>
     <string name="cancel_button">Cancel</string>
 
+    <string name="empty_username">Empty username</string>
     <string name="your_chats">Your chats</string>
     <string name="all_groups">All groups</string>
     <string name="add_public_chat">Add public chat</string>
@@ -54,4 +55,6 @@
     <string name="circular_progress_indicator">Circular progress indicator</string>
 
     <string name="toggle_theme">Toggle theme</string>
+
+    <string name="thought_tracker_description">Thought Tracker is like your personal journal. With it you can go back in time and see how you felt. The data you produce is yours only</string>
 </resources>

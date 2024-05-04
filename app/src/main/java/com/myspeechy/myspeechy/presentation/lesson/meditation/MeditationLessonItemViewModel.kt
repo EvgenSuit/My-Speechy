@@ -38,7 +38,7 @@ class MeditationLessonItemViewModel @Inject constructor(
     private val dataStoreManager: DataStoreManager,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
-     val id: Int = checkNotNull(savedStateHandle["meditationLessonItemId"])
+     val id: Int = checkNotNull(savedStateHandle["id"])
     private val _uiState = MutableStateFlow(MeditationLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
     val saveResultFlow = _uiState.map { it.saveResult }

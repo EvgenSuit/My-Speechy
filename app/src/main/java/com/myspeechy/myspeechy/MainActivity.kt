@@ -28,7 +28,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private var darkTheme = mutableStateOf(false)
+    private var darkTheme = mutableStateOf(true)
 
     @Inject
     lateinit var authService: AuthService

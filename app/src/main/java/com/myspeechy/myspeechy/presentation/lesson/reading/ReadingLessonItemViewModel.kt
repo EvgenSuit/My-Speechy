@@ -23,7 +23,7 @@ class ReadingLessonItemViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
     private val lessonServiceImpl: ReadingLessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel(){
-    private val id: Int = checkNotNull(savedStateHandle["readingLessonItemId"])
+    private val id: Int = checkNotNull(savedStateHandle["id"])
     private val _uiState = MutableStateFlow(ReadingLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
     var job: Job? = null
@@ -118,5 +118,5 @@ class ReadingLessonItemViewModel @Inject constructor(
             lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
         }
     }
-    fun onCategoryConvert(): String = lessonServiceImpl.categoryToDialogText(LessonCategories.MEDITATION)
+    fun onCategoryConvert(): String = lessonServiceImpl.categoryToDialogText(LessonCategories.READING)
 }
