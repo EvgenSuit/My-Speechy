@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -125,13 +123,12 @@ fun PrivateChatScreen(navController: NavHostController,
         if (canScroll) delay(300)
         showScrollDownButton = canScroll
     }
-   BoxWithConstraints(
+   Box(
        contentAlignment = Alignment.Center
    ) {
        Column(modifier = Modifier
            .background(MaterialTheme.colorScheme.background)
-           .fillMaxHeight()
-           .let { if (maxWidth < width) it.fillMaxWidth() else it.width(width) },
+           .fillMaxHeight(),
            verticalArrangement = Arrangement.Center
        ) {
            Row(modifier = Modifier

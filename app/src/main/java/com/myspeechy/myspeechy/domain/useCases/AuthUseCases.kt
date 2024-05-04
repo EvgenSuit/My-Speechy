@@ -35,7 +35,7 @@ class ValidateEmailUseCase(
             }
 
             is InputFormatCheckResult.Success -> {
-                UiText.StringResource.DynamicString("")
+               UiText.StringResource.DynamicString("")
             }
         }
 }

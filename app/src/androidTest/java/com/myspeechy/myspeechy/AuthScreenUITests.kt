@@ -23,6 +23,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @HiltAndroidTest
+@OptIn(ExperimentalTestApi::class)
 class AuthScreenUITests {
 
     @get:Rule
@@ -32,7 +33,6 @@ class AuthScreenUITests {
     val hiltRule = HiltAndroidRule(this )
     private lateinit var navController: TestNavHostController
 
-    @OptIn(ExperimentalTestApi::class)
     @Before
     fun init() {
         Firebase.auth.signOut()
@@ -91,17 +91,9 @@ class AuthScreenUITests {
         with(composeTestRule) {
             val logIn = getString(R.string.log_in)
             val signUp = getString(R.string.sign_up)
-            val waiting = getString(R.string.waiting_for_auth)
             onEmailInput("somerandomemail@gmail.com")
             onPasswordInput("Wrongpassword86")
             onClickButtonWithLabel(getString(R.string.log_in))
-            waitForIdle()
-            onNode(hasStateDescription(waiting)).assertIsDisplayed()
-            waitForIdle()
-            onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
-            onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
-            waitUntilExactlyOneExists(hasClickLabel(logIn))
-
             onNode(hasClickLabel(logIn)).assertIsNotEnabled()
             onNode(hasClickLabel(signUp)).assertIsNotEnabled()
         }

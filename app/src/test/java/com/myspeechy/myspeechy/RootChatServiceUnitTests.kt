@@ -8,13 +8,16 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.storage.StorageReference
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import kotlin.properties.Delegates
 
 
 private class FakeRootChildService(
@@ -53,8 +56,7 @@ private class FakeRootChildService(
 
 class RootChatServiceUnitTests {
     private val chatId: String = "chatId"
-    private val messageId: String = UUID.randomUUID().toString()
-    private val timestamp: Long = OffsetDateTime.now(ZoneOffset.UTC).toZonedDateTime().toInstant().toEpochMilli()
+    private val messageSlot = slot<Message>()
     private val text: String = "message text"
     private lateinit var mockedRdb: DatabaseReference
     private lateinit var rootChildService: FakeRootChildService
@@ -67,8 +69,7 @@ class RootChatServiceUnitTests {
 
     private fun mockRdb() {
         mockedRdb = mockk<DatabaseReference> {
-            every { child("messages").child(chatId).child(messageId).setValue(
-                Message(messageId, username, text, timestamp)) } returns mockTask()
+            every { child("messages").child(chatId).child(any<String>()).setValue(capture(messageSlot)) } returns mockTask()
         }
     }
     private fun initRootChatService() {
@@ -81,15 +82,14 @@ class RootChatServiceUnitTests {
         runBlocking {
             rootChildService.sendMessage(chatId, username, text)
         }
-        verify(exactly = 0) { mockedRdb.child(chatId).child(messageId).setValue(
-            Message(messageId, username, text, timestamp, false)) }
+        assertTrue(!messageSlot.isCaptured)
     }
     @Test
     fun sendMessage_userIsNotNull_sendingPerformed() {
         runBlocking {
             rootChildService.sendMessage(chatId, username, text)
         }
-        verify { mockedRdb.child(chatId).child(messageId).setValue(
-            Message(messageId, username, text, timestamp, false)) }
+        assertTrue(messageSlot.isCaptured)
+        verify { mockedRdb.child("messages").child(chatId).child(any<String>()).setValue(messageSlot.captured) }
     }
 }

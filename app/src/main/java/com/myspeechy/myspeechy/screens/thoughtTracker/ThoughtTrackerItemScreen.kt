@@ -81,10 +81,9 @@ fun ThoughtTrackerItemScreen(
     val context = LocalContext.current
     val mainPadding = dimensionResource(R.dimen.thought_tracker_page_padding)
     val maxThoughtTextLength = integerResource(R.integer.max_thought_length)
-    var isQuestionsColumnVisible by remember {
+    var isQuestionsColumnVisible by rememberSaveable {
         mutableStateOf(true)
     }
-    val width = dimensionResource(R.dimen.thought_tracker_width)
     var questionsMap by rememberSaveable(uiState.track.questions) {
         mutableStateOf(uiState.track.questions)
     }
@@ -113,16 +112,10 @@ fun ThoughtTrackerItemScreen(
         if (!isQuestionsColumnVisible) isQuestionsColumnVisible = true
         else onNavigateUp()
     }
-    BoxWithConstraints {
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxHeight()
-                .let { modifier ->
-                    if (maxWidth < width) modifier.fillMaxWidth()
-                    else modifier.width(width)
-                }
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .align(Alignment.TopCenter)
         ) {
             Box(
                 Modifier
@@ -174,7 +167,6 @@ fun ThoughtTrackerItemScreen(
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -270,47 +262,56 @@ fun ThoughtsColumn(
     onTextChange: (String) -> Unit,
     onDoneClick: () -> Unit,
     modifier: Modifier = Modifier) {
+    val width = dimensionResource(R.dimen.thought_tracker_width)
     val description = stringResource(R.string.thoughts_column)
     val textFieldDescription = stringResource(R.string.thoughts_text_field)
-    Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.thoughts_padding)+40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .imePadding()
             .semantics { contentDescription = description }
+            .fillMaxWidth()
             .run { if (!isReadOnly) this.verticalScroll(rememberScrollState()) else this }
     ) {
-        if (!isReadOnly) Text(stringResource(R.string.write_down_thought_tracker_experience),
-            style = MaterialTheme.typography.titleLarge.copy(
-                color = MaterialTheme.colorScheme.onBackground
-            ))
-        OutlinedTextField(
-            enabled = !isReadOnly,
-            value = text,
-            textStyle = TextStyle(fontSize = 20.sp,
-                fontFamily = FontFamily(Font(R.font.kalam_regular))
-            ),
-            colors = TextFieldDefaults.colors(
-                disabledTextColor = MaterialTheme.colorScheme.onBackground
-            ),
-            onValueChange = onTextChange,
-            shape = RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)),
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.thoughts_padding)),
             modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = textFieldDescription }
-                .imePadding()
-        )
-        if (!isReadOnly) {
-            ElevatedButton(onClick = onDoneClick,
-                modifier = Modifier.size(dimensionResource(R.dimen.done_button_width),
-                    dimensionResource(R.dimen.done_button_height))) {
-                Text(stringResource(R.string.done),
-                    style = MaterialTheme.typography.bodyMedium
-                        .copy(color = MaterialTheme.colorScheme.onBackground),
-                    textAlign = TextAlign.Center)
+                .fillMaxHeight()
+                .width(width)
+        ) {
+            if (!isReadOnly) Text(stringResource(R.string.write_down_thought_tracker_experience),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    color = MaterialTheme.colorScheme.onBackground
+                ))
+            OutlinedTextField(
+                enabled = !isReadOnly,
+                value = text,
+                textStyle = TextStyle(fontSize = 20.sp,
+                    fontFamily = FontFamily(Font(R.font.kalam_regular))
+                ),
+                colors = TextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onBackground
+                ),
+                onValueChange = onTextChange,
+                shape = RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = textFieldDescription }
+                    .imePadding()
+            )
+            if (!isReadOnly) {
+                ElevatedButton(onClick = onDoneClick,
+                    modifier = Modifier.size(dimensionResource(R.dimen.done_button_width),
+                        dimensionResource(R.dimen.done_button_height))) {
+                    Text(stringResource(R.string.done),
+                        style = MaterialTheme.typography.bodyMedium
+                            .copy(color = MaterialTheme.colorScheme.onBackground),
+                        textAlign = TextAlign.Center)
+                }
             }
-        }
-        if (!isReadOnly && saveResult is Result.InProgress) {
-            LinearProgressIndicator()
+            if (!isReadOnly && saveResult is Result.InProgress) {
+                LinearProgressIndicator()
+            }
         }
     }
 }
@@ -325,17 +326,23 @@ fun QuestionsColumn(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val description = stringResource(R.string.questions_column)
+    val width = dimensionResource(R.dimen.thought_tracker_width)
     LazyColumn(
         state = listState,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.questions_padding)),
-        modifier = modifier.semantics { contentDescription = description }) {
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.questions_padding),
+            Alignment.CenterVertically),
+        modifier = modifier
+            .semantics { contentDescription = description }
+            .fillMaxSize()) {
         itemsIndexed(questionsMap.keys.toList()) {questionIndex, q ->
             AnimatedVisibility(visible = questionIndex <= questionsMap.values.filter { it != -1 }.size,
                 enter = slideInVertically { -it }) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize()) {
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(width)) {
                     Text(q, style = MaterialTheme.typography.bodyMedium
                         .copy(color = MaterialTheme.colorScheme.onBackground),
                         textAlign = TextAlign.Center)

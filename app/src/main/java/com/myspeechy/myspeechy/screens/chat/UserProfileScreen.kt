@@ -61,8 +61,8 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.myspeechy.myspeechy.R
 import com.myspeechy.myspeechy.components.BackButton
-import com.myspeechy.myspeechy.components.CustomAlertDialog
 import com.myspeechy.myspeechy.components.CommonTextField
+import com.myspeechy.myspeechy.components.CustomAlertDialog
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.chat.PictureState
 import com.myspeechy.myspeechy.presentation.chat.UserProfileViewModel
@@ -89,21 +89,32 @@ fun UserProfileScreen(
     LaunchedEffect(Unit) {
         viewModel.startOrStopListening(false)
     }
-    LaunchedEffect(uiState.accountDeletionResult) {
-        if (uiState.accountDeletionResult is Result.InProgress) {
-            viewModel.setDeletionResultToIdle()
-            onAccountDelete()
+    LaunchedEffect(viewModel) {
+        viewModel.accountDeletionResultFlow.collect {res ->
+            if (res is Result.InProgress) {
+                viewModel.setDeletionResultToIdle()
+                onAccountDelete()
+            }
         }
     }
-    LaunchedEffect(uiState.authResult) {
-        if (uiState.authResult is Result.Error) {
-            Toasty.success(context, uiState.authResult.error, Toast.LENGTH_SHORT, true).show()
+    LaunchedEffect(viewModel) {
+        viewModel.authResultFlow.collect {res ->
+            if (res is Result.Error) {
+                Toasty.error(context, res.error, Toast.LENGTH_LONG, true).show()
+            }
         }
     }
-    LaunchedEffect(uiState.errorMessage) {
-        if (uiState.errorMessage.isNotEmpty()) {
-            Toasty.error(context, uiState.errorMessage, Toast.LENGTH_SHORT, true).show()
+    LaunchedEffect(viewModel) {
+        viewModel.errorMessageFlow.collect {e ->
+            if (e.isNotEmpty()) {
+                Toasty.error(context, e, Toast.LENGTH_LONG, true).show()
+            }
         }
+    }
+    if (uiState.chatAlertDialogDataClass.title.isNotEmpty()) {
+        CustomAlertDialog(
+            coroutineScope,
+            alertDialogDataClass = uiState.chatAlertDialogDataClass)
     }
     val picSize = dimensionResource(R.dimen.userProfilePictureSize)
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
@@ -142,22 +153,14 @@ fun UserProfileScreen(
                         .data(viewModel.normalQualityPicRef.path)
                         .size(coil.size.Size.ORIGINAL)
                         .build())
-                    if (viewModel.normalQualityPicRef.exists() &&
-                        uiState.pictureState != PictureState.DOWNLOADING) {
-                        UserProfilePicture(painter = painter) {
-                            if (uiState.pictureState != PictureState.UPLOADING && launcher != null) launcher.launch(
-                                arrayOf("image/png", "image/jpeg")
-                            )
-                        }
-                    }
-                    if((uiState.storageMessage.isNotEmpty() || painter.state is AsyncImagePainter.State.Error)) {
-                        UserProfilePicture(painter = painterResource(R.drawable.user)) {
+                    UserProfilePicture(painter = if (uiState.pictureState == PictureState.SUCCESS) painter
+                        else painterResource(R.drawable.user)) {
                             launcher?.launch(
                                 arrayOf("image/png", "image/jpeg")
                             )
                         }
-                    }
-                    if (uiState.pictureState == PictureState.DOWNLOADING || painter.state is AsyncImagePainter.State.Loading) {
+                    if (uiState.pictureState == PictureState.DOWNLOADING || painter.state is AsyncImagePainter.State.Loading
+                        || uiState.pictureState == PictureState.UPLOADING) {
                         CircularProgressIndicator(Modifier.size(50.dp))
                     }
                 }
@@ -205,9 +208,7 @@ fun UserProfileScreen(
             if (isCurrentUser) {
                 Column(verticalArrangement = Arrangement.spacedBy(40.dp),
                     modifier = Modifier.padding(top = 25.dp)) {
-                    if (uiState.pictureState != PictureState.UPLOADING &&
-                        uiState.pictureState != PictureState.DOWNLOADING &&
-                        uiState.storageMessage.isEmpty()) {
+                    if (uiState.pictureState == PictureState.SUCCESS) {
                         ProfileActionButton(icon = Icons.Filled.Face, text = "Delete profile picture", viewModel::removeUserPicture)
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -215,11 +216,6 @@ fun UserProfileScreen(
                         ProfileActionButton(icon = Icons.Filled.Delete, text = "Delete account", viewModel::deleteAccount)
                     }
                 }
-            }
-            if (uiState.chatAlertDialogDataClass.title.isNotEmpty()) {
-                CustomAlertDialog(
-                    coroutineScope,
-                    alertDialogDataClass = uiState.chatAlertDialogDataClass)
             }
         }
         if (uiState.authResult is Result.InProgress) {

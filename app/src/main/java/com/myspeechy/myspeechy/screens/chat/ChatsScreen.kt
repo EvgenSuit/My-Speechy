@@ -108,15 +108,13 @@ fun ChatsScreen(navController: NavHostController,
                     viewModel: ChatsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val width = dimensionResource(R.dimen.max_width)
-    val formWidth = dimensionResource(R.dimen.max_create_or_change_chat_form_width)
     val coroutineScope = rememberCoroutineScope()
     val yourChats = stringResource(R.string.your_chats)
     val allGroups = stringResource(R.string.all_groups)
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
     val interactionSource = remember { MutableInteractionSource() }
     val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
-    var isFormExpanded by remember(isSearchFieldFocused) { mutableStateOf(false) }
+    var isFormExpanded by rememberSaveable(isSearchFieldFocused) { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val showSearchedChats by remember(uiState.searchedChats) { mutableStateOf(uiState.searchedChats.isNotEmpty()) }
     val usersChatsListState = rememberLazyListState()
@@ -143,14 +141,13 @@ fun ChatsScreen(navController: NavHostController,
             Toasty.error(context, uiState.chatsError, Toast.LENGTH_SHORT,true).show()
         }
     }
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
             Modifier
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.background)
-                .let { if (maxWidth < width) it.fillMaxWidth() else it.width(width) }
                 .blur(if (isFormExpanded) 5.dp else 0.dp)) {
                     Row(
                         Modifier
@@ -233,8 +230,7 @@ fun ChatsScreen(navController: NavHostController,
                     ) { targetExpanded ->
                         if (targetExpanded) {
                             CreateOrChangePublicChatForm(
-                                modifier = Modifier.let { if (maxWidth < width) it.fillMaxWidth() else it.width(formWidth) }
-                                    .align(Alignment.Center),
+                                modifier = Modifier.align(Alignment.Center),
                                 onClose = {isFormExpanded = false}) { (title, description) ->
                                 isFormExpanded = false
                                 viewModel.createPublicChat(title, description)
@@ -344,6 +340,7 @@ fun UserChats(
     onLeaveChat: (Pair<String, String>) -> Unit) {
     var selectedChatIndex by remember { mutableIntStateOf(-1) }
     val haptics = LocalHapticFeedback.current
+    val width = dimensionResource(R.dimen.max_width)
     LazyColumn(
         state = listState,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -358,7 +355,7 @@ fun UserChats(
                 val currChat = chatsValues[i]
                 val chatId = chatsKeys[i]
                 Box(contentAlignment = Alignment.Center) {
-                        Row(Modifier.fillMaxWidth(),
+                        Row(Modifier.width(width),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             if (currChat != null && currChat.type == "private") {

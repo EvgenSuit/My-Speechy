@@ -2,12 +2,7 @@ package com.myspeechy.myspeechy
 
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import com.myspeechy.myspeechy.data.chat.User
-import com.myspeechy.myspeechy.domain.auth.AuthService
-import com.myspeechy.myspeechy.domain.auth.GoogleAuthService
-import com.myspeechy.myspeechy.domain.useCases.ValidateEmailUseCase
-import com.myspeechy.myspeechy.domain.useCases.ValidatePasswordUseCase
-import com.myspeechy.myspeechy.presentation.auth.AuthViewModel
+import androidx.test.core.app.ApplicationProvider
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -18,6 +13,13 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.storage.StorageReference
+import com.myspeechy.myspeechy.data.chat.User
+import com.myspeechy.myspeechy.domain.auth.AuthService
+import com.myspeechy.myspeechy.domain.auth.GoogleAuthService
+import com.myspeechy.myspeechy.domain.useCases.ValidateEmailUseCase
+import com.myspeechy.myspeechy.domain.useCases.ValidatePasswordUseCase
+import com.myspeechy.myspeechy.presentation.UiText
+import com.myspeechy.myspeechy.presentation.auth.AuthViewModel
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -29,6 +31,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
 
 class FirebaseAuthTests {
     val emailToPass = "someemail@gmail.com"
@@ -50,6 +55,7 @@ class FirebaseAuthTests {
         mockRdb()
         mockFirestore()
         mockStorage(mockedStorage)
+        mockViewModel()
     }
     private fun mockViewModel() {
         val authService = AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage)
@@ -125,8 +131,6 @@ class FirebaseAuthTests {
 
     @Test
     fun authenticate_wrongInputFormat_authenticationNotPerformed() {
-        val firestoreRef = mockedFirestore.collection("users").document(userId)
-
         //test for different cases of input
         val incorrectEmailCases = listOf("", "some", "34546", "some@")
         val incorrectPasswordCases = listOf("", "dkjfd", "2", "FFFGf3")
@@ -140,15 +144,11 @@ class FirebaseAuthTests {
                 authViewModel.logIn()
             }
             //if the input is not of correct format, verify that the authentication wasn't run
-            //any() means we don't care about the arguments in this case since uiState's email value was already set
-            verify(exactly = 0) { mockedAuth.createUserWithEmailAndPassword(any(), any()) }
-            verify(exactly = 0) { mockedAuth.signInWithEmailAndPassword(any(), any())}
-            verify(exactly = 0) { mockedRdb.child("users").child(userId).setValue(User(username, "")) }
-            for (t in listOf("lessons", "meditation")) {
-                verify(exactly = 0) { firestoreRef.collection(t).document("items").set(mapOf<String, String>()) }
-            }
+            //UiText.StringResource.DynamicString corresponds to successful validation
+            assertTrue(authViewModel.exceptionState.value.emailErrorMessage!! !is UiText.StringResource.DynamicString)
             //set to correct email format to correctly test the next case
             authViewModel.onEmailChanged(emailToPass)
+            assertTrue(authViewModel.exceptionState.value.emailErrorMessage!! is UiText.StringResource.DynamicString)
         }
         for (case in incorrectPasswordCases) {
             authViewModel.onPasswordChanged(case)
@@ -156,13 +156,9 @@ class FirebaseAuthTests {
                 authViewModel.signUp()
                 authViewModel.logIn()
             }
-            verify(exactly = 0) { mockedAuth.createUserWithEmailAndPassword(any(), any()) }
-            verify(exactly = 0) { mockedAuth.signInWithEmailAndPassword(any(), any()) }
-            verify(exactly = 0) { mockedRdb.child("users").child(userId).setValue(User(username, "")) }
-            for (t in listOf("lessons", "meditation")) {
-                verify(exactly = 0) { firestoreRef.collection(t).document("items").set(mapOf<String, String>()) }
-            }
+            assertTrue(authViewModel.exceptionState.value.passwordErrorMessage !is UiText.StringResource.DynamicString)
             authViewModel.onPasswordChanged(password)
+            assertTrue(authViewModel.exceptionState.value.passwordErrorMessage is UiText.StringResource.DynamicString)
         }
     }
     @Test

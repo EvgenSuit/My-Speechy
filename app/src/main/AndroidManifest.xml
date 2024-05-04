@@ -19,6 +19,7 @@
         <receiver android:name="com.myspeechy.myspeechy.MeditationNotificationOnCancelReceiver" />
         <activity
             android:name="com.myspeechy.myspeechy.MainActivity"
+            android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:label="@string/app_name"

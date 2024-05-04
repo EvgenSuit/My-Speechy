@@ -3,6 +3,8 @@ package com.myspeechy.myspeechy.presentation.chat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import com.myspeechy.myspeechy.components.AlertDialogDataClass
 import com.myspeechy.myspeechy.data.chat.User
 import com.myspeechy.myspeechy.domain.Result
@@ -10,12 +12,11 @@ import com.myspeechy.myspeechy.domain.chat.DirectoryManager
 import com.myspeechy.myspeechy.domain.chat.ImageCompressor
 import com.myspeechy.myspeechy.domain.chat.UserProfileService
 import com.myspeechy.myspeechy.domain.error.PictureStorageError
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
@@ -36,6 +37,9 @@ class UserProfileViewModel @Inject constructor(
     private val lowQualityPicDir = "${filesDirPath}/profilePics/${userId}/lowQuality/"
     val normalQualityPicRef = File(normalQualityPicDir, "$userId.jpg")
     private val lowQualityPicRef = File(lowQualityPicDir, "$userId.jpg")
+    val authResultFlow = _uiState.map { it.authResult }
+    val errorMessageFlow = _uiState.map { it.errorMessage }
+    val accountDeletionResultFlow = _uiState.map { it.accountDeletionResult }
 
     fun startOrStopListening(removeListeners: Boolean) {
         listenForUser(removeListeners)
@@ -68,7 +72,7 @@ class UserProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     storageMessage = "",
                     recomposePic = UUID.randomUUID().toString(),
-                    pictureState = PictureState.IDLE
+                    pictureState = PictureState.SUCCESS
                 ) }
             }, remove)
     }
@@ -90,7 +94,6 @@ class UserProfileViewModel @Inject constructor(
                             uploadUserPicture(lowQuality)
                         } else {
                             if (_uiState.value.authResult !is Result.InProgress) {
-                                updateErrorMessage("")
                                 delay(1) //without it the launched effect in the screen doesn't work
                                 updateErrorMessage("Couldn't compress picture. Perhaps it's too big")
                             }
@@ -103,27 +106,11 @@ class UserProfileViewModel @Inject constructor(
         }
     }
 
-    suspend fun changeUserInfo(newName: String, newInfo: String) {
-        try {
-            val nameIsSame = _uiState.value.user?.name == newName
-            val infoIsSame = _uiState.value.user?.info == newInfo
-            if (!nameIsSame) {
-                userProfileService.changeUsername(newName)
-            }
-            if (!infoIsSame) {
-                userProfileService.changeUserInfo(newInfo)
-            }
-        } catch (e: Exception) {
-            updateErrorMessage(e.message!!)
-        }
-    }
     private fun uploadUserPicture(lowQuality: Boolean) {
         viewModelScope.launch {
             try {
                 updatePictureState(PictureState.UPLOADING)
                 userProfileService.uploadUserPicture(if (lowQuality) lowQualityPicRef else normalQualityPicRef, lowQuality)
-                updatePictureState(PictureState.IDLE)
-                updateStorageMessage("")
             } catch (e: Exception) {
                 updatePictureState(PictureState.ERROR)
                 updateErrorMessage(e.message!!)
@@ -142,6 +129,20 @@ class UserProfileViewModel @Inject constructor(
             } catch (e: Exception) {
                 updateErrorMessage(e.message!!)
             }
+        }
+    }
+    suspend fun changeUserInfo(newName: String, newInfo: String) {
+        try {
+            val nameIsSame = _uiState.value.user?.name == newName
+            val infoIsSame = _uiState.value.user?.info == newInfo
+            if (!nameIsSame) {
+                userProfileService.changeUsername(newName)
+            }
+            if (!infoIsSame) {
+                userProfileService.changeUserInfo(newInfo)
+            }
+        } catch (e: Exception) {
+            updateErrorMessage(e.message!!)
         }
     }
     fun logout() {
@@ -203,5 +204,6 @@ enum class PictureState {
     IDLE,
     DOWNLOADING,
     UPLOADING,
+    SUCCESS,
     ERROR,
 }

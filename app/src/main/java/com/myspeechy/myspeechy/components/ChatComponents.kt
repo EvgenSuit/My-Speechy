@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -118,12 +117,9 @@ fun MessagesColumn(
                 //possible chat id between the current and the other user
                 val chatId = listOf(message.sender, userId).sortedWith(
                 compareBy(String.CASE_INSENSITIVE_ORDER) {it}).joinToString("_")
-                Box(contentAlignment = Alignment.Center) {
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                space = 2.dp,
-                                alignment = if (message.sender != userId)
-                                    Alignment.Start else Alignment.End)) {
+                Box(contentAlignment = if (message.sender != userId) Alignment.CenterStart else Alignment.CenterEnd,
+                    modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.width(300.dp)) {
                             MessageContent(
                                 isPrivate = isPrivate,
                                 userId = userId,
@@ -136,13 +132,14 @@ fun MessagesColumn(
                                 onSelectedMessageIndexChange = {selectedMessageIndex = it}
                             ) { onNavigate(chatId) }
                         }
-                    if (selectedMessageIndex == index && joined) {
-                        DropdownMessageBox(userId = userId,
-                            message = Pair(messageId, message),
-                            onEdit = onEdit,
-                            onDelete = onDelete) { selectedMessageIndex = -1 }
+                        if (selectedMessageIndex == index && joined) {
+                            DropdownMessageBox(userId = userId,
+                                message = Pair(messageId, message),
+                                onEdit = onEdit,
+                                modifier = Modifier.align(Alignment.Center),
+                                onDelete = onDelete) { selectedMessageIndex = -1 }
+                        }
                     }
-                }
             }
         }
     }
@@ -162,56 +159,53 @@ fun MessageContent(
     onSelectedMessageIndexChange: (Int) -> Unit,
     onNavigate: (String) -> Unit) {
     val corner = dimensionResource(R.dimen.common_corner_size)
-    Box(contentAlignment = if (message.sender == userId) Alignment.CenterEnd else Alignment.CenterEnd) {
-        ElevatedCard(
-            shape = RoundedCornerShape(corner),
-            modifier = Modifier
-                .clip(RoundedCornerShape(corner))
-                .fillMaxWidth(0.8f)
-                .combinedClickable(
-                    onClick = { onSelectedMessageIndexChange(-1) },
-                    onLongClick = {
-                        if (joined && selectedMessageIndex == -1) onSelectedMessageIndexChange(index)
-                        else if (selectedMessageIndex != -1) onSelectedMessageIndexChange(-1)
-                    }),
-            colors = CardDefaults.cardColors(
-                containerColor = if (message.sender != userId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-        ) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(dimensionResource(R.dimen.message_content_padding))) {
-                val senderUsername = message.senderUsername
-                if (message.sender != userId && !isPrivate) {
-                        Text(senderUsername ?: "Deleted account",
-                            overflow = TextOverflow.Ellipsis,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            modifier = Modifier.clickable {
-                                if (message.sender != userId) {
-                                    onNavigate(chatId)
-                                }
+    ElevatedCard(
+        shape = RoundedCornerShape(corner),
+        modifier = Modifier
+            .clip(RoundedCornerShape(corner))
+            .combinedClickable(
+                onClick = { onSelectedMessageIndexChange(-1) },
+                onLongClick = {
+                    if (joined && selectedMessageIndex == -1) onSelectedMessageIndexChange(index)
+                    else if (selectedMessageIndex != -1) onSelectedMessageIndexChange(-1)
+                }),
+        colors = CardDefaults.cardColors(
+            containerColor = if (message.sender != userId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(dimensionResource(R.dimen.message_content_padding))) {
+            val senderUsername = message.senderUsername
+            if (message.sender != userId && !isPrivate) {
+                    Text(senderUsername ?: "Deleted account",
+                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.clickable {
+                            if (message.sender != userId) {
+                                onNavigate(chatId)
                             }
-                        )
-                    }
+                        }
+                    )
+                }
+            Text(
+                message.text,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 18.sp,
+                modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    message.text,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(bottom = 5.dp, top = 5.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        onFormatDate(message.timestamp),
-                        overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.weight(1f))
-                    if (message.edited) {
-                        Text("Edited",
-                            fontSize = 14.sp,
-                            modifier = Modifier.alpha(0.5f))
-                    }
+                    onFormatDate(message.timestamp),
+                    overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.weight(1f))
+                if (message.edited) {
+                    Text("Edited",
+                        fontSize = 14.sp,
+                        modifier = Modifier.alpha(0.5f))
                 }
             }
         }
@@ -222,11 +216,12 @@ fun MessageContent(
 fun DropdownMessageBox(
     userId: String,
     message: Pair<String, Message>,
+    modifier: Modifier,
     onEdit: (Map<String, Message>) -> Unit,
     onDelete: (Map<String, Message>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    Box {
+    Box(modifier = modifier) {
         DropdownMenu(expanded = true,
             properties = PopupProperties(focusable = false),
             onDismissRequest = onDismiss) {
@@ -241,7 +236,7 @@ fun DropdownMessageBox(
                         onDismiss()})
             }
         }
-    }
+   }
 }
 
 //This row contains input field and send button
@@ -329,16 +324,19 @@ fun CreateOrChangePublicChatForm(
     val corner = dimensionResource(R.dimen.common_corner_size)
     val semanticDescription = stringResource(R.string.create_or_change_chat_form)
     val buttonDescription = stringResource(R.string.create_or_change_chat_button)
+    val formWidth = dimensionResource(R.dimen.max_create_or_change_chat_form_width)
     var title by remember { mutableStateOf(chat?.title ?: "") }
     var description by remember { mutableStateOf(chat?.description ?: "") }
     var isTitleBlank by remember { mutableStateOf(false) }
     Column(
         modifier
             .height(IntrinsicSize.Max)
+            .width(formWidth)
             .clip(RoundedCornerShape(corner))
             .border(
                 BorderStroke(2.dp, MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(corner))
+                shape = RoundedCornerShape(corner)
+            )
             .background(MaterialTheme.colorScheme.background)
             .padding(20.dp)
             .verticalScroll(rememberScrollState())

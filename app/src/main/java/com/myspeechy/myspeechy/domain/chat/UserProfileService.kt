@@ -106,9 +106,12 @@ class UserProfileService(private val authService: AuthService) {
             .child(if (lowQuality) "lowQuality" else "normalQuality")
             .child("$userId.jpg")
             .delete().await()
-        usersRef.child(userId)
-            .child("profilePicUpdated")
-            .removeValue().await()
+        //normal quality comes last
+        if (!lowQuality) {
+            usersRef.child(userId)
+                .child("profilePicUpdated")
+                .removeValue().await()
+        }
     }
     suspend fun changeUsername(newName: String) {
         if (userId == null) return

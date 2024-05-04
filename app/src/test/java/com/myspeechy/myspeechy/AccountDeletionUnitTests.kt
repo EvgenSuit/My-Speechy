@@ -1,5 +1,13 @@
 package com.myspeechy.myspeechy
 
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.storage.StorageReference
 import com.myspeechy.myspeechy.domain.auth.AccountDeletionService
 import com.myspeechy.myspeechy.domain.auth.AuthService
 import com.myspeechy.myspeechy.domain.useCases.CheckIfIsAdminUseCase
@@ -11,14 +19,6 @@ import com.myspeechy.myspeechy.domain.useCases.ValidateEmailUseCase
 import com.myspeechy.myspeechy.domain.useCases.ValidatePasswordUseCase
 import com.myspeechy.myspeechy.presentation.auth.AccountDeletionViewModel
 import com.myspeechy.myspeechy.presentation.chat.getOtherUserId
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.storage.StorageReference
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -29,7 +29,7 @@ import org.junit.Test
 
 class AccountDeletionUnitTests {
     private val imgQualities = listOf("normalQuality", "lowQuality")
-    private val firestoreCollections = listOf("lessons", "meditation")
+    private val firestoreCollections = listOf("lessons", "meditation", "thoughtTracks")
     private val lessons = (1..3).map { mapOf("$it" to mapOf("id" to "$it")) }
     private val privateChats = listOf("dfdf_$userId", "${userId}_38vhje")
     private val publicChats = mapOf("dfjidjf" to mapOf("admin" to "dffg", "member_count" to 12),
@@ -42,10 +42,10 @@ class AccountDeletionUnitTests {
 
     @Before
     fun mockDependencies() {
-        mockAuth()
         mockStorage()
         mockRdb()
         mockFirestore()
+        mockAuth()
         mockViewModel()
     }
     fun mockViewModel() {
@@ -81,7 +81,9 @@ class AccountDeletionUnitTests {
     }
     fun mockAuth() {
         mockedAuth = mockk<FirebaseAuth> {
-            every { currentUser } returns mockk<FirebaseUser>()
+            every { currentUser } returns mockk<FirebaseUser> {
+                every { uid } returns userId
+            }
             every { currentUser?.delete() } answers {
                 every { currentUser } returns null
                 mockTask()
@@ -151,6 +153,7 @@ class AccountDeletionUnitTests {
     @Test
     fun deleteAccount_userIsNull_deletionNotPerformed() {
         every { mockedAuth.currentUser?.uid } returns null
+        mockViewModel()
         runBlocking {
             viewModel.deleteUser()
         }

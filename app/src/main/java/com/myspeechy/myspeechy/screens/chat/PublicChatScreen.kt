@@ -100,16 +100,15 @@ fun PublicChatScreen(navController: NavHostController,
     val membersListState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val width = dimensionResource(R.dimen.max_width)
     val formWidth = dimensionResource(R.dimen.max_create_or_change_chat_form_width)
-    val firstVisibleMessage by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.firstOrNull() } }
-    val lastVisibleMemberIndex by remember { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
-    val lastVisibleMessageIndex by remember { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    val firstVisibleMessage by remember(messagesListState) { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.firstOrNull() } }
+    val lastVisibleMemberIndex by remember(messagesListState) { derivedStateOf { membersListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
+    val lastVisibleMessageIndex by remember(messagesListState) { derivedStateOf { messagesListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index } }
     var isAppInBackground by rememberSaveable { mutableStateOf(false) }
     val canScroll by remember {
         derivedStateOf { uiState.messages.isNotEmpty() && firstVisibleMessage?.index != 0
                 && messagesListState.canScrollBackward && !messagesListState.isScrollInProgress } }
-    var showScrollDownButton by remember {
+    var showScrollDownButton by rememberSaveable {
         mutableStateOf(false)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -187,7 +186,7 @@ fun PublicChatScreen(navController: NavHostController,
                     contentAlignment = Alignment.Center) {
                 Column(
                     Modifier
-                        .let { if (maxWidth < width) it.fillMaxWidth() else it.width(width) }
+                        .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     PublicChatTopRow(

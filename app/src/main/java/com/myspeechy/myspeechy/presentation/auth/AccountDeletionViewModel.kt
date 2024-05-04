@@ -4,6 +4,7 @@ package com.myspeechy.myspeechy.presentation.auth
 import android.content.Intent
 import android.content.IntentSender
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.domain.auth.AccountDeletionService
 import com.myspeechy.myspeechy.domain.auth.AuthService
@@ -37,17 +38,12 @@ class AccountDeletionViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     var authResultFlow = _uiState.map { it.authResult }
 
-    init {
-        CoroutineScope(Dispatchers.Main).launch {
-            deleteUser()
-        }
-    }
     suspend fun deleteUser() {
         try {
             // for testing purposes throw an appropriate exception on first call
-            if (_uiState.value.deletionResult !is Result.Error) {
+            /*if (_uiState.value.deletionResult !is Result.Error) {
                 throw FirebaseAuthRecentLoginRequiredException("error", "error")
-            }
+            }*/
             updateAccountDeletionResult(Result.InProgress)
             updateAuthResult(Result.Idle)
             accountDeletionService.deleteUser()

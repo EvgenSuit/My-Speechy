@@ -3,9 +3,9 @@
     <dimen name="back_button_size">35dp</dimen>
     <dimen name="chats_top_row_height">70dp</dimen>
     <dimen name="auth_components_height">430dp</dimen>
-    <dimen name="auth_components_width">320dp</dimen>
+    <dimen name="auth_components_width">420dp</dimen>
     <dimen name="padding_auth_text_fields">20dp</dimen>
-    <dimen name="google_auth_button_width">105dp</dimen>
+    <dimen name="google_auth_button_width">305dp</dimen>
     <dimen name="padding_auth_fields">24dp</dimen>
     <dimen name="padding_auth_button_row">38dp</dimen>
     <dimen name="auth_fields_radius">10dp</dimen>
@@ -16,6 +16,7 @@
     <dimen name="max_message_length">500</dimen>
     <dimen name="message_content_padding">10dp</dimen>
     <dimen name="messages_and_chats_spacing">6dp</dimen>
+    <dimen name="message_width">300dp</dimen>
     <dimen name="scroll_down_button_size">60dp</dimen>
     <dimen name="common_corner_size">20dp</dimen>
     <dimen name="logout_delete_account_padding">120dp</dimen>

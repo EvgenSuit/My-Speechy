@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,6 +85,9 @@ fun AccountDeletionScreen(
     if (!backButtonEnabled) {
         BackHandler(true) {}
     }
+    LaunchedEffect(Unit) {
+        viewModel.deleteUser()
+    }
     LaunchedEffect(viewModel.authResultFlow) {
         viewModel.authResultFlow.collect { result ->
             if (result is Result.Success) {
@@ -110,7 +114,8 @@ fun AccountDeletionScreen(
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.logout_delete_account_padding), Alignment.CenterVertically),) {
+                verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.logout_delete_account_padding), Alignment.CenterVertically),
+                modifier = Modifier.fillMaxWidth()) {
                 when(val result = uiState.deletionResult) {
                     is Result.InProgress -> {
                         Text("Deleting account...", style = MaterialTheme.typography.bodyMedium.copy(

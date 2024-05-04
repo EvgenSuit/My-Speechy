@@ -156,6 +156,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
         }
     }
     Box(modifier = modifier
+        .padding(30.dp)
         .border(
             width = 1.dp,
             color = Color.White,
@@ -179,7 +180,9 @@ fun MainBox(onNavigateToMain: () -> Unit,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(top = 15.dp, bottom = 15.dp))
-           Column(modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
+           Column(
+               horizontalAlignment = Alignment.CenterHorizontally,
+               modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
                AuthTextField(value = uiState.email,
                    exceptionMessage = emailError ?: "",
                    label = "Email",
@@ -275,7 +278,6 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
                      onGoogleSignInWithIntent: suspend (Intent) -> Unit) {
     val painter = rememberAsyncImagePainter(R.raw.google_icon, imageLoader)
     val coroutine = rememberCoroutineScope()
-
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -304,7 +306,6 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
             containerColor = Color.Blue.copy(alpha = 0.7f)
         ),
         modifier = Modifier
-            .fillMaxWidth()
             .size(dimensionResource(R.dimen.google_auth_button_width), 85.dp)
             .padding(top = 25.dp)
             .imePadding()

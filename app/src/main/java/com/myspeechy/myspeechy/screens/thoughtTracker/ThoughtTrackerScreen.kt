@@ -32,6 +32,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -74,10 +75,9 @@ fun ThoughtTrackerScreen(navController: NavHostController,
         val maxHeight = this.maxHeight
         Column(
             Modifier
-                .fillMaxHeight()
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(dimensionResource(R.dimen.thought_tracker_page_padding))
-                .let { if (maxWidth < width) it.fillMaxWidth() else it.width(width) },
+                .let { if (maxHeight > 400.dp) it.padding(dimensionResource(R.dimen.thought_tracker_page_padding)) else it},
             horizontalAlignment = Alignment.CenterHorizontally) {
             ThoughtTrackerTitle()
             if (maxHeight > 400.dp) Spacer(Modifier.height(100.dp))
@@ -110,7 +110,7 @@ fun ThoughtTrackBox(date: String,
                     onNavigateToItem: () -> Unit) {
     ElevatedButton(onClick = onNavigateToItem,
         shape = RoundedCornerShape(dimensionResource(R.dimen.common_corner_size)),
-        modifier = Modifier.fillMaxWidth(0.9f)
+        modifier = Modifier.width(dimensionResource(R.dimen.thought_tracker_width))
     ) {
         Text(date,
             style = MaterialTheme.typography.labelMedium

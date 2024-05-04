@@ -104,8 +104,9 @@ fun MeditationStatsScreen(viewModel: MeditationStatsViewModel = hiltViewModel())
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
-                .let { if (maxWidth < 500.dp) it.fillMaxWidth() else it.width(500.dp) }
+                //.let { if (maxWidth < 500.dp) it.fillMaxWidth() else it.width(500.dp) }
                 .height(maxHeight)
+                .fillMaxWidth()
                 .let { if (maxHeight < 500.dp) it.verticalScroll(rememberScrollState()) else it }
                 .padding(20.dp)) {
             Text("Meditation time" +
@@ -193,6 +194,7 @@ fun MeditationStatsChart(
             }),
         modifier = Modifier
             .height(maxHeight * statsMap.size)
+            .width(500.dp)
             .verticalScroll(rememberScrollState())
             .clip(RoundedCornerShape(4))
             .background(MaterialTheme.colorScheme.primaryContainer.copy(0.6f))
