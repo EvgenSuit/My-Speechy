@@ -382,7 +382,8 @@ fun CreateOrChangePublicChatForm(
             },
                 modifier = Modifier
                     .padding(top = 15.dp)
-                    .size(200.dp, 50.dp)
+                    .width(200.dp)
+                    .height(IntrinsicSize.Min)
                     .semantics { contentDescription = buttonDescription },
                 colors = ButtonDefaults.buttonColors(
                     contentColor = MaterialTheme.colorScheme.onPrimary,

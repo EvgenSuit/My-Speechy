@@ -20,6 +20,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -184,7 +185,8 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .clip(RoundedCornerShape(30.dp))
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
-        .width(dimensionResource(id = R.dimen.auth_components_width))
+        //.width(dimensionResource(id = R.dimen.auth_components_width))
+        .width(300.dp)
         .verticalScroll(rememberScrollState()))
     {
         Column(
@@ -358,7 +360,8 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
             containerColor = Color.Blue.copy(alpha = 0.7f)
         ),
         modifier = Modifier
-            .size(dimensionResource(R.dimen.google_auth_button_width), 85.dp)
+            .width(dimensionResource(R.dimen.google_auth_button_width))
+            .height(IntrinsicSize.Min)
             .padding(top = 25.dp)
             .imePadding()
     ) {
@@ -444,7 +447,7 @@ fun AuthButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () 
         ),
         modifier = modifier
             .width(120.dp)
-            .height(50.dp)
+            .height(IntrinsicSize.Min)
     ) {
         Text(label, fontFamily = lalezarFamily, fontSize = 20.sp)
     }

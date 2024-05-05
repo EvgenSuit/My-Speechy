@@ -160,7 +160,7 @@ fun PublicChatScreen(navController: NavHostController,
     }
     BoxWithConstraints(contentAlignment = Alignment.Center) {
         val maxWidth = maxWidth
-            ModalNavigationDrawer(
+        ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
                     SideDrawer(
