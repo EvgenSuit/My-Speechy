@@ -91,7 +91,9 @@ fun ThoughtTrackerScreen(navController: NavHostController,
                     TracksColumn(uiState.trackItems,
                         onFormatDate = viewModel::formatDate,
                         onNavigateToItem = {timestamp ->
-                            navController.navigate("${NavScreens.ThoughtTracker}/$timestamp") })
+                            navController.navigate("${NavScreens.ThoughtTracker}/$timestamp") {
+                                launchSingleTop = true
+                            } })
                 } else if (result is Result.InProgress) {
                     Box(modifier = Modifier.fillMaxHeight(),
                         contentAlignment = Alignment.Center) {

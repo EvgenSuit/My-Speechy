@@ -4,14 +4,6 @@ import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.ApplicationInfo
 import androidx.core.util.PatternsCompat
-import com.myspeechy.myspeechy.data.chat.User
-import com.myspeechy.myspeechy.domain.InputFormatCheckResult
-import com.myspeechy.myspeechy.domain.error.EmailError
-import com.myspeechy.myspeechy.domain.error.PasswordError
-import com.myspeechy.myspeechy.domain.useCases.CheckIfIsAdminUseCase
-import com.myspeechy.myspeechy.domain.useCases.DeletePublicChatUseCase
-import com.myspeechy.myspeechy.domain.useCases.LeavePrivateChatUseCase
-import com.myspeechy.myspeechy.domain.useCases.LeavePublicChatUseCase
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
 import com.google.android.gms.auth.api.identity.SignInClient
@@ -22,6 +14,15 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.StorageReference
+import com.myspeechy.myspeechy.data.chat.User
+import com.myspeechy.myspeechy.domain.InputFormatCheckResult
+import com.myspeechy.myspeechy.domain.error.EmailError
+import com.myspeechy.myspeechy.domain.error.PasswordError
+import com.myspeechy.myspeechy.domain.error.UsernameError
+import com.myspeechy.myspeechy.domain.useCases.CheckIfIsAdminUseCase
+import com.myspeechy.myspeechy.domain.useCases.DeletePublicChatUseCase
+import com.myspeechy.myspeechy.domain.useCases.LeavePrivateChatUseCase
+import com.myspeechy.myspeechy.domain.useCases.LeavePublicChatUseCase
 import kotlinx.coroutines.tasks.await
 
 class AuthService(private val auth: FirebaseAuth,
@@ -39,6 +40,13 @@ class AuthService(private val auth: FirebaseAuth,
             onGetState(it.currentUser == null)
         }
         auth.addAuthStateListener(authStateListener)
+    }
+
+    fun validateUsername(username: String): InputFormatCheckResult<String, UsernameError> {
+        if (username.isEmpty() || username.isBlank()) {
+            return InputFormatCheckResult.Error(UsernameError.IS_EMPTY)
+        }
+        return InputFormatCheckResult.Success("")
     }
 
     fun validatePassword(password: String): InputFormatCheckResult<String, PasswordError> {
@@ -82,9 +90,9 @@ class AuthService(private val auth: FirebaseAuth,
         auth.createUserWithEmailAndPassword(email, password).await()
     }
 
-    suspend fun createRealtimeDbUser() {
+    suspend fun createRealtimeDbUser(username: String? = null) {
         val currUser = auth.currentUser
-        rdbRef?.child("users")?.child(currUser!!.uid)?.setValue(User(currUser.displayName ?: "", ""))
+        rdbRef?.child("users")?.child(currUser!!.uid)?.setValue(User(username ?: currUser.displayName!!, ""))
             ?.await()
     }
 

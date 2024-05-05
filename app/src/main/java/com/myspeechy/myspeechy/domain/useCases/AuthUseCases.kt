@@ -5,7 +5,22 @@ import com.myspeechy.myspeechy.domain.InputFormatCheckResult
 import com.myspeechy.myspeechy.domain.auth.AuthService
 import com.myspeechy.myspeechy.domain.error.EmailError
 import com.myspeechy.myspeechy.domain.error.PasswordError
+import com.myspeechy.myspeechy.domain.error.UsernameError
 import com.myspeechy.myspeechy.presentation.UiText
+
+class ValidateUsernameUseCase(
+    private val authService: AuthService
+) {
+    operator fun invoke(username: String): UiText =
+        when (val res = authService.validateUsername(username)) {
+            is InputFormatCheckResult.Error -> {
+                when (res.error) {
+                    UsernameError.IS_EMPTY -> UiText.StringResource(R.string.username_is_empty)
+                }
+            }
+            is InputFormatCheckResult.Success -> { UiText.StringResource.DynamicString("") }
+        }
+}
 
 class ValidatePasswordUseCase(
     private val authService: AuthService) {

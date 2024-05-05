@@ -1,5 +1,6 @@
 package com.myspeechy.myspeechy.screens.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -136,7 +137,9 @@ fun PrivateChatScreen(navController: NavHostController,
                .fillMaxWidth()
                .pointerInput(Unit) {
                    detectTapGestures {
-                       if (uiState.otherUsername != null) navController.navigate("userProfile/${viewModel.otherUserId}")
+                       if (uiState.otherUsername != null) navController.navigate("userProfile/${viewModel.otherUserId}") {
+                           launchSingleTop = true
+                       }
                    }
                }
                .padding(10.dp),
@@ -161,9 +164,7 @@ fun PrivateChatScreen(navController: NavHostController,
                Box(modifier = Modifier.fillMaxWidth(),
                    contentAlignment = Alignment.Center) {
                    Text(
-                       if (otherUsername == null) "Deleted account"
-                       else if (otherUsername.isEmpty()) stringResource(R.string.empty_username)
-                       else otherUsername,
+                       otherUsername ?: stringResource(R.string.deleted_account),
                        color = MaterialTheme.colorScheme.primary,
                        overflow = TextOverflow.Ellipsis,
                        maxLines = 1,
@@ -203,7 +204,9 @@ fun PrivateChatScreen(navController: NavHostController,
                        onDelete = { coroutineScope.launch {
                            if(otherUserExists) viewModel.deleteMessage(it)
                        } }) {chatId ->
-                       navController.navigate("chats/private/$chatId")
+                       navController.navigate("chats/private/$chatId") {
+                           launchSingleTop = true
+                       }
                    }
                    this@Column.AnimatedVisibility(showScrollDownButton,
                        enter = slideInVertically(animationSpec = tween(100)) {it},

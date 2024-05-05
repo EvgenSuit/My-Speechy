@@ -12,6 +12,7 @@ import com.myspeechy.myspeechy.domain.chat.DirectoryManager
 import com.myspeechy.myspeechy.domain.chat.ImageCompressor
 import com.myspeechy.myspeechy.domain.chat.UserProfileService
 import com.myspeechy.myspeechy.domain.error.PictureStorageError
+import com.myspeechy.myspeechy.domain.useCases.ValidateUsernameUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
     private val userProfileService: UserProfileService,
+    private val validateUsernameUseCase: ValidateUsernameUseCase,
     filesDirPath: String,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
@@ -48,7 +50,8 @@ class UserProfileViewModel @Inject constructor(
     }
     private fun listenForUser(remove: Boolean) {
         userProfileService.userListener(userId, {updateErrorMessage(it)}, { user ->
-             _uiState.update { it.copy(user = user.getValue(User::class.java)) }
+            val user = user.getValue(User::class.java)
+             _uiState.update { it.copy(user = user, initUser = user) }
         }, remove)
     }
 
@@ -131,10 +134,16 @@ class UserProfileViewModel @Inject constructor(
             }
         }
     }
-    suspend fun changeUserInfo(newName: String, newInfo: String) {
+
+    fun onUsernameChange(value: String) =
+        _uiState.update { it.copy(user = it.user?.copy(name = value)) }
+    fun onInfoChange(value: String) = _uiState.update { it.copy(user = it.user?.copy(info = value)) }
+    suspend fun changeUserInfo() {
         try {
-            val nameIsSame = _uiState.value.user?.name == newName
-            val infoIsSame = _uiState.value.user?.info == newInfo
+            val newName = _uiState.value.user!!.name
+            val newInfo = _uiState.value.user!!.info
+            val nameIsSame = newName == _uiState.value.initUser?.name
+            val infoIsSame = newInfo == _uiState.value.initUser?.info
             if (!nameIsSame) {
                 userProfileService.changeUsername(newName)
             }
@@ -190,6 +199,7 @@ class UserProfileViewModel @Inject constructor(
 
     data class UserProfileUiState(
         val user: User? = User(),
+        val initUser: User? = User(),
         val accountDeletionResult: Result = Result.Idle,
         val recomposePic: String = "",
         val chatAlertDialogDataClass: AlertDialogDataClass = AlertDialogDataClass(),
@@ -201,7 +211,6 @@ class UserProfileViewModel @Inject constructor(
     )
 }
 enum class PictureState {
-    IDLE,
     DOWNLOADING,
     UPLOADING,
     SUCCESS,

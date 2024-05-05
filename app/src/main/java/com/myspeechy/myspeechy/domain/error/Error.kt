@@ -2,6 +2,10 @@ package com.myspeechy.myspeechy.domain.error
 
 sealed interface Error
 
+enum class UsernameError: Error {
+    IS_EMPTY
+}
+
 enum class EmailError: Error {
     IS_EMPTY,
     IS_NOT_VALID

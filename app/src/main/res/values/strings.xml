@@ -8,11 +8,14 @@
     <string name="meditation_notification_channel">1</string>
     <string name="sign_up">Sign Up</string>
     <string name="log_in">Log In</string>
+    <string name="update_auth_option">Update auth option</string>
     
     <string name="email_auth_field_click_label">Email</string>
     <string name="password_auth_field_click_label">Password</string>
 
+    <string name="username">Username</string>
     <string name="email_not_valid">Email is of a wrong format</string>
+    <string name="username_is_empty">Username is empty</string>
     <string name="email_is_empty">"Email is empty"</string>
     <string name="password_is_empty">Password is empty</string>
     <string name="password_is_not_mixed_case">Password must contain mixed letters</string>
@@ -26,7 +29,6 @@
     <string name="resume_button">Resume</string>
     <string name="cancel_button">Cancel</string>
 
-    <string name="empty_username">Empty username</string>
     <string name="your_chats">Your chats</string>
     <string name="all_groups">All groups</string>
     <string name="add_public_chat">Add public chat</string>
@@ -44,7 +46,7 @@
     <string name="load_screen">Load screen</string>
     <string name="main_screen_content">Main screen content</string>
     <string name="lesson_item">Lesson item</string>
-
+    <string name="deleted_account">Deleted account</string>
     <string name="questions_column">Questions column</string>
     <string name="thoughts_column">Thoughts column</string>
     <string name="thoughts_text_field">Thoughts text field</string>

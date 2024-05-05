@@ -28,15 +28,6 @@ import com.google.firebase.ktx.Firebase
 import org.junit.Assert
 
 
-fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
-        isNodeDisplayed(matcher: SemanticsMatcher): Boolean =
-    try {
-        onNode(matcher).assertIsDisplayed()
-        true
-    } catch (e: AssertionError) {
-        false
-    }
-
 @OptIn(ExperimentalTestApi::class)
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>
         .initTest(screen: NavScreens): TestNavHostController {
@@ -98,12 +89,19 @@ fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
         getInteger(@IntegerRes id: Int): Int = activity.resources.getInteger(id)
 
+
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
         onClickNodeWithContentDescription(description: String) =
     onNodeWithContentDescription(description).performClick()
 
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
         onClickButtonWithLabel(label: String) = onNode(hasClickLabel(label)).performClick()
+
+fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
+        onUsernameInput(text: String) {
+    onNode(hasClickLabel("Username")).performTextClearance()
+    onNode(hasClickLabel("Username")).performTextInput(text)
+        }
 fun AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>.
         onEmailInput(text: String) {
     onNode(hasClickLabel("Email")).performTextClearance()

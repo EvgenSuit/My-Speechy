@@ -1,5 +1,6 @@
 package com.myspeechy.myspeechy.screens.chat
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -179,7 +180,9 @@ fun PublicChatScreen(navController: NavHostController,
                                     drawerState.close()
                                     val chatId = listOf(userId, viewModel.userId).sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {it})
                                         .joinToString("_")
-                                    navController.navigate("chats/private/${chatId}")
+                                    navController.navigate("chats/private/${chatId}") {
+                                        launchSingleTop = true
+                                    }
                                 } }
                         })
                 }) {
@@ -232,7 +235,10 @@ fun PublicChatScreen(navController: NavHostController,
                                 onDelete = {
                                     coroutineScope.launch { viewModel.deleteMessage(it) }
                                 }) { chatId ->
-                                navController.navigate("chats/private/$chatId")
+                                navController.navigate("chats/private/$chatId") {
+                                    launchSingleTop = true //when set to true, when a user navigates back from that private chat,
+                                    //the main chats page gets displayed instead of a chat they've just been to
+                                }
                             }
                             this@Column.AnimatedVisibility(showScrollDownButton,
                                 enter = slideInVertically {it},
@@ -291,23 +297,24 @@ fun PublicChatScreen(navController: NavHostController,
                     }
                 }
             }
-            AnimatedVisibility(showChangeChatInfoForm,
-                enter = slideInHorizontally{-it},
-                exit = slideOutHorizontally{-it}) {
-                CreateOrChangePublicChatForm(
-                    uiState.chat,
-                    modifier = Modifier.let { if (maxWidth < formWidth) it.fillMaxWidth() else it.width(formWidth) },
-                    onClose = { showChangeChatInfoForm = false },
-                    onCreateOrChange = { (title, description) ->
+        }
+        AnimatedVisibility(showChangeChatInfoForm,
+            enter = slideInHorizontally{-it},
+            exit = slideOutHorizontally{-it}) {
+            CreateOrChangePublicChatForm(
+                uiState.chat,
+                modifier = Modifier.let { if (maxWidth < formWidth) it.fillMaxWidth() else it.width(formWidth) },
+                onClose = { showChangeChatInfoForm = false },
+                onCreateOrChange = { (title, description) ->
+                    if (uiState.chat.title != title || uiState.chat.description != description) {
                         coroutineScope.launch {
                             viewModel.changeChat(title, description)
                             showChangeChatInfoForm = false
                         }
-                    })
-            }
+                    } else showChangeChatInfoForm = false
+                })
         }
     }
-
 
     if (uiState.joined && uiState.alertDialogDataClass.title.isNotEmpty()) {
         CustomAlertDialog(
@@ -438,9 +445,10 @@ fun MembersColumn(
                             .padding(5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(if (username == null) "Deleted account"
-                            else if (username.isEmpty()) stringResource(R.string.empty_username)
-                            else username, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(username ?: stringResource(R.string.deleted_account),
+                            fontSize = 18.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
                         if (userId == admin) {
                             Text("Admin", color = MaterialTheme.colorScheme.surfaceTint)
                         }
@@ -450,7 +458,7 @@ fun MembersColumn(
         }
         if (state == MembersState.LOADING)
             item {
-                    LinearProgressIndicator(modifier = Modifier)
+                LinearProgressIndicator(modifier = Modifier)
             }
     }
 }

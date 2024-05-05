@@ -1,13 +1,11 @@
 package com.myspeechy.myspeechy.screens
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,16 +34,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.myspeechy.myspeechy.R
 import com.myspeechy.myspeechy.data.lesson.LessonItem
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.MainViewModel
-import com.google.firebase.firestore.FirebaseFirestoreException
 import es.dmoral.toasty.Toasty
 
 @Composable
@@ -129,7 +126,9 @@ fun LessonItemComposable(lessonItem: LessonItem,
     var readyToDraw by remember {
         mutableStateOf(false)
     }
-    ElevatedButton(onClick = {navController.navigate("${lessonItem.category}/${lessonItem.id}")},
+    ElevatedButton(onClick = {navController.navigate("${lessonItem.category}/${lessonItem.id}") {
+        launchSingleTop = true
+    } },
         shape = RoundedCornerShape(10.dp),
         enabled = isAvailable,
         colors = ButtonDefaults.buttonColors(

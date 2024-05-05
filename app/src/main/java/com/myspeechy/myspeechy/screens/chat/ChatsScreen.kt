@@ -1,5 +1,6 @@
 package com.myspeechy.myspeechy.screens.chat
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -16,11 +17,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -70,7 +72,9 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -103,6 +107,7 @@ import com.myspeechy.myspeechy.presentation.chat.ChatsViewModel
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.delay
 import java.io.File
+
 @Composable
 fun ChatsScreen(navController: NavHostController,
                     viewModel: ChatsViewModel = hiltViewModel()) {
@@ -114,7 +119,7 @@ fun ChatsScreen(navController: NavHostController,
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
     val interactionSource = remember { MutableInteractionSource() }
     val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
-    var isFormExpanded by rememberSaveable(isSearchFieldFocused) { mutableStateOf(false) }
+    var isFormExpanded by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val showSearchedChats by remember(uiState.searchedChats) { mutableStateOf(uiState.searchedChats.isNotEmpty()) }
     val usersChatsListState = rememberLazyListState()
@@ -148,18 +153,32 @@ fun ChatsScreen(navController: NavHostController,
             Modifier
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.background)
-                .blur(if (isFormExpanded) 5.dp else 0.dp)) {
+                .blur(if (isFormExpanded) 5.dp else 0.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onPress = {
+                        isFormExpanded = false
+                    })
+                }) {
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .padding(top = 5.dp)
-                            .height(dimensionResource(R.dimen.chats_top_row_height)),
+                            .height(dimensionResource(R.dimen.chats_top_row_height))
+                            .pointerInput(Unit) {
+                                detectTapGestures(onPress = {
+                                    isFormExpanded = false
+                                })
+                            },
                         verticalAlignment = Alignment.CenterVertically) {
-                        ChatSearch(Modifier.clickable { isFormExpanded = false },
+                        ChatSearch(Modifier.onFocusChanged { isFormExpanded = false },
                             onSearch = viewModel::searchForChat,
                             interactionSource = interactionSource,
                             onEmptyTitle = viewModel::clearSearchedChats)
-                        IconButton(onClick = { navController.navigate("userProfile/${viewModel.userId}") },
+                        IconButton(onClick = {
+                            if(!isFormExpanded) navController.navigate("userProfile/${viewModel.userId}") {
+                                launchSingleTop = true
+                            }
+                            isFormExpanded = false },
                             Modifier.fillMaxWidth()) {
                             Icon(
                                 Icons.Filled.AccountBox,
@@ -175,7 +194,7 @@ fun ChatsScreen(navController: NavHostController,
                             Tab(
                                 text = {Text(s, overflow = TextOverflow.Ellipsis)},
                                 selected = index == chatScreenPartSelected,
-                                onClick = { chatScreenPartSelected = index
+                                onClick = { if (!isFormExpanded) chatScreenPartSelected = index
                                 isFormExpanded = false},
                                 modifier = Modifier.semantics { contentDescription = s })
                         }
@@ -192,7 +211,10 @@ fun ChatsScreen(navController: NavHostController,
                                 viewModel.getChatPic(otherUserId ?: "")
                             },
                             onNavigateToChat = {(type, chatId) ->
-                                navController.navigate("chats/$type/$chatId")},
+                                if (!isFormExpanded) navController.navigate("chats/$type/$chatId") {
+                                    launchSingleTop = true
+                                }
+                                isFormExpanded = false},
                             onLeaveChat = { (type, chatId) ->
                                 viewModel.leaveChat(type, chatId) })
                     }
@@ -245,12 +267,23 @@ fun ChatsScreen(navController: NavHostController,
                         }
                     }
                 }
-        if (uiState.searchedChats.isNotEmpty()) {
+        AnimatedVisibility(uiState.searchedChats.isNotEmpty()) {
             SearchedChats(searchedChats = uiState.searchedChats,
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures(onPress = {
+                        isFormExpanded = false
+                        viewModel.clearSearchedChats()
+                    })
+                },
                 onFormatDate = viewModel::formatDate) { searchedChatId ->
-                viewModel.clearSearchedChats()
-                focusManager.clearFocus(true)
-                navController.navigate("chats/public/${searchedChatId}")
+                if (!isFormExpanded) {
+                    viewModel.clearSearchedChats()
+                    focusManager.clearFocus(true)
+                    navController.navigate("chats/public/${searchedChatId}") {
+                        launchSingleTop = true
+                    }
+                }
+                isFormExpanded = false
             }
         }
     }
@@ -258,7 +291,7 @@ fun ChatsScreen(navController: NavHostController,
 
 @Composable
 fun ChatSearch(
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     interactionSource: MutableInteractionSource,
     onSearch: (String) -> Unit, onEmptyTitle: () -> Unit) {
     val focusManager = LocalFocusManager.current
@@ -307,17 +340,21 @@ fun ChatSearch(
 @Composable
 fun SearchedChats(
     searchedChats: Map<String, Chat>,
+    modifier: Modifier,
     onFormatDate: (Long) -> String,
     onGoToChat: (String) -> Unit) {
+    val width = dimensionResource(R.dimen.max_width)
     LazyColumn(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chats_padding)),
-        modifier = Modifier
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
             .padding(top = dimensionResource(id = R.dimen.chat_search_text_field_height))
-            .shadow(20.dp)) {
+            .fillMaxSize()
+    ) {
         items(searchedChats.entries.toList()) { (chatId, chat) ->
             ElevatedCard(
                 onClick = {onGoToChat(chatId)},
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .width(width)
                     .shadow(10.dp)
             ) {
                 ChatLastMessageContent(currChat = chat, onFormatDate)
@@ -414,7 +451,7 @@ fun LeaveChatBox(
 
 @Composable
 fun ChatLastMessageContent(currChat: Chat?,
-                           onFormatDate: (Long) -> String,) {
+                           onFormatDate: (Long) -> String) {
     Column(modifier = Modifier
         .height(70.dp)
         .padding(10.dp),

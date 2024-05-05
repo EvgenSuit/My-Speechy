@@ -15,8 +15,8 @@ android {
         applicationId = "com.myspeechy.myspeechy"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "3.0"
+        versionCode = 4
+        versionName = "4.0"
         buildTypes {
             release {
                 ndk {
@@ -101,7 +101,7 @@ dependencies {
     implementation("androidx.datastore:datastore:1.0.0")
 
     //Permissions
-    implementation("com.google.accompanist:accompanist-permissions:0.29.0-alpha")
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     //Plotting
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")

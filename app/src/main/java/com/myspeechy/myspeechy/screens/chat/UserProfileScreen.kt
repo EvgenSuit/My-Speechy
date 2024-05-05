@@ -42,7 +42,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,10 +79,10 @@ fun UserProfileScreen(
     val isCurrentUser = viewModel.userId == viewModel.currUserId
     val placeholders = Pair("Username", "About me")
     val focusManager = LocalFocusManager.current
-    var name by remember(uiState.user?.name) {
+    val name by remember(uiState.user?.name) {
         mutableStateOf(uiState.user?.name)
     }
-    var info by remember(uiState.user?.info) {
+    val info by remember(uiState.user?.info) {
         mutableStateOf(uiState.user?.info)
     }
     LaunchedEffect(Unit) {
@@ -173,7 +172,7 @@ fun UserProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AnimatedVisibility(name != null) {
                     if (isCurrentUser) {
-                        CommonTextField(value = name ?: "", onChange = {name = it}, placeholders = placeholders)
+                        CommonTextField(value = name ?: "", onChange = viewModel::onUsernameChange, placeholders = placeholders)
                     } else {
                         if (!name.isNullOrEmpty()) {
                             UserInfoTable(value = name ?: "")
@@ -182,10 +181,10 @@ fun UserProfileScreen(
                 }
                 AnimatedVisibility(info != null) {
                     if (isCurrentUser) {
-                        CommonTextField(value = info ?: "", onChange = {info = it}, last = true, placeholders = placeholders)
+                        CommonTextField(value = info ?: "", onChange = viewModel::onInfoChange, last = true, placeholders = placeholders)
                     } else {
-                         if (!info.isNullOrEmpty()) {
-                             UserInfoTable(value = info ?: "")
+                         if (info != null && info!!.isNotBlank()) {
+                             UserInfoTable(value = info!!)
                          }
                     }
                 }
@@ -194,18 +193,19 @@ fun UserProfileScreen(
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
             Spacer(Modifier.weight(1f))
-            if(isCurrentUser && (name != uiState.user?.name || info != uiState.user?.info)) {
-                ElevatedButton(onClick = {
-                    if (name != null && info != null)
+            if (isCurrentUser) {
+                if((name != null && name!!.isNotBlank())
+                    && (info != null) &&
+                    (name != uiState.initUser?.name || info != uiState.initUser?.info)) {
+                    ElevatedButton(onClick = {
                         coroutineScope.launch {
-                            viewModel.changeUserInfo(name!!, info!!)
+                            viewModel.changeUserInfo()
                             focusManager.clearFocus(true)
                         }
-                }, modifier = Modifier.size(200.dp, 50.dp)) {
-                    Text("Save")
+                    }, modifier = Modifier.size(200.dp, 50.dp)) {
+                        Text("Save")
+                    }
                 }
-            }
-            if (isCurrentUser) {
                 Column(verticalArrangement = Arrangement.spacedBy(40.dp),
                     modifier = Modifier.padding(top = 25.dp)) {
                     if (uiState.pictureState == PictureState.SUCCESS) {

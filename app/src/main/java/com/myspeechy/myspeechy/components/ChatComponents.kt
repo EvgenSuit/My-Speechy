@@ -180,9 +180,7 @@ fun MessageContent(
                 .padding(dimensionResource(R.dimen.message_content_padding))) {
             val senderUsername = message.senderUsername
             if (message.sender != userId && !isPrivate) {
-                    Text(if (senderUsername == null) "Deleted account"
-                    else if (senderUsername.isEmpty()) stringResource(R.string.empty_username)
-                        else senderUsername,
+                    Text(senderUsername ?: stringResource(R.string.deleted_account),
                         overflow = TextOverflow.Ellipsis,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -330,6 +328,9 @@ fun CreateOrChangePublicChatForm(
     var title by remember { mutableStateOf(chat?.title ?: "") }
     var description by remember { mutableStateOf(chat?.description ?: "") }
     var isTitleBlank by remember { mutableStateOf(false) }
+    var isCreateButtonEnabled by rememberSaveable {
+        mutableStateOf(true)
+    }
     Column(
         modifier
             .height(IntrinsicSize.Max)
@@ -371,12 +372,15 @@ fun CreateOrChangePublicChatForm(
             CommonTextField(value = description, onChange = {description = it}, last = true,
                 placeholders = placeholders,
                 modifier = Modifier.semantics { contentDescription = placeholders.second })
-            OutlinedButton(onClick = {
+            OutlinedButton(
+                enabled = isCreateButtonEnabled,
+                onClick = {
                 if (title.isNotBlank()) {
+                    isCreateButtonEnabled = false
                     onCreateOrChange(Pair(title, description))
                 } else isTitleBlank = true
             },
-                Modifier
+                modifier = Modifier
                     .padding(top = 15.dp)
                     .size(200.dp, 50.dp)
                     .semantics { contentDescription = buttonDescription },
@@ -418,17 +422,17 @@ fun CommonTextField(value: String,
             }
         ),
         onValueChange = {
-            if (last && it.length <= descriptionMaxChar) onChange(it) //description
-            if (!last && it.length <= usernameOrTitleMaxChar) onChange(it) //username or title
+            if (last && (value.isNotBlank() || it.isNotBlank()) && it.length <= descriptionMaxChar) onChange(it) //description
+            if (!last && (value.isNotBlank() || it.isNotBlank()) && it.length <= usernameOrTitleMaxChar) onChange(it) //username or title
         },
         placeholder = {Text(if (!last) placeholders.first else placeholders.second,
             )},
-        supportingText = {Text(if (value.isNotEmpty())
-            if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar" else "",
-            Modifier.fillMaxWidth(),
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End)},
+        supportingText = {
+            if (value.isNotBlank()) Text(if (!last) "${value.length} / $usernameOrTitleMaxChar" else "${value.length} / $descriptionMaxChar",
+                Modifier.fillMaxWidth(),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.End) },
         textStyle = TextStyle(fontSize = 22.sp),
         modifier = modifier
             .fillMaxWidth())

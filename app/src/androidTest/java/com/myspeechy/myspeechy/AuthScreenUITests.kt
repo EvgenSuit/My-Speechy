@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.testing.TestNavHostController
 import com.google.firebase.Firebase
@@ -21,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import kotlin.math.log
 
 @HiltAndroidTest
 @OptIn(ExperimentalTestApi::class)
@@ -50,15 +52,22 @@ class AuthScreenUITests {
         with(composeTestRule) {
             val logIn = getString(R.string.log_in)
             val signUp = getString(R.string.sign_up)
+            onNode(hasText("Go to ${getString(R.string.sign_up)}")).assertIsDisplayed()
+            onClickButtonWithLabel(getString(R.string.update_auth_option))
+            onNode(hasClickLabel(logIn)).assertIsNotDisplayed()
+            onUsernameInput("e")
+            onUsernameInput("")
+            assertTextIsDisplayed(getString(R.string.username_is_empty))
+
             onEmailInput("e")
             onEmailInput("")
             assertTextIsDisplayed(getString(R.string.email_is_empty))
             onEmailInput("incorrect format")
             assertTextIsDisplayed(getString(R.string.email_not_valid))
 
-            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
             onNode(hasClickLabel(signUp)).assertIsNotEnabled()
 
+            onUsernameInput("username")
             onPasswordInput("e")
             onPasswordInput("")
             assertTextIsDisplayed(getString(R.string.password_is_empty))
@@ -68,8 +77,11 @@ class AuthScreenUITests {
             assertTextIsDisplayed(getString(R.string.password_not_enough_digits))
             onPasswordInput("okvndfdkf2")
             assertTextIsDisplayed(getString(R.string.password_is_not_mixed_case))
-            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
             onNode(hasClickLabel(signUp)).assertIsNotEnabled()
+
+            onClickButtonWithLabel(getString(R.string.update_auth_option))
+            onNode(hasClickLabel(logIn)).assertIsNotEnabled()
+            onNode(hasClickLabel(signUp)).assertIsNotDisplayed()
         }
     }
 
@@ -78,14 +90,16 @@ class AuthScreenUITests {
         with(composeTestRule) {
             val logIn = getString(R.string.log_in)
             val signUp = getString(R.string.sign_up)
+            onClickButtonWithLabel(getString(R.string.update_auth_option))
+            onUsernameInput("username")
             onEmailInput("email@gmail.com")
             onPasswordInput("Fjfrkj434bg")
-            onNode(hasClickLabel(logIn)).assertIsEnabled()
             onNode(hasClickLabel(signUp)).assertIsEnabled()
+            onClickButtonWithLabel(getString(R.string.update_auth_option))
+            onNode(hasClickLabel(logIn)).assertIsEnabled()
         }
     }
 
-    @OptIn(ExperimentalTestApi::class)
     @Test
     fun signInWrongCredentials_authFailed() {
         with(composeTestRule) {

@@ -26,9 +26,6 @@
           </targets>
         </DialogSelection>
       </SelectionState>
-      <SelectionState runConfigName="AuthScreenUITests">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="validInputFormat_authAvailable()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -36,6 +33,9 @@
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
       <SelectionState runConfigName="signInWrongCredentials_authFailed()">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="clickOnAddChatThenFocusOnSearch_chatCreationCancelled()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

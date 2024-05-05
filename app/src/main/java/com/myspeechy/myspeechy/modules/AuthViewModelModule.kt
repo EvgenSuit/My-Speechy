@@ -19,6 +19,7 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.myspeechy.myspeechy.domain.useCases.ValidateUsernameUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,6 +49,10 @@ object AuthViewModelModule {
 
     @Provides
     fun provideFirebaseAuth(): FirebaseAuth = Firebase.auth
+
+    @Provides
+    fun provideValidateUsernameUseCase(): ValidateUsernameUseCase =
+        ValidateUsernameUseCase(provideAuthService())
     @Provides
     fun provideValidateEmailUseCase(): ValidateEmailUseCase = ValidateEmailUseCase(
         provideAuthService()

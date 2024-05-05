@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <integer name="max_message_length">300</integer>
-    <integer name="max_username_or_title_length">70</integer>
+    <integer name="max_username_or_title_length">20</integer>
     <integer name="max_description_length">70</integer>
     <integer name="max_thought_length">300</integer>
 </resources>

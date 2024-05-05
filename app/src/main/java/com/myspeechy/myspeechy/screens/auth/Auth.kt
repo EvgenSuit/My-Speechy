@@ -7,7 +7,12 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,6 +60,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.integerResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -120,15 +126,28 @@ fun AuthScreen(
 @Composable
 fun MainBox(onNavigateToMain: () -> Unit,
             imageLoader: ImageLoader,
-            modifier: Modifier = Modifier) {
-    val viewModel: AuthViewModel = hiltViewModel()
+            modifier: Modifier = Modifier,
+            viewModel: AuthViewModel = hiltViewModel()) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val exceptionState by viewModel.exceptionState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val padding = dimensionResource(id = R.dimen.padding_auth_fields)
+    val usernameLabel = stringResource(R.string.username)
+    val emailLabel = stringResource(R.string.email_auth_field_click_label)
+    val passwordLabel = stringResource(R.string.password_auth_field_click_label)
     val linearProgressBarDescription = stringResource(R.string.waiting_for_auth)
+    val maxUsernameLength = integerResource(R.integer.max_username_or_title_length)
+    val paddingAuthTextFields = dimensionResource(R.dimen.padding_auth_text_fields)
+    val usernameError by remember(exceptionState.usernameErrorMessage) {
+        mutableStateOf(exceptionState.usernameErrorMessage?.let { e ->
+            when (e) {
+                is UiText.StringResource -> e.asString(context)
+                is UiText.StringResource.DynamicString -> e.s
+            }
+        })
+    }
     val emailError by remember(exceptionState.emailErrorMessage) {
         mutableStateOf(exceptionState.emailErrorMessage?.let { e ->
             when (e) {
@@ -171,7 +190,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .align(Alignment.Center)
         ) {
             Text(text = stringResource(id = R.string.app_name),
                 fontFamily = itimFamily,
@@ -182,28 +200,53 @@ fun MainBox(onNavigateToMain: () -> Unit,
                     .padding(top = 15.dp, bottom = 15.dp))
            Column(
                horizontalAlignment = Alignment.CenterHorizontally,
+               verticalArrangement = Arrangement.spacedBy(paddingAuthTextFields),
                modifier = Modifier.padding(start = padding, end = padding, bottom = 34.dp)) {
-               AuthTextField(value = uiState.email,
-                   exceptionMessage = emailError ?: "",
-                   label = "Email",
-                   modifier = Modifier.clickable(onClickLabel = stringResource(R.string.email_auth_field_click_label),
-                       onClick = {}),
-                   onValueChange = {viewModel.onEmailChanged(it)})
-               if (!emailError.isNullOrEmpty()) {
-                   ErrorMessage(emailError!!)
+               AnimatedVisibility(!uiState.logIn,
+                   enter = slideInHorizontally { it },
+                   exit = slideOutHorizontally { it }) {
+                   Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                       AuthTextField(value = uiState.username,
+                           exceptionMessage = usernameError ?: "",
+                           label = usernameLabel,
+                           modifier = Modifier.clickable(onClickLabel = usernameLabel,
+                               onClick = {}),
+                           onValueChange = {
+                               if (it.length <= maxUsernameLength) viewModel.onUsernameChanged(it)
+                           })
+                       if (!usernameError.isNullOrEmpty()) {
+                           ErrorMessage(usernameError!!)
+                       }
+                   }
                }
-               AuthTextField(value = uiState.password,
-                   exceptionMessage = passwordError ?: "",
-                   label = "Password",
-                   modifier = Modifier.clickable(onClickLabel = stringResource(R.string.password_auth_field_click_label),
-                       onClick = {}),
-                   onValueChange = {viewModel.onPasswordChanged(it)})
-               if (!passwordError.isNullOrEmpty()) {
-                   ErrorMessage(passwordError!!)
+               Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                   AuthTextField(value = uiState.email,
+                       exceptionMessage = emailError ?: "",
+                       label = emailLabel,
+                       modifier = Modifier.clickable(onClickLabel = emailLabel,
+                           onClick = {}),
+                       onValueChange = viewModel::onEmailChanged)
+                   if (!emailError.isNullOrEmpty()) {
+                       ErrorMessage(emailError!!)
+                   }
                }
-               AnimatedVisibility(uiState.result !is Result.InProgress) {
+               Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                   AuthTextField(value = uiState.password,
+                       exceptionMessage = passwordError ?: "",
+                       label = passwordLabel,
+                       modifier = Modifier.clickable(onClickLabel = passwordLabel,
+                           onClick = {}),
+                       onValueChange = viewModel::onPasswordChanged)
+                   if (!passwordError.isNullOrEmpty()) {
+                       ErrorMessage(passwordError!!)
+                   }
+               }
+               AnimatedVisibility(uiState.result !is Result.InProgress && uiState.result !is Result.Success) {
                    AuthButtons(
-                       enabled = emailError?.isEmpty() == true &&
+                       logIn = uiState.logIn,
+                       enabled =
+                       (usernameError?.isEmpty() == true || uiState.logIn) &&
+                       emailError?.isEmpty() == true &&
                        passwordError?.isEmpty() == true && uiState.result !is Result.Error,
                        onLogIn = {
                            coroutineScope.launch {
@@ -216,13 +259,24 @@ fun MainBox(onNavigateToMain: () -> Unit,
                            }
                        })
                }
+               AnimatedVisibility(uiState.result !is Result.InProgress && uiState.result !is Result.Success) {
+                   val text = "Go to ${if (!uiState.logIn) stringResource(R.string.log_in) else stringResource(R.string.sign_up)}"
+                   val label = stringResource(R.string.update_auth_option)
+                   Text(text,
+                       style = MaterialTheme.typography.labelSmall.copy(
+                           color = Color.Black,
+                           textDecoration = TextDecoration.Underline
+                       ),
+                       modifier = Modifier
+                           .clickable(onClickLabel = label) { viewModel.updateAuthOption() })
+               }
                AnimatedVisibility(uiState.result is Result.InProgress) {
                    LinearProgressIndicator(modifier = Modifier
                        .padding(top = dimensionResource(R.dimen.padding_auth_button_row))
                        .semantics { stateDescription = linearProgressBarDescription })
                }
-               GoogleAuthButton(imageLoader = imageLoader,
-                        enabled = uiState.result !is Result.InProgress,
+                GoogleAuthButton(imageLoader = imageLoader,
+                       enabled = uiState.result !is Result.InProgress && uiState.result !is Result.Success,
                        onGoogleSignIn = viewModel::googleSignIn,
                        onGoogleSignInWithIntent = viewModel::googleSignInWithIntent)
            }
@@ -244,30 +298,28 @@ fun PrivacyPolicyText() {
         modifier = Modifier
             .padding(10.dp)
             .clickable {
-            val urlIntent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse(privacyPolicyLink)
-            )
-            context.startActivity(urlIntent)
-        })
+                val urlIntent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(privacyPolicyLink)
+                )
+                context.startActivity(urlIntent)
+            })
 }
 
 @Composable
 fun AuthButtons(
     enabled: Boolean,
+    logIn: Boolean,
     onLogIn: () -> Unit,
     onSignUp: () -> Unit) {
-    val signUp = stringResource(R.string.sign_up)
-    val logIn = stringResource(R.string.log_in)
-    Row(horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
-            .padding(top = dimensionResource(id = R.dimen.padding_auth_button_row))
-            .fillMaxWidth()
-    ) {
-        AuthButton(label = logIn, enabled,
-            Modifier.clickable(onClickLabel = logIn, onClick = {}), onLogIn)
-        AuthButton(label = signUp, enabled,
-            Modifier.clickable(onClickLabel = signUp, onClick = {}), onSignUp)
+    val signUpLabel = stringResource(R.string.sign_up)
+    val logInLabel = stringResource(R.string.log_in)
+    AnimatedContent(logIn) { state ->
+        AuthButton(label = if (state) logInLabel else signUpLabel, enabled,
+            Modifier
+                .clickable(onClickLabel = if (state) logInLabel else signUpLabel, onClick = {})
+                .fillMaxWidth(),
+            if (state) onLogIn else onSignUp)
     }
 }
 
@@ -310,23 +362,23 @@ fun GoogleAuthButton(imageLoader: ImageLoader,
             .padding(top = 25.dp)
             .imePadding()
     ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Image(painter = painter,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.White)
-                            .weight(0.15f)
-                    )
-                    Text(stringResource(id = R.string.continue_with_google),
-                        textAlign = TextAlign.Center,
-                        fontSize = 17.sp,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f))
-                }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Image(painter = painter,
+                contentDescription = null,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .weight(0.15f)
+            )
+            Text(stringResource(id = R.string.continue_with_google),
+                textAlign = TextAlign.Center,
+                fontSize = 17.sp,
+                color = Color.White,
+                modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -342,12 +394,12 @@ fun AuthTextField(value:String, label: String,
              fontFamily = kalamFamily,
              color = Color.Black,
              fontSize = 24.sp)},
-        keyboardOptions = KeyboardOptions(imeAction = if (label == "Email") ImeAction.Next
+        keyboardOptions = KeyboardOptions(imeAction = if (label != stringResource(R.string.password_auth_field_click_label)) ImeAction.Next
         else ImeAction.Done),
          keyboardActions = KeyboardActions(
              onDone = {if (label == "Email") {
                  focusManager.moveFocus(FocusDirection.Next)
-             }else {
+             } else {
                  focusManager.clearFocus()
              }
              }
@@ -370,7 +422,6 @@ fun AuthTextField(value:String, label: String,
          ),
          shape = RoundedCornerShape(10.dp),
          modifier = modifier
-             .padding(top = dimensionResource(id = R.dimen.padding_auth_text_fields))
              .advancedShadow(
                  alpha = 0.5f,
                  cornersRadius = 10.dp,
@@ -403,5 +454,6 @@ fun AuthButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () 
 fun ErrorMessage(value: String, color: Color = Color.Red) {
     Text(value,
         color = color,
-        modifier = Modifier.padding(5.dp))
+        textAlign = TextAlign.Center,
+        modifier = Modifier)
 }
