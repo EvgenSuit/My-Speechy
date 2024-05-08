@@ -84,7 +84,7 @@ class AuthViewModel @Inject constructor(
             updateAuthResult(Result.InProgress)
             googleAuthService?.signIn()
         } catch (e: Exception) {
-            updateAuthResult(Result.Error("${e.message!!} Make sure to add your Google account to this device"))
+            updateAuthResult(Result.Error("${e.message!!}. Make sure to add your Google account to this device"))
             null
         }
     }

@@ -17,7 +17,6 @@ fun RegularLessonItem(viewModel: RegularLessonItemViewModel = hiltViewModel(),
         uiState = uiState,
         onNavigateUp = onNavigateUp,
         dialogText = viewModel.onCategoryConvert(),
-        onDialogDismiss = viewModel::onDialogDismiss,
         onMarkAsComplete = { viewModel.markAsComplete() }) {
         Text(uiState.lessonItem.text,
             style = MaterialTheme.typography.bodyMedium.copy(

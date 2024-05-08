@@ -40,7 +40,7 @@ fun ErrorScreen(error: String,
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxSize()) {
             Text("Couldn't load data. Error code: $error",
-                style = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                 textAlign = TextAlign.Center)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 TryAgainOrLogoutButton(false, onLogout)

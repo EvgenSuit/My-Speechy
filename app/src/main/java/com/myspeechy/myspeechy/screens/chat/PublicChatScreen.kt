@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.myspeechy.myspeechy.R
 import com.myspeechy.myspeechy.components.BackButton
@@ -180,9 +181,7 @@ fun PublicChatScreen(navController: NavHostController,
                                     drawerState.close()
                                     val chatId = listOf(userId, viewModel.userId).sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {it})
                                         .joinToString("_")
-                                    navController.navigate("chats/private/${chatId}") {
-                                        launchSingleTop = true
-                                    }
+                                    navController.navigate("chats/private/${chatId}")
                                 } }
                         })
                 }) {
@@ -235,10 +234,7 @@ fun PublicChatScreen(navController: NavHostController,
                                 onDelete = {
                                     coroutineScope.launch { viewModel.deleteMessage(it) }
                                 }) { chatId ->
-                                navController.navigate("chats/private/$chatId") {
-                                    launchSingleTop = true //when set to true, when a user navigates back from that private chat,
-                                    //the main chats page gets displayed instead of a chat they've just been to
-                                }
+                                navController.navigate("chats/private/$chatId")
                             }
                             this@Column.AnimatedVisibility(showScrollDownButton,
                                 enter = slideInVertically {it},
@@ -445,7 +441,9 @@ fun MembersColumn(
                             .padding(5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(username ?: stringResource(R.string.deleted_account),
+                        Text(if (username == null) stringResource(R.string.deleted_account)
+                        else if (username.isBlank()) stringResource(R.string.empty_username)
+                        else username,
                             fontSize = 18.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis)

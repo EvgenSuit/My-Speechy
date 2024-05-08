@@ -1,6 +1,7 @@
 package com.myspeechy.myspeechy.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -74,11 +76,9 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
         Box(contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .testTag(stringResource(R.string.load_screen))) {
-            Text("My Speechy",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color = MaterialTheme.colorScheme.onBackground
-                ))
+            Image(painterResource(R.drawable.app_launch_icon), contentDescription = null)
         }
     }
 }
@@ -104,9 +104,14 @@ fun UnitColumn(
                     horizontalArrangement = Arrangement.spacedBy(50.dp),
                     userScrollEnabled = true) {
                     items(columnItems.size) {rowIndex ->
-                        val isAvailable = columnItems[rowIndex].isAvailable
+                        val currItem = columnItems[rowIndex]
+                        val isAvailable =  currItem.isAvailable
+                        val wasWelcomeDialogShown = columnItems.any {
+                            it.category == currItem.category && it.isComplete
+                        } || currItem.unit != 1
                         LessonItemComposable(lessonItem = columnItems[rowIndex],
                             navController = navController,
+                            wasWelcomeDialogShown = wasWelcomeDialogShown,
                             isAvailable)
                     }
                 }
@@ -118,6 +123,7 @@ fun UnitColumn(
 @Composable
 fun LessonItemComposable(lessonItem: LessonItem,
                          navController: NavController,
+                         wasWelcomeDialogShown: Boolean,
                          isAvailable: Boolean) {
     val description = stringResource(R.string.lesson_item)
     var titleFontSize by remember {
@@ -126,7 +132,8 @@ fun LessonItemComposable(lessonItem: LessonItem,
     var readyToDraw by remember {
         mutableStateOf(false)
     }
-    ElevatedButton(onClick = {navController.navigate("${lessonItem.category}/${lessonItem.id}") {
+    ElevatedButton(onClick = {
+        navController.navigate("${lessonItem.category}/${lessonItem.id}/$wasWelcomeDialogShown") {
         launchSingleTop = true
     } },
         shape = RoundedCornerShape(10.dp),

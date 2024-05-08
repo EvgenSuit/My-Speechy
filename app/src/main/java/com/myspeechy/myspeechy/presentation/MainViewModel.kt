@@ -1,17 +1,16 @@
 package com.myspeechy.myspeechy.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.ktx.Firebase
 import com.myspeechy.myspeechy.data.DataStoreManager
 import com.myspeechy.myspeechy.data.lesson.Lesson
 import com.myspeechy.myspeechy.data.lesson.LessonItem
 import com.myspeechy.myspeechy.data.lesson.LessonRepository
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.domain.lesson.MainLessonServiceImpl
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,15 +62,15 @@ class MainViewModel @Inject constructor(
                 var newLessonList = lessonList.map { lesson -> if (data.contains(lesson.id)) lesson.copy(isComplete = 1) else lesson.copy(isComplete = 0)}
                 viewModelScope.launch {
                     newLessonList = handleAvailability(newLessonList)
+                    val lessonItems = newLessonList.map { lesson ->
+                        lessonServiceImpl.convertToLessonItem(lesson) }
                     if (_uiState.value.result !is Result.Success) {
                         dataStoreManager.editError("")
                         dataStoreManager.showNavBar(true)
                         dataStoreManager.onDataLoad(true)
                     }
                     _uiState.update {
-                        UiState(newLessonList.map { lesson ->
-                            lessonServiceImpl.convertToLessonItem(lesson)
-                        }, result = Result.Success(FirebaseFirestoreException.Code.OK.name))
+                        UiState(lessonItems, result = Result.Success(FirebaseFirestoreException.Code.OK.name))
                     }
                 }
             }

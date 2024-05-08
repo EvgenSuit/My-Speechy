@@ -1,5 +1,6 @@
 package com.myspeechy.myspeechy.screens.auth
 
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -79,8 +80,9 @@ fun AccountDeletionScreen(
             }
         })
     }
-    val backButtonEnabled by remember(uiState.authResult) {
-        mutableStateOf(uiState.authResult !is Result.InProgress)
+    val backButtonEnabled by remember(uiState.authResult, uiState.deletionResult) {
+        mutableStateOf(uiState.authResult !is Result.InProgress
+                && uiState.deletionResult !is Result.InProgress)
     }
     if (!backButtonEnabled) {
         BackHandler(true) {}
@@ -92,7 +94,7 @@ fun AccountDeletionScreen(
         viewModel.authResultFlow.collect { result ->
             if (result is Result.Success) {
                 focusManager.clearFocus(true)
-                Toasty.success(context, result.data, Toast.LENGTH_SHORT, true).show()
+                viewModel.deleteUser()
             } else if (result is Result.Error) {
                 Toasty.error(context, result.error, Toast.LENGTH_LONG, true).show()
             }
@@ -103,7 +105,7 @@ fun AccountDeletionScreen(
         Modifier
             .fillMaxSize()
             .padding(10.dp)) {
-        if (Firebase.auth.currentUser != null && uiState.deletionResult.error.isNotEmpty()) {
+        if (Firebase.auth.currentUser != null && backButtonEnabled) {
             BackButton { onGoBack() }
         }
         Box(

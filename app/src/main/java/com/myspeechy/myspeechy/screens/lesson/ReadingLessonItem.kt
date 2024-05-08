@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -54,7 +53,6 @@ import com.myspeechy.myspeechy.components.LessonItemWrapper
 import com.myspeechy.myspeechy.components.readingItemButtonBarGradient
 import com.myspeechy.myspeechy.data.lesson.ReadingLessonItemState
 import com.myspeechy.myspeechy.presentation.lesson.reading.ReadingLessonItemViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.round
 
@@ -73,7 +71,6 @@ fun ReadingLessonItem(viewModel: ReadingLessonItemViewModel = hiltViewModel(),
             uiState = uiState,
             scrollState = scrollState,
             dialogText = viewModel.onCategoryConvert(),
-            onDialogDismiss = viewModel::onDialogDismiss,
             onMarkAsComplete = { if (!showControlBar) viewModel.markAsComplete() },
             onNavigateUp = onNavigateUp
         )
@@ -128,7 +125,6 @@ fun MainContent(
     uiState: ReadingLessonItemState,
     scrollState: ScrollState,
     dialogText: String,
-    onDialogDismiss: () -> Unit,
     onMarkAsComplete: () -> Unit,
     onNavigateUp: () -> Unit
 ) {
@@ -139,7 +135,6 @@ fun MainContent(
         scrollState = scrollState,
         onNavigateUp = onNavigateUp,
         dialogText = dialogText,
-        onDialogDismiss = onDialogDismiss,
         onMarkAsComplete = onMarkAsComplete,
         modifier = Modifier
             .fillMaxSize()) {

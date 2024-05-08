@@ -24,28 +24,24 @@ class ReadingLessonItemViewModel @Inject constructor(
     private val lessonServiceImpl: ReadingLessonServiceImpl,
     savedStateHandle: SavedStateHandle): ViewModel(){
     private val id: Int = checkNotNull(savedStateHandle["id"])
+    private val wasWelcomeDialogShown: Boolean = checkNotNull(savedStateHandle["wasWelcomeDialogShown"])
     private val _uiState = MutableStateFlow(ReadingLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
-    var job: Job? = null
+    private var job: Job? = null
     private val jobEnded = mutableStateOf(false)
 
     init {
         viewModelScope.launch {
             lessonRepository.selectLessonItem(id).collect {lesson ->
                 val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
-                _uiState.update { ReadingLessonItemState(lessonItem) }
-                collectDialogBoxShown()
+                _uiState.update { it.copy(
+                    lessonItem = lessonItem,
+                    wasWelcomeDialogBoxShown = wasWelcomeDialogShown
+                ) }
             }
         }
     }
 
-    private fun collectDialogBoxShown() {
-        viewModelScope.launch {
-            lessonServiceImpl.collectDialogBoxShown(_uiState.value.lessonItem.category) {wasShown ->
-                _uiState.update { it.copy(wasWelcomeDialogBoxShown = wasShown) }
-            }
-        }
-    }
 
     private fun movePointer(init: Boolean) {
         if (init) {
@@ -109,9 +105,6 @@ class ReadingLessonItemViewModel @Inject constructor(
         movePointer(jobEnded.value)
     }
 
-    fun onDialogDismiss() = viewModelScope.launch {
-        lessonServiceImpl.editWelcomeDialogBoxShown(_uiState.value.lessonItem.category)
-    }
 
     fun markAsComplete() {
         viewModelScope.launch {

@@ -45,7 +45,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import com.myspeechy.myspeechy.data.authDataStore
 import com.myspeechy.myspeechy.data.errorKey
 import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.loggedOutDataStore
@@ -111,29 +110,29 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
             showNavBar = uiState.dataLoaded && (it[showNavBarDataStore] ?: false)
         }
     }
-    LaunchedEffect(Unit) {
-        context.authDataStore.data.collectLatest {
-            val loggedOut = it[loggedOutDataStore] ?: false
-            val currRoute = navBackStackEntry?.destination?.route
-            //if logged out and not in auth, navigate there
-            if (currRoute != null) {
-                if (loggedOut && currRoute != OtherScreens.Auth.route) {
-                    navController.navigate(OtherScreens.Auth.route) { popUpTo(0)}
+    LaunchedEffect(uiState.authPreferences) {
+        val pref = uiState.authPreferences ?: return@LaunchedEffect
+        val loggedOut = pref[loggedOutDataStore] ?: false
+        val currRoute = navBackStackEntry?.destination?.route
+        //if logged out and not in auth, navigate there
+        if (currRoute != null) {
+            if (loggedOut && currRoute != OtherScreens.Auth.route) {
+                navController.navigate(OtherScreens.Auth.route) { popUpTo(0)}
+                return@LaunchedEffect
+            }
+            if (currRoute != OtherScreens.Auth.route && currRoute != OtherScreens.AccountDelete.route) {
+                // if error was not null or empty but now it is means there's no error anymore and we can navigate to Main
+                if (!error.isNullOrEmpty() && pref[errorKey].isNullOrEmpty()) {
+                    // use popUpTo(NavScreens.Main.route) to not reinitialize view model
+                    // if already navigated to Main before
+                    navController.navigate(NavScreens.Main.route) {
+                        popUpTo(NavScreens.Main.route)
+                        launchSingleTop = true
+                    }
                 }
-                if (currRoute != OtherScreens.Auth.route && currRoute != OtherScreens.AccountDelete.route) {
-                    // if error was not null or empty but now it is means there's no error anymore and we can navigate to Main
-                    if (!error.isNullOrEmpty() && it[errorKey].isNullOrEmpty()) {
-                        // use popUpTo(NavScreens.Main.route) to not reinitialize view model
-                        // if already navigated to Main before
-                        navController.navigate(NavScreens.Main.route) {
-                            popUpTo(NavScreens.Main.route)
-                            launchSingleTop = true
-                        }
-                    }
-                    error = it[errorKey]
-                    if (!error.isNullOrEmpty()) {
-                        navController.navigate(OtherScreens.Error.route) {popUpTo(0) }
-                    }
+                error = pref[errorKey]
+                if (!error.isNullOrEmpty()) {
+                    navController.navigate(OtherScreens.Error.route) {popUpTo(OtherScreens.Error.route) }
                 }
             }
         }
@@ -180,7 +179,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                     }
                     composable(OtherScreens.Auth.route) {
                         AuthScreen(onNavigateToMain = {
-                            navController.navigate(NavScreens.Main.route) { popUpTo(NavScreens.Main.route) }
+                            navController.navigate(NavScreens.Main.route) { popUpTo(0) }
                         })
                     }
                     composable(OtherScreens.Error.route) {
@@ -197,24 +196,26 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                         })
                     }
                     composable(
-                        "${LessonCategories.PSYCHOLOGICAL}/{id}",
+                        "${LessonCategories.PSYCHOLOGICAL}/{id}/{wasWelcomeDialogShown}",
                         arguments = listOf(navArgument("id")
-                        { type = NavType.IntType })
+                        { type = NavType.IntType },
+                            navArgument("wasWelcomeDialogShown") {type = NavType.BoolType}
+                        )
                     ) {
                         RegularLessonItem { navController.navigateUp() }
                     }
                     composable(
-                        "${LessonCategories.READING}/{id}",
-                        arguments = listOf(navArgument("id")
-                        { type = NavType.IntType })
+                        "${LessonCategories.READING}/{id}/{wasWelcomeDialogShown}",
+                        arguments = listOf(navArgument("id") { type = NavType.IntType },
+                            navArgument("wasWelcomeDialogShown") {type = NavType.BoolType})
                     ) {
                         ReadingLessonItem()
                         { navController.navigateUp() }
                     }
                     composable(
-                        "${LessonCategories.MEDITATION}/{id}",
-                        arguments = listOf(navArgument("id")
-                        { type = NavType.IntType })
+                        "${LessonCategories.MEDITATION}/{id}/{wasWelcomeDialogShown}",
+                        arguments = listOf(navArgument("id") { type = NavType.IntType },
+                            navArgument("wasWelcomeDialogShown") {type = NavType.BoolType})
                     ) {
                         MeditationLessonItem()
                         { navController.navigateUp() }

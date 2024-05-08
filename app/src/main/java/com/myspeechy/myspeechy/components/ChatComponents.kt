@@ -180,7 +180,9 @@ fun MessageContent(
                 .padding(dimensionResource(R.dimen.message_content_padding))) {
             val senderUsername = message.senderUsername
             if (message.sender != userId && !isPrivate) {
-                    Text(senderUsername ?: stringResource(R.string.deleted_account),
+                    Text(if (senderUsername == null) stringResource(R.string.deleted_account)
+                            else if (senderUsername.isBlank()) stringResource(R.string.empty_username)
+                            else senderUsername,
                         overflow = TextOverflow.Ellipsis,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,

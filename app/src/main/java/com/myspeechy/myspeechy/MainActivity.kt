@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.lifecycleScope
 import com.myspeechy.myspeechy.data.DataStoreManager
@@ -28,7 +26,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private var darkTheme = mutableStateOf(true)
+    private var darkTheme = mutableStateOf(false)
 
     @Inject
     lateinit var authService: AuthService
@@ -48,8 +46,7 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch {
                 if (isLoggedOut) {
                     DirectoryManager.clearCache(applicationContext.cacheDir.toString())
-                    clearDataStore()
-                }
+                } else clearDataStore()
                 applicationContext.authDataStore.edit { loggedOutPref ->
                     loggedOutPref[loggedOutDataStore] = isLoggedOut
                 }
@@ -57,12 +54,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun clearDataStore() {
-        runBlocking {
-            dataStoreManager.editError("")
-            dataStoreManager.showNavBar(false)
-            dataStoreManager.onDataLoad(false)
-        }
+    private suspend fun clearDataStore() {
+        dataStoreManager.editError("")
+        dataStoreManager.showNavBar(false)
+        dataStoreManager.onDataLoad(false)
     }
     private fun collectThemeMode() {
         lifecycleScope.launch {
@@ -78,9 +73,7 @@ class MainActivity : ComponentActivity() {
         listenForAuthState()
         createNotificationChannel()
         collectThemeMode()
-        if (savedInstanceState == null) {
-            clearDataStore()
-        }
+        runBlocking { clearDataStore() }
         setContent {
             MySpeechyTheme(darkTheme = darkTheme.value) {
                 Surface(

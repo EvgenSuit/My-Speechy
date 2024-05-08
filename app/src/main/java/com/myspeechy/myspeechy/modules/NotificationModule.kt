@@ -3,7 +3,6 @@ package com.myspeechy.myspeechy.modules
 import android.content.Context
 import com.myspeechy.myspeechy.data.DataStoreManager
 import com.myspeechy.myspeechy.data.authDataStore
-import com.myspeechy.myspeechy.data.lessonItemsDataStore
 import com.myspeechy.myspeechy.data.loadData
 import com.myspeechy.myspeechy.data.navBarDataStore
 import com.myspeechy.myspeechy.data.notificationsDataStore
@@ -23,8 +22,7 @@ object NotificationModule {
         return DataStoreManager(
             context.authDataStore, context.navBarDataStore, context.loadData,
             context.themeDataStore,
-            context.notificationsDataStore,
-            context.lessonItemsDataStore
+            context.notificationsDataStore
         )
     }
 }

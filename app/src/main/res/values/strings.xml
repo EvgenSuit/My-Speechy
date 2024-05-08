@@ -46,6 +46,7 @@
     <string name="load_screen">Load screen</string>
     <string name="main_screen_content">Main screen content</string>
     <string name="lesson_item">Lesson item</string>
+    <string name="empty_username">empty username</string>
     <string name="deleted_account">Deleted account</string>
     <string name="questions_column">Questions column</string>
     <string name="thoughts_column">Thoughts column</string>

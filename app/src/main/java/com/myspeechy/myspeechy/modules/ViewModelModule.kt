@@ -12,7 +12,6 @@ import com.myspeechy.myspeechy.data.DataStoreManager
 import com.myspeechy.myspeechy.data.authDataStore
 import com.myspeechy.myspeechy.data.lesson.LessonDb
 import com.myspeechy.myspeechy.data.lesson.LessonRepository
-import com.myspeechy.myspeechy.data.lessonItemsDataStore
 import com.myspeechy.myspeechy.data.loadData
 import com.myspeechy.myspeechy.data.navBarDataStore
 import com.myspeechy.myspeechy.data.notificationsDataStore
@@ -63,33 +62,28 @@ object ViewModelModule {
     fun provideDataStoreManager(@ApplicationContext context: Context): DataStoreManager {
         return DataStoreManager(context.authDataStore, context.navBarDataStore, context.loadData,
             context.themeDataStore,
-            context.notificationsDataStore,
-            context.lessonItemsDataStore)
+            context.notificationsDataStore,)
     }
 
     @Provides
-    fun provideMainLessonServiceImpl(@ApplicationContext context: Context): MainLessonServiceImpl {
+    fun provideMainLessonServiceImpl(): MainLessonServiceImpl {
         return MainLessonServiceImpl(Firebase.firestore.collection("users"),
-            provideDataStoreManager(context),
             Firebase.auth)
     }
     @Provides
-    fun provideReadingLessonServiceImpl(@ApplicationContext context: Context): ReadingLessonServiceImpl {
+    fun provideReadingLessonServiceImpl(): ReadingLessonServiceImpl {
         return ReadingLessonServiceImpl(Firebase.firestore.collection("users"),
-            provideDataStoreManager(context),
             Firebase.auth)
     }
     @Provides
-    fun provideRegularLessonServiceImpl(@ApplicationContext context: Context): RegularLessonServiceImpl {
+    fun provideRegularLessonServiceImpl(): RegularLessonServiceImpl {
         return RegularLessonServiceImpl(Firebase.firestore.collection("users"),
-            provideDataStoreManager(context),
             Firebase.auth)
     }
 
     @Provides
-    fun provideMeditationLessonServiceImpl(@ApplicationContext context: Context): MeditationLessonServiceImpl {
+    fun provideMeditationLessonServiceImpl(): MeditationLessonServiceImpl {
         return MeditationLessonServiceImpl(Firebase.firestore.collection("users"),
-            provideDataStoreManager(context),
             Firebase.auth)
     }
     @Provides

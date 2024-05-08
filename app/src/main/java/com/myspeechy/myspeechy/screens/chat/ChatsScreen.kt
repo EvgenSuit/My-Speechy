@@ -1,6 +1,5 @@
 package com.myspeechy.myspeechy.screens.chat
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -15,12 +14,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -118,7 +114,6 @@ fun ChatsScreen(navController: NavHostController,
     val allGroups = stringResource(R.string.all_groups)
     var chatScreenPartSelected by rememberSaveable { mutableIntStateOf(0) }
     val interactionSource = remember { MutableInteractionSource() }
-    val isSearchFieldFocused by interactionSource.collectIsFocusedAsState()
     var isFormExpanded by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val showSearchedChats by remember(uiState.searchedChats) { mutableStateOf(uiState.searchedChats.isNotEmpty()) }

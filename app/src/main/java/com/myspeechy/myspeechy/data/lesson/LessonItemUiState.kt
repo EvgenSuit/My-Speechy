@@ -9,12 +9,12 @@ interface LessonItemUiState {
 
 data class RegularLessonItemState(
     override val lessonItem: LessonItem,
-    override val wasWelcomeDialogBoxShown: Boolean = true
+    override val wasWelcomeDialogBoxShown: Boolean = false
 ): LessonItemUiState
 
 data class ReadingLessonItemState(
     override val lessonItem: LessonItem,
-    override val wasWelcomeDialogBoxShown: Boolean = true,
+    override val wasWelcomeDialogBoxShown: Boolean = false,
     val started: Boolean = false,
     val paused: Boolean = false,
     val index: Int = 0,
@@ -23,7 +23,7 @@ data class ReadingLessonItemState(
 
 data class MeditationLessonItemState(
     override val lessonItem: LessonItem,
-    override val wasWelcomeDialogBoxShown: Boolean = true,
+    override val wasWelcomeDialogBoxShown: Boolean = false,
     val started: Boolean = false,
     val paused: Boolean = false,
     val breathingIn: Boolean = false,

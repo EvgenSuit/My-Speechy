@@ -1,6 +1,6 @@
 package com.myspeechy.myspeechy.presentation
 
-import android.util.Log
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myspeechy.myspeechy.data.DataStoreManager
@@ -24,7 +24,13 @@ class MySpeechyViewModel @Inject constructor(
                 _uiState.update { it.copy(dataLoaded = loaded) }
             }
         }
+        viewModelScope.launch {
+            dataStoreManager.collectAuthPreferences { pref ->
+                _uiState.update { it.copy(authPreferences = pref) }
+            }
+        }
     }
 
-    data class MySpeechyViewModelUiState(val dataLoaded: Boolean = false)
+    data class MySpeechyViewModelUiState(val dataLoaded: Boolean = false,
+        val authPreferences: Preferences? = null)
 }

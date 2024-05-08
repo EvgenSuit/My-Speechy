@@ -1,6 +1,5 @@
 package com.myspeechy.myspeechy.screens.lesson
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -14,7 +13,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -81,7 +79,6 @@ fun MeditationLessonItem(viewModel: MeditationLessonItemViewModel = hiltViewMode
     LessonItemWrapper(
             uiState = uiState,
             onNavigateUp = onNavigateUp,
-            onDialogDismiss = viewModel::onDialogDismiss,
             dialogText = viewModel.onCategoryConvert(),
             onMarkAsComplete = viewModel::markAsComplete) {
             AnimatedVisibility(

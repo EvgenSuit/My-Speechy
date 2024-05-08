@@ -1,10 +1,8 @@
 package com.myspeechy.myspeechy.domain.lesson
 
-import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.myspeechy.myspeechy.data.DataStoreManager
 import com.myspeechy.myspeechy.data.lesson.Lesson
 import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.lesson.LessonItem
@@ -15,7 +13,6 @@ import kotlinx.coroutines.tasks.await
 interface LessonService {
     val userId: String?
     val usersRef: CollectionReference
-    val dataStoreManager: DataStoreManager
 
     fun categoryToDialogText(category: LessonCategories): String {
         return when(category) {
@@ -40,16 +37,6 @@ interface LessonService {
             lesson.containsImages == 1
         )
     }
-    suspend fun editWelcomeDialogBoxShown(category: LessonCategories) {
-        dataStoreManager.editWelcomeDialogBoxShown(category)
-    }
-    suspend fun collectDialogBoxShown(
-        category: LessonCategories,
-        onData: (Boolean) -> Unit) {
-        dataStoreManager.collectWelcomeDialogBoxShow {
-            onData(it.contains(category.name))
-        }
-    }
     suspend fun markAsComplete(lessonItem: LessonItem) {
         if (userId != null) {
             usersRef.document(userId!!).collection("lessons")
@@ -65,14 +52,12 @@ interface LessonService {
 
 class RegularLessonServiceImpl(
     override val usersRef: CollectionReference,
-    override val dataStoreManager: DataStoreManager,
     auth: FirebaseAuth
 ): LessonService {
     override val userId = auth.currentUser?.uid
 }
 
 class MainLessonServiceImpl(override val usersRef: CollectionReference,
-                            override val dataStoreManager: DataStoreManager,
                             auth: FirebaseAuth): LessonService {
     override val userId = auth.currentUser?.uid
     override fun trackRemoteProgress(
@@ -116,7 +101,6 @@ class MainLessonServiceImpl(override val usersRef: CollectionReference,
 
 class ReadingLessonServiceImpl(
     override val usersRef: CollectionReference,
-    override val dataStoreManager: DataStoreManager,
     auth: FirebaseAuth
 ): LessonService {
     override val userId = auth.currentUser?.uid
@@ -124,7 +108,6 @@ class ReadingLessonServiceImpl(
 
 class MeditationLessonServiceImpl(
     override val usersRef: CollectionReference,
-    override val dataStoreManager: DataStoreManager,
     auth: FirebaseAuth
 ): LessonService {
     override val userId = auth.currentUser?.uid

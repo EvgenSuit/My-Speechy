@@ -2,8 +2,6 @@ package com.myspeechy.myspeechy.presentation.thoughtTracker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.myspeechy.myspeechy.data.DataStoreManager
-import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import com.myspeechy.myspeechy.data.thoughtTrack.ThoughtTrackItem
 import com.myspeechy.myspeechy.domain.DateFormatter
 import com.myspeechy.myspeechy.domain.Result
@@ -24,8 +22,7 @@ import javax.inject.Inject
 class ThoughtTrackerViewModel @Inject constructor(
     private val thoughtTrackerService: ThoughtTrackerService,
     private val isDateEqualToCurrentUseCase: IsDateEqualToCurrentUseCase,
-    private val getCurrentDateUseCase: GetCurrentDateUseCase,
-    private val dataStoreManager: DataStoreManager,
+    private val getCurrentDateUseCase: GetCurrentDateUseCase
 ): ViewModel() {
     private val _uiState = MutableStateFlow(ThoughtTrackerUiState())
     val uiState = _uiState.asStateFlow()
@@ -33,13 +30,7 @@ class ThoughtTrackerViewModel @Inject constructor(
     private var sourceTrackItems: List<ThoughtTrackItem> = mutableListOf()
     val tracksFetchResultFlow = _uiState.map { it.result }
 
-    init {
-        viewModelScope.launch {
-            dataStoreManager.collectWelcomeDialogBoxShow { set ->
-                _uiState.update { it.copy(wasWelcomeDialogShown = set.contains(LessonCategories.THOUGHT_TRACKER.name)) }
-            }
-        }
-    }
+
 
     fun listenForTracks(remove: Boolean) {
         if (!remove) {
@@ -56,6 +47,7 @@ class ThoughtTrackerViewModel @Inject constructor(
                 sourceTrackItems = sortedTracks
                 _uiState.update {state ->
                     state.copy(trackItems = sortedTracks,
+                        wasWelcomeDialogShown = state.wasWelcomeDialogShown || sortedTracks.isNotEmpty(),
                         result = Result.Success("")) }
             },
             remove = remove
@@ -88,13 +80,11 @@ class ThoughtTrackerViewModel @Inject constructor(
         }
     }
 
-    fun onDialogDismiss() = viewModelScope.launch {
-        dataStoreManager.editWelcomeDialogBoxShown(LessonCategories.THOUGHT_TRACKER)
-    }
+    fun onDialogDismiss() = _uiState.update { it.copy(wasWelcomeDialogShown = true) }
 
     fun formatDate(date: String): String = DateFormatter.convertFromUtcThoughtTracker(date)
 
     data class ThoughtTrackerUiState(val trackItems: List<ThoughtTrackItem> = listOf(),
-                                     val wasWelcomeDialogShown: Boolean = true,
+                                     val wasWelcomeDialogShown: Boolean = false,
                                      val result: Result = Result.Idle)
 }

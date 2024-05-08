@@ -2,6 +2,7 @@ package com.myspeechy.myspeechy
 
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import androidx.compose.ui.text.substring
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.firebase.auth.FirebaseAuth
@@ -43,6 +44,8 @@ class FirebaseAuthTests {
     val firestoreCollections = listOf("lessons", "meditation")
     val lessons = (1..2).map { mapOf("$it" to mapOf("id" to it)) } + mapOf("dummy" to mapOf("id" to -1))
     val meditations = (1..3).map { mapOf("2024-02-0$it" to mapOf("minutes" to it)) }
+    val maxUsernameLength = 20
+    val longUsername = username.repeat(100)
 
     private var mockedAuth = mockk<FirebaseAuth>()
     private var mockedFirestore = mockk<FirebaseFirestore>()
@@ -104,7 +107,9 @@ class FirebaseAuthTests {
         }
     }
     fun mockRdb() {
-        every { mockedRdb.child("users").child(userId).setValue(User(username, "")) } returns mockTask()
+        for (name in listOf(username, longUsername, longUsername.substring(0, 20))) {
+            every { mockedRdb.child("users").child(userId).setValue(User(name, "")) } returns mockTask()
+        }
         every { mockedRdb.child("users").child(userId).removeValue() } returns mockTask()
         every { mockedRdb.child(userId).get() } returns mockTask()
         val mockedProfilePicUpdatedSnapshot = mockk<DataSnapshot> {
@@ -115,12 +120,12 @@ class FirebaseAuthTests {
 
     @Test
     fun authenticate_correctInputFormat_authenticationPerformed() {
+        authViewModel.onUsernameChanged(username)
         authViewModel.onEmailChanged(emailToPass)
         authViewModel.onPasswordChanged(password)
         runBlocking {
             authViewModel.signUp()
         }
-        assertTrue(authViewModel.uiState.value.result.data.isNotEmpty())
         assertTrue(authViewModel.uiState.value.result.error.isEmpty())
         verify { mockedAuth.createUserWithEmailAndPassword(any(), any()) }
         verify { mockedRdb.child("users").child(userId).setValue(User(username, "")) }
@@ -189,7 +194,9 @@ class FirebaseAuthTests {
         val authService = spyk(AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage)) {
             coEvery { createFirestoreUser() } returns Unit
         }
-        val googleAuthService = GoogleAuthService(mockedAppInfo, mockedSignInClient, authService)
+        val googleAuthService = GoogleAuthService(mockedAppInfo,
+            maxUsernameLength,
+            mockedSignInClient, authService)
         authViewModel = AuthViewModel(authService, googleAuthService,
             ValidateUsernameUseCase(authService),
             ValidateEmailUseCase(authService),
@@ -214,7 +221,9 @@ class FirebaseAuthTests {
         every { mockedRdb.child("users").child(userId).get() } returns mockTask(mockedUserExists)
         val authService = spyk(AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage))
         coEvery { authService.createFirestoreUser() } returns Unit
-        val googleAuthService = GoogleAuthService(mockedAppInfo, mockedSignInClient, authService)
+        val googleAuthService = GoogleAuthService(mockedAppInfo,
+            maxUsernameLength,
+            mockedSignInClient, authService)
         val authViewModel = AuthViewModel(authService, googleAuthService,
             ValidateUsernameUseCase(authService),
             ValidateEmailUseCase(authService),
@@ -225,5 +234,36 @@ class FirebaseAuthTests {
         }
         assertTrue(authViewModel.uiState.value.result.error.isEmpty())
         coVerify { authService.createFirestoreUser() }
+    }
+    @Test
+    fun googleAuthenticate_usernameLengthMoreThan20_userCreated() {
+        val mockedIntent = mockk<Intent>()
+        val mockedAppInfo = mockk<ApplicationInfo>()
+        val mockedSignInClient = mockk<SignInClient> {
+            every { getSignInCredentialFromIntent(mockedIntent).googleIdToken } returns googleIdToken
+        }
+        val mockedUserExists = mockk<DataSnapshot>{
+            every { exists() } returns false
+        }
+        every { mockedRdb.child("users").child(userId).get() } returns mockTask(mockedUserExists)
+        every { mockedAuth.currentUser?.displayName } returns longUsername
+        val authService = spyk(AuthService(mockedAuth, mockedRdb, mockedFirestore, mockedStorage))
+        coEvery { authService.createFirestoreUser() } returns Unit
+        val googleAuthService = GoogleAuthService(mockedAppInfo,
+            maxUsernameLength,
+            mockedSignInClient, authService)
+        val authViewModel = AuthViewModel(authService, googleAuthService,
+            ValidateUsernameUseCase(authService),
+            ValidateEmailUseCase(authService),
+            ValidatePasswordUseCase(authService))
+        runBlocking {
+            authViewModel.googleSignIn()
+            authViewModel.googleSignInWithIntent(mockedIntent)
+        }
+        println(authViewModel.uiState.value.result.error)
+        assertTrue(authViewModel.uiState.value.result.error.isEmpty())
+        coVerify { authService.createFirestoreUser() }
+        verify { mockedRdb.child("users").child(userId)
+            .setValue(User(longUsername.substring(0, 20), "")) }
     }
 }

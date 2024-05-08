@@ -5,7 +5,6 @@ import android.os.Build
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -57,7 +56,6 @@ fun <T: LessonItemUiState> LessonItemWrapper(
     contentArrangement: Arrangement.Vertical = Arrangement.Top,
     scrollState: ScrollState = rememberScrollState(),
     dialogText: String,
-    onDialogDismiss: () -> Unit,
     onNavigateUp: () -> Unit,
     onMarkAsComplete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -132,9 +130,7 @@ fun <T: LessonItemUiState> LessonItemWrapper(
         if (lessonItem.category == LessonCategories.MEDITATION &&
             Build.VERSION.SDK_INT > 32 && !notificationPermissionGranted) " Allow notifications in order for you to be able" +
                 " to control your progress even when the app is in the background" else "")
-        { showDialog = false
-        onDialogDismiss()
-        }
+        { showDialog = false }
     }
 
 }

@@ -6,9 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.myspeechy.myspeechy.data.lesson.LessonCategories
 import kotlinx.coroutines.flow.collectLatest
 
 val Context.authDataStore: DataStore<Preferences> by preferencesDataStore("Auth")
@@ -22,25 +20,16 @@ val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore("Them
 val isDarkTheme = booleanPreferencesKey("isDarkTheme")
 val Context.notificationsDataStore: DataStore<Preferences> by preferencesDataStore("Notifications")
 val isMeditationNotificationCancelled = booleanPreferencesKey("isMeditationNotificationCancelled")
-val Context.lessonItemsDataStore: DataStore<Preferences> by preferencesDataStore("LessonItems")
-val welcomeDialogBoxShown = stringSetPreferencesKey("welcomeDialogBoxShown")
 
 class DataStoreManager(private val authDataStore: DataStore<Preferences>,
     private val navBarDataStore: DataStore<Preferences>,
     private val loadingDataStore: DataStore<Preferences>,
     private val themeDataStore: DataStore<Preferences>,
-    private val notificationsDataStore: DataStore<Preferences>,
-    private val lessonItemDataStore: DataStore<Preferences>) {
+    private val notificationsDataStore: DataStore<Preferences>) {
 
-    suspend fun editWelcomeDialogBoxShown(category: LessonCategories) {
-        lessonItemDataStore.edit {
-            val currSet = it[welcomeDialogBoxShown] ?: emptySet()
-            it[welcomeDialogBoxShown] = currSet + category.name
-        }
-    }
-    suspend fun collectWelcomeDialogBoxShow(onData: (Set<String>) -> Unit) {
-        lessonItemDataStore.data.collect {
-            onData(it[welcomeDialogBoxShown] ?: emptySet())
+    suspend fun collectAuthPreferences(onData: (Preferences) -> Unit) {
+        authDataStore.data.collect {
+            onData(it)
         }
     }
     suspend fun editError(error: String) {

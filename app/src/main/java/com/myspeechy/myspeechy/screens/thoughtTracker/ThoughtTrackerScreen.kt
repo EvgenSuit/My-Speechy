@@ -24,6 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -51,6 +54,9 @@ fun ThoughtTrackerScreen(navController: NavHostController,
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val circularProgressIndicatorDescription = stringResource(R.string.circular_progress_indicator)
+    val showWelcomeDialogBox by rememberSaveable(uiState) {
+        mutableStateOf(!uiState.wasWelcomeDialogShown && uiState.result is Result.Success)
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.listenForTracks(false)
         viewModel.listenForDateChange(false)
@@ -67,7 +73,7 @@ fun ThoughtTrackerScreen(navController: NavHostController,
             }
         }
     }
-    if (!uiState.wasWelcomeDialogShown) {
+    if (showWelcomeDialogBox) {
         DialogBox(title = stringResource(R.string.thought_tracker), text = stringResource(R.string.thought_tracker_description),
             viewModel::onDialogDismiss)
     }
@@ -75,7 +81,7 @@ fun ThoughtTrackerScreen(navController: NavHostController,
         contentAlignment = Alignment.TopCenter,
         modifier = Modifier
             .fillMaxSize()
-            .blur(if (!uiState.wasWelcomeDialogShown) dimensionResource(R.dimen.blur) else 0.dp)
+            .blur(if (showWelcomeDialogBox) dimensionResource(R.dimen.blur) else 0.dp)
     ) {
         val maxHeight = this.maxHeight
         Column(

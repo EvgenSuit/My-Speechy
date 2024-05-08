@@ -19,6 +19,7 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.myspeechy.myspeechy.R
 import com.myspeechy.myspeechy.domain.useCases.ValidateUsernameUseCase
 import dagger.Module
 import dagger.Provides
@@ -67,7 +68,9 @@ object AuthViewModelModule {
         return lazy {
             GoogleAuthService(
                 context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA),
-                Identity.getSignInClient(context), provideAuthService())
+                context.resources.getInteger(R.integer.max_username_or_title_length),
+                Identity.getSignInClient(context),
+                provideAuthService())
         }.value
     }
 }

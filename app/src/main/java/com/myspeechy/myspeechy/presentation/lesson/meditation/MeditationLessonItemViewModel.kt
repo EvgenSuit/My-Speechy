@@ -1,7 +1,6 @@
 package com.myspeechy.myspeechy.presentation.lesson.meditation
 
 import android.text.format.DateUtils
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,7 +37,8 @@ class MeditationLessonItemViewModel @Inject constructor(
     private val dataStoreManager: DataStoreManager,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
-     val id: Int = checkNotNull(savedStateHandle["id"])
+    val id: Int = checkNotNull(savedStateHandle["id"])
+    private val wasWelcomeDialogShown: Boolean = checkNotNull(savedStateHandle["wasWelcomeDialogShown"])
     private val _uiState = MutableStateFlow(MeditationLessonItemState(LessonItem()))
     val uiState = _uiState.asStateFlow()
     val saveResultFlow = _uiState.map { it.saveResult }
@@ -50,21 +50,13 @@ class MeditationLessonItemViewModel @Inject constructor(
         viewModelScope.launch {
             lessonRepository.selectLessonItem(id).collect {lesson ->
                 val lessonItem = lessonServiceImpl.convertToLessonItem(lesson)
-                _uiState.update { it.copy(lessonItem = lessonItem) }
-                collectDialogBoxShown()
+                _uiState.update { it.copy(lessonItem = lessonItem,
+                    wasWelcomeDialogBoxShown = wasWelcomeDialogShown) }
             }
         }
         viewModelScope.launch {
             dataStoreManager.collectMeditationNotificationStatus {isCancelled ->
                 if (isCancelled) cancel()
-            }
-        }
-    }
-
-    private fun collectDialogBoxShown() {
-        viewModelScope.launch {
-            lessonServiceImpl.collectDialogBoxShown(_uiState.value.lessonItem.category) {wasShown ->
-                _uiState.update { it.copy(wasWelcomeDialogBoxShown = wasShown) }
             }
         }
     }
@@ -155,9 +147,6 @@ class MeditationLessonItemViewModel @Inject constructor(
         viewModelScope.launch {
             lessonServiceImpl.markAsComplete(_uiState.value.lessonItem)
         }
-    }
-    fun onDialogDismiss() = viewModelScope.launch {
-        lessonServiceImpl.editWelcomeDialogBoxShown(_uiState.value.lessonItem.category)
     }
     fun onCategoryConvert(): String = lessonServiceImpl.categoryToDialogText(LessonCategories.MEDITATION)
 

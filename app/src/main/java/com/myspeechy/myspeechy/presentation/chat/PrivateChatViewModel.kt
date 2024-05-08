@@ -1,17 +1,16 @@
 package com.myspeechy.myspeechy.presentation.chat
 
-import android.util.Log
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import com.myspeechy.myspeechy.data.chat.Chat
 import com.myspeechy.myspeechy.data.chat.Message
 import com.myspeechy.myspeechy.data.chat.MessagesState
 import com.myspeechy.myspeechy.domain.chat.PrivateChatServiceImpl
 import com.myspeechy.myspeechy.domain.error.PictureStorageError
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +31,7 @@ class PrivateChatViewModel @Inject constructor(
     val userId = chatServiceImpl.userId
     val otherUserId = chatId.split("_").first { it != userId }
     val picRef = File("$filesDirPath/profilePics/$otherUserId/lowQuality/$otherUserId.jpg")
+
 
     fun startOrStopListening(removeListeners: Boolean) {
         listenForCurrentChat(removeListeners)

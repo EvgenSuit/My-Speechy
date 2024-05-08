@@ -3,6 +3,8 @@ package com.myspeechy.myspeechy.domain.auth
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.ApplicationInfo
+import android.util.Log
+import androidx.compose.ui.text.substring
 import androidx.core.util.PatternsCompat
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.BeginSignInRequest.GoogleIdTokenRequestOptions
@@ -24,6 +26,7 @@ import com.myspeechy.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.myspeechy.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.myspeechy.myspeechy.domain.useCases.LeavePublicChatUseCase
 import kotlinx.coroutines.tasks.await
+import kotlin.math.max
 
 class AuthService(private val auth: FirebaseAuth,
                   private val rdbRef: DatabaseReference? = null,
@@ -90,9 +93,10 @@ class AuthService(private val auth: FirebaseAuth,
         auth.createUserWithEmailAndPassword(email, password).await()
     }
 
-    suspend fun createRealtimeDbUser(username: String? = null) {
+    suspend fun createRealtimeDbUser(username: String? = null, maxUsernameLength: Int? = null) {
         val currUser = auth.currentUser
-        rdbRef?.child("users")?.child(currUser!!.uid)?.setValue(User(username ?: currUser.displayName!!, ""))
+        val name = username ?: currUser!!.displayName!!.substring(0, minOf(maxUsernameLength!!, currUser.displayName!!.length))
+        rdbRef?.child("users")?.child(currUser!!.uid)?.setValue(User(name, ""))
             ?.await()
     }
 
@@ -165,6 +169,7 @@ class AuthService(private val auth: FirebaseAuth,
 
 class GoogleAuthService(
     private val appInfo: ApplicationInfo,
+    private val maxUsernameLength: Int,
     private val oneTapClient: SignInClient,
     private val authService: AuthService
 ) {
@@ -180,7 +185,7 @@ class GoogleAuthService(
         val userExists = authService.checkIfUserExists()
         if (userExists != null && !userExists) {
             authService.createFirestoreUser()
-            authService.createRealtimeDbUser()
+            authService.createRealtimeDbUser(maxUsernameLength = maxUsernameLength)
         }
     }
      private fun getApiKey(): String {

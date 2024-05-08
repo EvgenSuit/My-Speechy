@@ -79,7 +79,7 @@ class AccountDeletionViewModel @Inject constructor(
             googleAuthService?.signInWithIntent(intent)
             updateAuthResult(Result.Success("Logged in"))
         } catch (e: Exception) {
-            updateAuthResult(Result.Error("${e.message!!}. Make sure to add your Google account to this device"))
+            updateAuthResult(Result.Error(e.message!!))
         }
     }
     //this function is called first when authenticating with google
@@ -88,7 +88,7 @@ class AccountDeletionViewModel @Inject constructor(
             updateAuthResult(Result.InProgress)
             googleAuthService?.signIn()
         } catch (e: Exception) {
-            updateAuthResult(Result.Error(e.message!!))
+            updateAuthResult(Result.Error("${e.message!!}. Make sure to add your Google account to this device"))
             null
         }
     }

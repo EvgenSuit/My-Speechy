@@ -10,9 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -114,6 +111,7 @@ fun AuthScreen(
             MainBox(
                 onNavigateToMain = onNavigateToMain,
                 imageLoader = imageLoader)
+            PrivacyPolicyText(Modifier.align(Alignment.BottomCenter))
         }
     }
     DisposableEffect(Unit) {
@@ -185,7 +183,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .clip(RoundedCornerShape(30.dp))
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
-        //.width(dimensionResource(id = R.dimen.auth_components_width))
         .width(300.dp)
         .verticalScroll(rememberScrollState()))
     {
@@ -199,7 +196,7 @@ fun MainBox(onNavigateToMain: () -> Unit,
                 color = Color.Black,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(top = 15.dp, bottom = 15.dp))
+                    .padding(top = 15.dp, bottom = 25.dp))
            Column(
                horizontalAlignment = Alignment.CenterHorizontally,
                verticalArrangement = Arrangement.spacedBy(paddingAuthTextFields),
@@ -282,13 +279,12 @@ fun MainBox(onNavigateToMain: () -> Unit,
                        onGoogleSignIn = viewModel::googleSignIn,
                        onGoogleSignInWithIntent = viewModel::googleSignInWithIntent)
            }
-            PrivacyPolicyText()
         }
     }
 }
 
 @Composable
-fun PrivacyPolicyText() {
+fun PrivacyPolicyText(modifier: Modifier) {
     val privacyPolicyLink = stringResource(R.string.privacy_policy_link)
     val context = LocalContext.current
     Text(
@@ -297,7 +293,7 @@ fun PrivacyPolicyText() {
             color = Color.Black,
             textDecoration = TextDecoration.Underline
         ),
-        modifier = Modifier
+        modifier = modifier
             .padding(10.dp)
             .clickable {
                 val urlIntent = Intent(
