@@ -69,8 +69,6 @@ import com.myspeechy.myspeechy.screens.thoughtTracker.ThoughtTrackerItemScreen
 import com.myspeechy.myspeechy.screens.thoughtTracker.ThoughtTrackerScreen
 import kotlinx.coroutines.flow.collectLatest
 
-
-// TODO change icons
 open class NavScreens(val route: String, val icon: Int, val label: String) {
     data object Main: NavScreens("main", R.drawable.house_icon, "Main")
     data object ThoughtTracker: NavScreens("thoughtTracker", R.drawable.thoughts_icon, "ThoughtTracker")
@@ -92,7 +90,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
     val uiState by viewModel.uiState.collectAsState()
     val currUser = Firebase.auth.currentUser
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val startDestination by rememberSaveable {
+    val startDestination by rememberSaveable(currUser) {
         mutableStateOf(if (currUser == null) OtherScreens.Auth.route else NavScreens.Main.route)
     }
     var showNavBar by rememberSaveable {
@@ -178,9 +176,7 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                         SettingsScreen()
                     }
                     composable(OtherScreens.Auth.route) {
-                        AuthScreen(onNavigateToMain = {
-                            navController.navigate(NavScreens.Main.route) { popUpTo(0) }
-                        })
+                        AuthScreen()
                     }
                     composable(OtherScreens.Error.route) {
                         if (!error.isNullOrEmpty()) {

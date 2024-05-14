@@ -38,5 +38,6 @@
     <dimen name="thought_tracker_width">500dp</dimen>
     <dimen name="blur">20dp</dimen>
     <dimen name="max_width">500dp</dimen>
+    <dimen name="auth_text_field_width">320dp</dimen>
     <dimen name="max_create_or_change_chat_form_width">400dp</dimen>
 </resources>

@@ -73,6 +73,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import com.myspeechy.myspeechy.R
+import com.myspeechy.myspeechy.components.CustomSplashScreen
 import com.myspeechy.myspeechy.components.advancedShadow
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.UiText
@@ -84,8 +85,7 @@ import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.launch
 
 @Composable
-fun AuthScreen(
-    onNavigateToMain: () -> Unit) {
+fun AuthScreen() {
     val focusManger = LocalFocusManager.current
     val imageLoader = ImageLoader.Builder(LocalContext.current)
         .components {
@@ -102,15 +102,10 @@ fun AuthScreen(
                 contentDescription = null
             )
         if (painter.state is AsyncImagePainter.State.Loading) {
-            CircularProgressIndicator(
-                color = Color.Black,
-                modifier = Modifier.align(Alignment.Center)
-            )
+            CustomSplashScreen()
         }
         if (painter.state is AsyncImagePainter.State.Success) {
-            MainBox(
-                onNavigateToMain = onNavigateToMain,
-                imageLoader = imageLoader)
+            MainBox(imageLoader = imageLoader)
             PrivacyPolicyText(Modifier.align(Alignment.BottomCenter))
         }
     }
@@ -123,8 +118,7 @@ fun AuthScreen(
 
 
 @Composable
-fun MainBox(onNavigateToMain: () -> Unit,
-            imageLoader: ImageLoader,
+fun MainBox(imageLoader: ImageLoader,
             modifier: Modifier = Modifier,
             viewModel: AuthViewModel = hiltViewModel()) {
     val coroutineScope = rememberCoroutineScope()
@@ -168,7 +162,6 @@ fun MainBox(onNavigateToMain: () -> Unit,
         if (uiState.result is Result.Success) {
             focusManager.clearFocus(true)
             Toasty.success(context, uiState.result.data, Toast.LENGTH_SHORT, true).show()
-            onNavigateToMain()
         } else if (uiState.result is Result.Error) {
             Toasty.error(context, uiState.result.error, Toast.LENGTH_LONG, true).show()
         }
@@ -183,12 +176,12 @@ fun MainBox(onNavigateToMain: () -> Unit,
         .clip(RoundedCornerShape(30.dp))
         .background(Color.White.copy(0.4f))
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.auth_components_height))
-        .width(300.dp)
-        .verticalScroll(rememberScrollState()))
+        .width(IntrinsicSize.Min),
+        contentAlignment = Alignment.Center)
     {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
+            modifier = Modifier.verticalScroll(rememberScrollState())
         ) {
             Text(text = stringResource(id = R.string.app_name),
                 fontFamily = itimFamily,
@@ -428,6 +421,7 @@ fun AuthTextField(value:String, label: String,
                  offsetY = 4.dp
              )
              .height(60.dp)
+             .width(dimensionResource(R.dimen.auth_text_field_width))
      )
 }
 

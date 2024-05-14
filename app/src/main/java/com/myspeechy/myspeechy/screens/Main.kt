@@ -42,6 +42,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.myspeechy.myspeechy.R
+import com.myspeechy.myspeechy.components.CustomSplashScreen
 import com.myspeechy.myspeechy.data.lesson.LessonItem
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.MainViewModel
@@ -73,13 +74,7 @@ fun MainScreen(navController: NavHostController = rememberNavController(),
         }
     }
     if (uiState.result is Result.InProgress) {
-        Box(contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .testTag(stringResource(R.string.load_screen))) {
-            Image(painterResource(R.drawable.app_launch_icon), contentDescription = null)
-        }
+        CustomSplashScreen()
     }
 }
 

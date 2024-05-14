@@ -62,6 +62,7 @@ import com.myspeechy.myspeechy.R
 import com.myspeechy.myspeechy.components.BackButton
 import com.myspeechy.myspeechy.components.CommonTextField
 import com.myspeechy.myspeechy.components.CustomAlertDialog
+import com.myspeechy.myspeechy.components.CustomSplashScreen
 import com.myspeechy.myspeechy.domain.Result
 import com.myspeechy.myspeechy.presentation.chat.PictureState
 import com.myspeechy.myspeechy.presentation.chat.UserProfileViewModel
@@ -219,17 +220,7 @@ fun UserProfileScreen(
             }
         }
         if (uiState.authResult is Result.InProgress) {
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.logout_delete_account_padding), Alignment.CenterVertically)) {
-                    Text("Logging out...", style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onBackground
-                    ))
-                    CircularProgressIndicator()
-                }
-            }
+            CustomSplashScreen()
         }
     }
     DisposableEffect(Unit) {
