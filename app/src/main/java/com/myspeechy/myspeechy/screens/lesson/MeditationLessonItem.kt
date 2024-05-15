@@ -148,7 +148,6 @@ fun TimeScroller(
         mutableIntStateOf(0)
     }
     val timescrollerTextAnimationDuration = AnimationConfig.MEDITATION_TIMESCROLLER_TEXT_ANIMATION_DURATION
-    val screenWidth = LocalConfiguration.current.screenWidthDp
     val minMeditationPoint = MeditationConfig.MIN_MEDITATION_POINT
     val maxMeditationPoint = MeditationConfig.MAX_MEDITATION_POINT
     val stepSize = MeditationConfig.STEP_SIZE

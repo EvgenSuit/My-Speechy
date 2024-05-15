@@ -14,6 +14,7 @@ import com.myspeechy.myspeechy.presentation.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
@@ -29,6 +30,7 @@ class AuthViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     private var _exceptionState = MutableStateFlow(PasswordValidatorState())
     val exceptionState = _exceptionState.asStateFlow()
+    val authResultFlow = _uiState.map { it.result }
 
     private fun validateUsernameOnInput(value: String): UiText = validateUsernameUseCase(value)
     private fun validateEmailOnInput(value: String): UiText = validateEmailUseCase(value)

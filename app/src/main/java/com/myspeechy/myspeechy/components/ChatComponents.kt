@@ -29,8 +29,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -274,7 +274,7 @@ fun BottomRow(textFieldValue: TextFieldValue,
                 .weight(0.2f)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
+                imageVector = Icons.Filled.Send,
                 tint = MaterialTheme.colorScheme.surfaceTint,
                 contentDescription = null,
                 modifier = Modifier.size(30.dp)

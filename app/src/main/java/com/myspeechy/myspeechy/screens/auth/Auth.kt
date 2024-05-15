@@ -85,7 +85,7 @@ import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.launch
 
 @Composable
-fun AuthScreen() {
+fun AuthScreen(onNavigateToMain: () -> Unit) {
     val focusManger = LocalFocusManager.current
     val imageLoader = ImageLoader.Builder(LocalContext.current)
         .components {
@@ -105,7 +105,8 @@ fun AuthScreen() {
             CustomSplashScreen()
         }
         if (painter.state is AsyncImagePainter.State.Success) {
-            MainBox(imageLoader = imageLoader)
+            MainBox(imageLoader = imageLoader,
+                onNavigateToMain = onNavigateToMain)
             PrivacyPolicyText(Modifier.align(Alignment.BottomCenter))
         }
     }
@@ -119,6 +120,7 @@ fun AuthScreen() {
 
 @Composable
 fun MainBox(imageLoader: ImageLoader,
+            onNavigateToMain: () -> Unit,
             modifier: Modifier = Modifier,
             viewModel: AuthViewModel = hiltViewModel()) {
     val coroutineScope = rememberCoroutineScope()
@@ -162,6 +164,7 @@ fun MainBox(imageLoader: ImageLoader,
         if (uiState.result is Result.Success) {
             focusManager.clearFocus(true)
             Toasty.success(context, uiState.result.data, Toast.LENGTH_SHORT, true).show()
+            onNavigateToMain()
         } else if (uiState.result is Result.Error) {
             Toasty.error(context, uiState.result.error, Toast.LENGTH_LONG, true).show()
         }

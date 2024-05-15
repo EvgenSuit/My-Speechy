@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -48,7 +48,7 @@ fun BackButton(
     val description = stringResource(R.string.back_button)
     IconButton(onClick = onClick,
         modifier = Modifier.semantics { contentDescription = description }) {
-        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+        Icon(imageVector = Icons.Filled.ArrowBack,
             tint = MaterialTheme.colorScheme.onBackground,
             contentDescription = null,
             modifier = Modifier.size(dimensionResource(R.dimen.back_button_size)))
@@ -81,7 +81,7 @@ fun ScrollDownButton(onClick: () -> Unit) {
             )
             .size(dimensionResource(R.dimen.scroll_down_button_size))
             .clip(RoundedCornerShape(corner))
-            .background(MaterialTheme.colorScheme.surfaceContainer.copy(0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f))
     ) {
         Icon(
             Icons.Filled.KeyboardArrowDown,

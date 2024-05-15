@@ -14,9 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.MaterialTheme
@@ -140,7 +141,7 @@ fun TracksColumn(tracks: List<ThoughtTrackItem>,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(5.dp),
         modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(tracks) {i, item ->
+        items(tracks) {item ->
             ThoughtTrackBox(onFormatDate(item.date)) { onNavigateToItem(item.date) }
         }
     }

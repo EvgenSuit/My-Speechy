@@ -25,6 +25,7 @@ import com.myspeechy.myspeechy.domain.useCases.CheckIfIsAdminUseCase
 import com.myspeechy.myspeechy.domain.useCases.DeletePublicChatUseCase
 import com.myspeechy.myspeechy.domain.useCases.LeavePrivateChatUseCase
 import com.myspeechy.myspeechy.domain.useCases.LeavePublicChatUseCase
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlin.math.max
 

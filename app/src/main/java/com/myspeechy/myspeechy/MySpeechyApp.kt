@@ -1,6 +1,8 @@
 package com.myspeechy.myspeechy
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -8,16 +10,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Icon
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,12 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -84,13 +82,14 @@ open class OtherScreens(val route: String) {
 val screens = listOf(NavScreens.Main, NavScreens.ThoughtTracker,
     NavScreens.Stats, NavScreens.ChatsScreen, NavScreens.SettingsScreen)
 
+@SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                  viewModel: MySpeechyViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val currUser = Firebase.auth.currentUser
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val startDestination by rememberSaveable(currUser) {
+    val startDestination by rememberSaveable {
         mutableStateOf(if (currUser == null) OtherScreens.Auth.route else NavScreens.Main.route)
     }
     var showNavBar by rememberSaveable {
@@ -175,8 +174,13 @@ fun MySpeechyApp(navController: NavHostController = rememberNavController(),
                     composable(NavScreens.SettingsScreen.route) {
                         SettingsScreen()
                     }
-                    composable(OtherScreens.Auth.route) {
-                        AuthScreen()
+                    composable(OtherScreens.Auth.route,
+                        enterTransition = {EnterTransition.None}) {
+                        AuthScreen {
+                            navController.navigate(NavScreens.Main.route) {
+                                popUpTo(0)
+                            }
+                        }
                     }
                     composable(OtherScreens.Error.route) {
                         if (!error.isNullOrEmpty()) {
@@ -248,10 +252,35 @@ fun BottomNavBar(
     showNavBar: Boolean,
     navController: NavHostController,
     navBackStackEntry: NavBackStackEntry?) {
-    BottomNavigation {
+    NavigationBar {
         for (screen in screens) {
-            val selected = navBackStackEntry?.destination?.route == screen.route
-            BottomNavigationItem(
+            val currentRoute = navBackStackEntry?.destination?.route
+            val selected = currentRoute == screen.route
+            NavigationBarItem(selected = selected,
+                onClick = {
+                    if (showNavBar) {
+                        navController.navigate(screen.route) {
+                            popUpTo(NavScreens.Main.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = {
+                    Icon(
+                        painterResource(screen.icon),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(
+                                if (selected) dimensionResource(R.dimen.selected_bottom_bar_icon_size) else
+                                    dimensionResource(R.dimen.unselected_bottom_bar_icon_size)
+                            )
+                    )
+                })
+
+            /*BottomNavigationItem(
                 selected = selected,
                 onClick = {
                     if (showNavBar) {
@@ -277,7 +306,7 @@ fun BottomNavBar(
                     .semantics {
                         contentDescription = screen.label
                     }
-            )
+            )*/
         }
     }
 }

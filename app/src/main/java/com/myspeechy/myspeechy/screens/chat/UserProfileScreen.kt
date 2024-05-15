@@ -24,8 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
@@ -213,7 +213,7 @@ fun UserProfileScreen(
                         ProfileActionButton(icon = Icons.Filled.Face, text = "Delete profile picture", viewModel::removeUserPicture)
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ProfileActionButton(icon = Icons.AutoMirrored.Filled.ExitToApp, text = "Log out", viewModel::logout)
+                        ProfileActionButton(icon = Icons.Filled.ExitToApp, text = "Log out", viewModel::logout)
                         ProfileActionButton(icon = Icons.Filled.Delete, text = "Delete account", viewModel::deleteAccount)
                     }
                 }

@@ -27,8 +27,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
@@ -353,7 +353,7 @@ fun SideDrawer(
                     onLeave()
                 }
             }) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp,
+                Icon(Icons.Filled.ExitToApp,
                     tint = MaterialTheme.colorScheme.error,
                     contentDescription = null,
                     modifier = Modifier.size(dimensionResource(R.dimen.back_button_size)))
@@ -377,7 +377,7 @@ fun ChatInfoColumn(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corner))
-            .background(MaterialTheme.colorScheme.surfaceContainer.copy(1f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { if (isAdmin) onChangeChatInfo() }
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

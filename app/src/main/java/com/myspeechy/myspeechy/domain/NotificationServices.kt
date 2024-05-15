@@ -16,10 +16,6 @@ interface NotificationService{
     fun sendMeditationNotification(passedTime: String)
     fun cancelNotification()
 }
-/*object NotificationRepository {
-    val canceled: MutableStateFlow<Boolean> = MutableStateFlow(false)
-}*/
-
 class MeditationNotificationServiceImpl(private val context: Context):
     NotificationService {
         private val id: Int = 1

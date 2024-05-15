@@ -5,6 +5,7 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -15,15 +16,8 @@ android {
         applicationId = "com.myspeechy.myspeechy"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.7"
-        buildTypes {
-            release {
-                ndk {
-                    debugSymbolLevel = "FULL"
-                }
-            }
-        }
+        versionCode = 11
+        versionName = "1.0.11"
         testInstrumentationRunner = "com.myspeechy.myspeechy.CustomTestRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -36,6 +30,9 @@ android {
 
     buildTypes {
         release {
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles(
@@ -66,11 +63,9 @@ android {
 }
 
 dependencies {
-    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     val room_version = "2.6.1"
     val hilt_version = "2.50"
-    implementation("androidx.compose.material:material:1.7.0-alpha01")
+    val lifecycleVersion = "2.7.0"
     //Toast
     implementation("com.github.GrenderG:Toasty:1.5.2")
     //Firebase
@@ -80,6 +75,8 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-analytics")
 
     //Coil (image display handler)
     implementation("io.coil-kt:coil-compose:2.6.0")
@@ -108,23 +105,24 @@ dependencies {
     implementation("com.patrykandpatrick.vico:views:1.13.1")
 
     implementation("androidx.work:work-runtime-ktx:2.7.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-process:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
+
+    implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.material3:material3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("androidx.compose.ui:ui-test-junit4-android:1.5.4")
     testImplementation("androidx.test:core:1.5.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("io.mockk:mockk:1.13.10")
     testImplementation("androidx.room:room-testing:$room_version")
     testImplementation("org.robolectric:robolectric:4.12.1")
@@ -132,7 +130,6 @@ dependencies {
     androidTestImplementation("androidx.navigation:navigation-testing:2.7.6")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2023.08.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0-alpha03")
 

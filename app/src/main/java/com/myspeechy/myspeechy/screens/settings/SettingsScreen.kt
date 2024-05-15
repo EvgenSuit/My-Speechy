@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -136,7 +136,7 @@ fun PrivacyPolicySection(onPrivacyPolicyNavigate: () -> Unit) {
             ))
         Spacer(modifier = Modifier.weight(1f))
         Icon(
-            Icons.AutoMirrored.Filled.ArrowForward,
+            Icons.Filled.ArrowForward,
             contentDescription = null)
     }
 }
